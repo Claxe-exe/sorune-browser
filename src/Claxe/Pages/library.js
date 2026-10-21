@@ -123,7 +123,60 @@ function renderBookmarks() {
         ? bookmarks.filter((b) => (b.title + " " + b.url).toLocaleLowerCase("tr-TR").includes(needle))
         : bookmarks;
 
-    $("bookmark-list").replaceChildren(...items.map((bookmark) => {
+    // Folders (alphabetical) first, then bookmarks without a folder.
+    const folders = [...new Set(bookmarks.map((b) => b.folder).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
+    const groups = [...folders.map((f) => [f, items.filter((b) => b.folder === f)]), ["", items.filter((b) => !b.folder)]]
+        .filter(([, list]) => list.length > 0);
+
+    const nodes = [];
+    for (const [folder, list] of groups) {
+        if (folder || folders.length > 0) nodes.push(folderHeader(folder, list.length));
+        nodes.push(...list.map((bookmark) => bookmarkRow(bookmark, folders)));
+    }
+    $("bookmark-list").replaceChildren(...nodes);
+    $("bookmark-empty").hidden = items.length > 0;
+}
+
+function folderHeader(folder, count) {
+    const label = el("span", { text: folder ? `📁 ${folder} (${count})` : `Klasörsüz (${count})` });
+    const header = el("h3", { class: "day folder-head" }, [label]);
+    if (folder) {
+        header.append(el("button", {
+            type: "button", class: "icon-btn", title: "Klasörü yeniden adlandır", text: "✎",
+            onclick: () => inlineInput(label, folder, (value) => send({ type: "renameBookmarkFolder", from: folder, to: value })),
+        }));
+    }
+    return header;
+}
+
+/** Replaces a node with a text box; Enter commits, Escape cancels. */
+function inlineInput(node, value, commit, options = []) {
+    const input = el("input", { class: "rename", type: "text", maxlength: "200" });
+    input.value = value;
+    if (options.length) {
+        const list = el("datalist", { id: "folder-options" }, options.map((o) => el("option", { value: o })));
+        input.setAttribute("list", "folder-options");
+        node.after(list);
+    }
+    let done = false;
+    const finish = (save) => {
+        if (done) return;
+        done = true;
+        if (save && input.value.trim() !== value) commit(input.value.trim());
+        else renderBookmarks();
+    };
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") finish(true);
+        if (e.key === "Escape") finish(false);
+    });
+    input.addEventListener("blur", () => finish(true));
+    node.replaceWith(input);
+    input.focus();
+    input.select();
+}
+
+function bookmarkRow(bookmark, folders) {
+    {
         const title = el("a", { class: "item-title", href: bookmark.url, text: bookmark.title, title: bookmark.url });
         const text = el("span", { class: "item-text" }, [title, el("span", { class: "item-sub", text: bookmark.url })]);
 
@@ -145,17 +198,21 @@ function renderBookmarks() {
             input.select();
         };
 
+        const sub = text.lastChild;
+        const move = () => inlineInput(sub, bookmark.folder || "",
+            (value) => send({ type: "setBookmarkFolder", id: bookmark.id, folder: value }), folders);
+
         return el("div", { class: "item" }, [
             monogram(bookmark.title),
             text,
+            el("button", { type: "button", class: "icon-btn", title: "Klasöre taşı (boş bırakırsan klasörden çıkar)", "aria-label": "Klasöre taşı", text: "📁", onclick: move }),
             el("button", { type: "button", class: "icon-btn", title: "Yeniden adlandır", "aria-label": "Yeniden adlandır", text: "✎", onclick: rename }),
             el("button", {
                 type: "button", class: "icon-btn danger", title: "Yer imini sil", "aria-label": `${bookmark.title} yer imini sil`, text: "×",
                 onclick: () => send({ type: "removeBookmark", id: bookmark.id }),
             }),
         ]);
-    }));
-    $("bookmark-empty").hidden = items.length > 0;
+    }
 }
 
 $("bookmark-search").addEventListener("input", renderBookmarks);

@@ -544,10 +544,11 @@
             <Border x:Name="TitleRowProbe" Grid.Row="0" IsHitTestVisible="False" />
 
             <!-- ============ Layer 4: sidebar, web panel, web content ============ -->
-            <Grid Grid.Row="2">
+            <!-- Column order is set in code (sidebar left or right). -->
+            <Grid Grid.Row="2" x:Name="ContentGrid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition x:Name="PanelColumn" Width="0" MaxWidth="900" />
+                    <ColumnDefinition Width="0" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
@@ -624,7 +625,7 @@
                 </Border>
 
                 <!-- Open web panel: header + every loaded panel's page (hidden ones stay alive) -->
-                <Border Grid.Column="1" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
+                <Border x:Name="PanelHost" Grid.Column="1" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
                     <DockPanel>
                         <Grid DockPanel.Dock="Top" Height="38" Background="{DynamicResource GlassBrush}">
                             <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold"
@@ -659,7 +660,7 @@
                               Background="Transparent" Visibility="Collapsed"
                               DragCompleted="PanelSplitter_DragCompleted" />
 
-                <ItemsControl Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False">
+                <ItemsControl x:Name="ContentHost" Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <Grid />

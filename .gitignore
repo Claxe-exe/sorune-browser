@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Raw source images; app-ready copies live in src/Claxe/Assets
 /assets/
+
+# Published build
+/dist/

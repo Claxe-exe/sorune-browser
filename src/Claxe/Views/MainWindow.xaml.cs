@@ -348,6 +348,7 @@ public partial class MainWindow : Window
                 break;
             case nameof(MainViewModel.ActivePanel):
             case nameof(MainViewModel.IsSidebarVisible):
+            case nameof(MainViewModel.IsSidebarOnRight):
                 UpdatePanelColumn();
                 break;
         }
@@ -453,14 +454,35 @@ public partial class MainWindow : Window
         var sidebar = _viewModel.IsSidebarVisible && !_isBrowserFullScreen;
         SidebarHost.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
 
+        // Left:  [sidebar][panel][splitter][content]   Right: [content][splitter][panel][sidebar]
+        var right = _viewModel.IsSidebarOnRight;
+        int[] order = right ? [3, 2, 1, 0] : [0, 1, 2, 3];
+        Grid.SetColumn(SidebarHost, order[0]);
+        Grid.SetColumn(PanelHost, order[1]);
+        Grid.SetColumn(PanelSplitter, order[2]);
+        Grid.SetColumn(ContentHost, order[3]);
+        SidebarHost.BorderThickness = right ? new Thickness(1, 0, 0, 0) : new Thickness(0, 0, 1, 0);
+        PanelHost.BorderThickness = SidebarHost.BorderThickness;
+
         var open = sidebar && _viewModel.ActivePanel is not null;
-        PanelColumn.Width = open ? new GridLength(_viewModel.PanelWidth) : new GridLength(0);
-        PanelColumn.MinWidth = open ? 280 : 0;
+        var columns = ContentGrid.ColumnDefinitions;
+        columns[order[0]].Width = GridLength.Auto;
+        columns[order[2]].Width = GridLength.Auto;
+        columns[order[3]].Width = new GridLength(1, GridUnitType.Star);
+        columns[order[3]].MinWidth = 0;
+        columns[order[3]].MaxWidth = double.PositiveInfinity;
+        columns[order[0]].MinWidth = columns[order[2]].MinWidth = 0;
+        columns[order[0]].MaxWidth = columns[order[2]].MaxWidth = double.PositiveInfinity;
+
+        var panelColumn = columns[order[1]];
+        panelColumn.Width = open ? new GridLength(_viewModel.PanelWidth) : new GridLength(0);
+        panelColumn.MinWidth = open ? 280 : 0;
+        panelColumn.MaxWidth = 900;
         PanelSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void PanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
-        => _viewModel.SetPanelWidth(PanelColumn.ActualWidth);
+        => _viewModel.SetPanelWidth(PanelHost.ActualWidth);
 
     private void UpdateMascotVisibility()
     {

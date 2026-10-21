@@ -373,6 +373,18 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .badge.allow { color: #4ade80; }
 .badge.deny { color: #ff8a8f; }
 
+.list-row .chip { min-width: 32px; padding: 0 10px; }
+.rename-input {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--text);
+    font: inherit;
+    outline: none;
+}
+
 .panel-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .panel-add input {
     flex: 1 1 160px;

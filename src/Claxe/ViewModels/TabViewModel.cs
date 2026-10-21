@@ -333,6 +333,8 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         {
             IsLoading = false;
             NavigationFinished?.Invoke(this, e.IsSuccess);
+            if (!e.IsSuccess)
+                ShowErrorPage(core, e.WebErrorStatus);
         };
         core.WebMessageReceived += (_, e) => OnWebMessage(e);
         core.HistoryChanged += (_, _) =>
@@ -430,6 +432,22 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         if (IsActive)
             EnsureStarted();
+    }
+
+    private async void ShowErrorPage(CoreWebView2 core, CoreWebView2WebErrorStatus status)
+    {
+        if (ErrorPage.Describe(status) is not { } text)
+            return;
+
+        try
+        {
+            await core.ExecuteScriptAsync(ErrorPage.BuildScript(Url, text.Title, text.Detail));
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            // WebView2's own error page simply stays.
+            Log.Info($"Özel hata sayfası gösterilemedi ({status}): {ex.Message}");
+        }
     }
 
     private void OnWebMessage(CoreWebView2WebMessageReceivedEventArgs e)

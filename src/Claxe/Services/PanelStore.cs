@@ -49,6 +49,30 @@ public sealed class PanelStore
         return panel;
     }
 
+    public bool Rename(string? id, string? name)
+    {
+        if (_items.FirstOrDefault(p => p.Id == id) is not { } panel || string.IsNullOrWhiteSpace(name))
+            return false;
+
+        name = name.Trim();
+        panel.Name = name.Length > MaxNameLength ? name[..MaxNameLength] : name;
+        Save();
+        return true;
+    }
+
+    /// <summary>Moves a panel up (-1) or down (+1) in the sidebar. Returns the new index, or -1.</summary>
+    public int Move(string? id, int delta)
+    {
+        var index = _items.FindIndex(p => p.Id == id);
+        var target = index + Math.Sign(delta);
+        if (index < 0 || target < 0 || target >= _items.Count)
+            return -1;
+
+        (_items[index], _items[target]) = (_items[target], _items[index]);
+        Save();
+        return target;
+    }
+
     public bool Remove(string? id)
     {
         if (_items.RemoveAll(p => p.Id == id) == 0)

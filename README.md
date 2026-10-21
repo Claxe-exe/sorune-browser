@@ -11,6 +11,15 @@ dotnet run --project src/Claxe
 
 Gereksinimler: .NET 10 SDK, Microsoft Edge WebView2 Runtime (Windows 11'de hazır gelir).
 
+### Exe olarak derlemek
+
+```bash
+dotnet publish src/Claxe/Claxe.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o dist/Claxe
+```
+
+`dist/Claxe/Claxe.exe` (~1,2 MB) yanındaki `Assets`, `Pages`, `runtimes` klasörleri ve `WebView2Loader.dll` ile birlikte taşınmalı.
+Çalıştığı bilgisayarda .NET 10 Desktop Runtime kurulu olmalı.
+
 ## Yapı
 
 ```

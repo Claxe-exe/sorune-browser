@@ -7,6 +7,10 @@ public sealed class Bookmark
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Url { get; set; } = "";
     public string Title { get; set; } = "";
+
+    /// <summary>Folder name; empty = not in a folder.</summary>
+    public string Folder { get; set; } = "";
+
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -14,6 +18,7 @@ public sealed class Bookmark
 public sealed class BookmarkStore
 {
     private const int MaxTitleLength = 200;
+    private const int MaxFolderLength = 40;
     private readonly List<Bookmark> _items;
 
     public BookmarkStore()
@@ -61,6 +66,38 @@ public sealed class BookmarkStore
 
         bookmark.Title = Trim(title, bookmark.Url);
         Save();
+    }
+
+    /// <summary>Moves a bookmark into a folder (created on the fly); empty or null takes it out.</summary>
+    public void SetFolder(string? id, string? folder)
+    {
+        if (_items.FirstOrDefault(b => b.Id == id) is not { } bookmark)
+            return;
+
+        folder = folder?.Trim() ?? "";
+        bookmark.Folder = folder.Length > MaxFolderLength ? folder[..MaxFolderLength] : folder;
+        Save();
+    }
+
+    /// <summary>Renames a folder for every bookmark in it; an empty name dissolves the folder.</summary>
+    public void RenameFolder(string? from, string? to)
+    {
+        if (string.IsNullOrEmpty(from))
+            return;
+
+        to = to?.Trim() ?? "";
+        if (to.Length > MaxFolderLength)
+            to = to[..MaxFolderLength];
+
+        var changed = false;
+        foreach (var bookmark in _items.Where(b => b.Folder == from))
+        {
+            bookmark.Folder = to;
+            changed = true;
+        }
+
+        if (changed)
+            Save();
     }
 
     private static string Trim(string? title, string fallback)

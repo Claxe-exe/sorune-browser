@@ -19,21 +19,31 @@ public sealed class PanelViewModel : ObservableObject, IDisposable
     private ImageSource? _icon;
     private bool _isOpen;
 
+    private string _name;
+
     public PanelViewModel(WebPanel panel)
     {
         Id = panel.Id;
-        Name = panel.Name;
+        _name = panel.Name;
         Url = panel.Url;
-        Letter = Name.Length > 0 ? Name[..1].ToUpper(new System.Globalization.CultureInfo("tr-TR")) : "?";
         _icon = LoadCachedIcon();
     }
 
     public string Id { get; }
-    public string Name { get; }
     public string Url { get; }
 
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (SetProperty(ref _name, value))
+                OnPropertyChanged(nameof(Letter));
+        }
+    }
+
     /// <summary>Shown until the site's own icon is known.</summary>
-    public string Letter { get; }
+    public string Letter => _name.Length > 0 ? _name[..1].ToUpper(new System.Globalization.CultureInfo("tr-TR")) : "?";
 
     public ImageSource? Icon
     {

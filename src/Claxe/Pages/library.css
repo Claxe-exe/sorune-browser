@@ -53,6 +53,9 @@
 }
 .item:hover { background: var(--glass); }
 
+.folder-head { display: flex; align-items: center; gap: 6px; }
+.folder-head .icon-btn { opacity: 0.6; width: 24px; height: 24px; }
+
 .time { width: 44px; flex: none; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
 .mono-icon {

@@ -43,6 +43,9 @@ public sealed class AppSettings
     /// <summary>The web panel strip on the left.</summary>
     public bool SidebarEnabled { get; set; } = true;
 
+    /// <summary>"left" or "right" side of the window.</summary>
+    public string SidebarPosition { get; set; } = "left";
+
     /// <summary>Width of an open web panel in DIPs.</summary>
     public double PanelWidth { get; set; } = 420;
 

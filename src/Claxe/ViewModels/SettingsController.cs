@@ -39,6 +39,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "soundsEnabled" => SetBool(value, v => settings.SoundsEnabled = v),
             "restoreSession" => SetBool(value, v => settings.RestoreSession = v),
             "sidebarEnabled" => SetBool(value, v => settings.SidebarEnabled = v),
+            "sidebarPosition" => Set(StringOrNull(value), v => v is "left" or "right", v => settings.SidebarPosition = v!),
             "performanceMode" => SetBool(value, v => settings.PerformanceMode = v),
             _ => false,
         };

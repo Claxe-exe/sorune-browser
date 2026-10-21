@@ -189,16 +189,47 @@ function renderSwatches(s) {
 }
 
 function renderPanels() {
-    $("panels").replaceChildren(...state.panels.map((panel) => el("div", { class: "list-row" }, [
-        el("span", { class: "grow" }, [
-            el("span", { text: panel.name }),
-            el("span", { class: "sub", text: panel.url }),
-        ]),
-        el("button", {
-            type: "button", class: "chip danger", text: "Kaldır", "aria-label": `${panel.name} panelini kaldır`,
-            onclick: () => send({ type: "removePanel", id: panel.id }),
-        }),
-    ])));
+    setSegmented("sidebar-position", state.settings.sidebarPosition);
+    const last = state.panels.length - 1;
+    $("panels").replaceChildren(...state.panels.map((panel, index) => {
+        const name = el("span", { text: panel.name });
+        const rename = () => {
+            const input = el("input", { class: "rename-input", type: "text", maxlength: "30", "aria-label": "Panel adı" });
+            input.value = panel.name;
+            let done = false;
+            const finish = (save) => {
+                if (done) return;
+                done = true;
+                const value = input.value.trim();
+                if (save && value && value !== panel.name) send({ type: "renamePanel", id: panel.id, name: value });
+                else renderPanels();
+            };
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") finish(true);
+                if (e.key === "Escape") finish(false);
+            });
+            input.addEventListener("blur", () => finish(true));
+            name.replaceWith(input);
+            input.focus();
+            input.select();
+        };
+        const move = (delta) => () => send({ type: "movePanel", id: panel.id, delta });
+        const up = el("button", { type: "button", class: "chip", text: "↑", title: "Yukarı taşı", "aria-label": `${panel.name} yukarı`, onclick: move(-1) });
+        const down = el("button", { type: "button", class: "chip", text: "↓", title: "Aşağı taşı", "aria-label": `${panel.name} aşağı`, onclick: move(1) });
+        up.disabled = index === 0;
+        down.disabled = index === last;
+
+        return el("div", { class: "list-row" }, [
+            el("span", { class: "grow" }, [name, el("span", { class: "sub", text: panel.url })]),
+            up,
+            down,
+            el("button", { type: "button", class: "chip", text: "✎", title: "Yeniden adlandır", "aria-label": `${panel.name} yeniden adlandır`, onclick: rename }),
+            el("button", {
+                type: "button", class: "chip danger", text: "Kaldır", "aria-label": `${panel.name} panelini kaldır`,
+                onclick: () => send({ type: "removePanel", id: panel.id }),
+            }),
+        ]);
+    }));
     $("panel-form").hidden = state.panels.length >= state.maxPanels;
 }
 
@@ -278,6 +309,11 @@ $("panel-form").addEventListener("submit", (event) => {
     send({ type: "addPanel", name: $("panel-name").value.trim(), url });
     $("panel-name").value = "";
     $("panel-url").value = "";
+});
+
+$("sidebar-position").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button && button.getAttribute("aria-checked") !== "true") update("sidebarPosition", button.dataset.value);
 });
 
 let clearRange = "all";

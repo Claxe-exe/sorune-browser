@@ -200,6 +200,8 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsSidebarVisible => _settings.SidebarEnabled;
 
+    public bool IsSidebarOnRight => _settings.SidebarPosition == "right";
+
     public double PanelWidth => _settings.PanelWidth;
 
     public PanelViewModel? ActivePanel
@@ -804,6 +806,20 @@ public sealed class MainViewModel : ObservableObject
                 RemovePanel(Text("id"));
                 break;
 
+            case "renamePanel" when Panels.FirstOrDefault(p => p.Id == Text("id")) is { } renamed:
+                if (_panelStore.Rename(renamed.Id, Text("name")))
+                    renamed.Name = _panelStore.Items.First(p => p.Id == renamed.Id).Name;
+                BroadcastToInternalPages(_settingsController.BuildState());
+                break;
+
+            case "movePanel" when Panels.FirstOrDefault(p => p.Id == Text("id")) is { } moved
+                                  && message.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.Number:
+                var newIndex = _panelStore.Move(moved.Id, delta.GetInt32());
+                if (newIndex >= 0)
+                    Panels.Move(Panels.IndexOf(moved), newIndex);
+                BroadcastToInternalPages(_settingsController.BuildState());
+                break;
+
             case "clearData":
                 ClearBrowsingData(tab, Text("range"), Flag("history"), Flag("cookies"), Flag("cache"), Flag("downloads"));
                 break;
@@ -831,6 +847,14 @@ public sealed class MainViewModel : ObservableObject
 
             case "renameBookmark":
                 _bookmarks.Rename(Text("id"), Text("title"));
+                break;
+
+            case "setBookmarkFolder":
+                _bookmarks.SetFolder(Text("id"), Text("folder"));
+                break;
+
+            case "renameBookmarkFolder":
+                _bookmarks.RenameFolder(Text("from"), Text("to"));
                 break;
 
             case "downloads":
@@ -973,6 +997,9 @@ public sealed class MainViewModel : ObservableObject
                 if (!_settings.SidebarEnabled)
                     ActivePanel = null;
                 OnPropertyChanged(nameof(IsSidebarVisible));
+                break;
+            case "sidebarPosition":
+                OnPropertyChanged(nameof(IsSidebarOnRight));
                 break;
             case "restoreSession":
                 SessionCookieStore.Enabled = _settings.RestoreSession;
