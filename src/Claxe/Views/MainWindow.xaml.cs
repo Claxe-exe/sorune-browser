@@ -31,6 +31,10 @@ public partial class MainWindow : Window
     private bool _isBrowserFullScreen;
     private WindowState _stateBeforeFullScreen;
 
+    // Closing waits for the view model to save session cookies, then closes for real.
+    private bool _shutdownStarted;
+    private bool _readyToClose;
+
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
@@ -49,13 +53,15 @@ public partial class MainWindow : Window
         viewModel.Tabs.CollectionChanged += (_, _) => EnsureActiveTabVisible();
         viewModel.AppearanceChanged += (_, _) => ApplyAppearance();
         viewModel.WallpaperPickRequested += (_, _) => PickWallpaper();
+        viewModel.ConfirmOpenRiskyFile = ConfirmOpenRiskyFile;
         ApplyAppearance();
+        UpdatePanelColumn();
 
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseDown += (_, _) => _viewModel.Mascot.NoteActivity();
         StateChanged += (_, _) => UpdateWindowStateVisuals();
         SizeChanged += (_, _) => UpdateMascotVisibility();
-        Closing += (_, _) => _viewModel.Shutdown();
+        Closing += OnClosing;
         UpdateWindowStateVisuals();
         UpdateMascotVisibility();
     }
@@ -111,6 +117,11 @@ public partial class MainWindow : Window
             case Key.Right when alt: Execute(_viewModel.ForwardCommand); break;
             case Key.F11 when none: ToggleBrowserFullScreen(); break;
             case Key.OemComma when ctrl: _viewModel.OpenSettings(); break;
+            case Key.H when ctrl: _viewModel.OpenHistory(); break;
+            case Key.J when ctrl: _viewModel.OpenDownloads(); break;
+            case Key.D when ctrl: _viewModel.ToggleBookmark(); break;
+            case Key.O when ctrlShift: _viewModel.OpenBookmarks(); break;
+            case Key.Delete when ctrlShift: _viewModel.OpenSettings("gizlilik"); break;
             default: handled = false; break;
         }
 
@@ -335,6 +346,10 @@ public partial class MainWindow : Window
             case nameof(MainViewModel.ActiveTab):
                 EnsureActiveTabVisible();
                 break;
+            case nameof(MainViewModel.ActivePanel):
+            case nameof(MainViewModel.IsSidebarVisible):
+                UpdatePanelColumn();
+                break;
         }
     }
 
@@ -397,6 +412,56 @@ public partial class MainWindow : Window
             _viewModel.ImportWallpaper(dialog.FileName);
     }
 
+    private async void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_readyToClose)
+            return;
+
+        e.Cancel = true;
+        if (_shutdownStarted)
+            return;
+
+        _shutdownStarted = true;
+        Hide(); // feels instant while cookies and history are flushed
+        try
+        {
+            await _viewModel.ShutdownAsync();
+        }
+        catch (Exception ex)
+        {
+            // Whatever went wrong while saving, the app must still exit instead of lingering hidden.
+            Log.Error("Kapanış sırasında hata", ex);
+        }
+        finally
+        {
+            _readyToClose = true;
+            Close();
+        }
+    }
+
+    private bool ConfirmOpenRiskyFile(string path)
+        => MessageBox.Show(this,
+               $"\"{System.IO.Path.GetFileName(path)}\" bir program ya da betik ve bilgisayarında çalışacak.\n\n" +
+               "Yalnızca güvendiğin bir kaynaktan indirdiysen aç. Açılsın mı?",
+               "Claxe", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
+
+    // ------------------------------------------------------------- web panels
+
+    /// <summary>The panel column follows the open panel (width from settings, 0 when closed).</summary>
+    private void UpdatePanelColumn()
+    {
+        var sidebar = _viewModel.IsSidebarVisible && !_isBrowserFullScreen;
+        SidebarHost.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
+
+        var open = sidebar && _viewModel.ActivePanel is not null;
+        PanelColumn.Width = open ? new GridLength(_viewModel.PanelWidth) : new GridLength(0);
+        PanelColumn.MinWidth = open ? 280 : 0;
+        PanelSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void PanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        => _viewModel.SetPanelWidth(PanelColumn.ActualWidth);
+
     private void UpdateMascotVisibility()
     {
         var visible = _viewModel.Mascot.IsEnabled && ActualWidth >= MascotMinWindowWidth && !_isBrowserFullScreen;
@@ -414,6 +479,7 @@ public partial class MainWindow : Window
 
         _isBrowserFullScreen = fullScreen;
         UpdateMascotVisibility();
+        UpdatePanelColumn();
         if (fullScreen)
         {
             _stateBeforeFullScreen = WindowState;

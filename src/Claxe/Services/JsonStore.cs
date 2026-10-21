@@ -42,4 +42,33 @@ public static class JsonStore
         File.WriteAllText(temp, JsonSerializer.Serialize(value, Options));
         File.Move(temp, path, overwrite: true);
     }
+
+    /// <summary>Like <see cref="Load{T}"/> for files written by <see cref="SaveProtected{T}"/>.</summary>
+    public static T? LoadProtected<T>(string path) where T : class
+    {
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            var json = Interop.Dpapi.Unprotect(File.ReadAllBytes(path));
+            return JsonSerializer.Deserialize<T>(json, Options);
+        }
+        catch (Exception ex) when (ex is JsonException or System.ComponentModel.Win32Exception)
+        {
+            // Corrupt, or encrypted by another Windows account: set aside, start fresh.
+            var backup = path + ".unreadable";
+            Log.Error($"Şifreli dosya okunamadı '{path}', '{backup}' olarak saklandı.", ex);
+            File.Move(path, backup, overwrite: true);
+            return null;
+        }
+    }
+
+    /// <summary>Saves JSON encrypted with DPAPI for the current Windows user (never as plain text).</summary>
+    public static void SaveProtected<T>(string path, T value)
+    {
+        var temp = path + ".tmp";
+        File.WriteAllBytes(temp, Interop.Dpapi.Protect(JsonSerializer.SerializeToUtf8Bytes(value, Options)));
+        File.Move(temp, path, overwrite: true);
+    }
 }

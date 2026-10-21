@@ -52,7 +52,9 @@ Değişiklikler anında uygulanır ve `%LOCALAPPDATA%\Claxe\settings.json` dosya
 | `mascotEnabled` | `true` | Araç çubuğunun arkasından bakan maskot |
 | `soundsEnabled` / `soundVolume` | `true` / `0.5` | Arayüz sesleri (uygulama içinde sentezlenir) |
 | `searchEngine` | `google` | `google`, `duckduckgo`, `bing`, `brave` |
-| `restoreSession` | `true` | Açık sekmeleri yeniden açılışta geri getir |
+| `restoreSession` | `true` | Açık sekmeleri (ve oturum çerezlerini) yeniden açılışta geri getir |
+| `sidebarEnabled` / `panelWidth` | `true` / `420` | Sol web paneli şeridi ve açık panelin genişliği |
+| `performanceMode` | `false` | Animasyonları kapatır, arka plan sekmelerini 3 dk sonra uyutur (normalde 10 dk) |
 
 ### Yeni tema eklemek
 
@@ -73,3 +75,28 @@ tema ayarlar sayfasında kendiliğinden listelenir. Parçacık efektleri: `petal
 | Alt+Sol / Alt+Sağ | Geri / ileri |
 | F11 | Tam ekran |
 | Ctrl+, | Ayarlar |
+| Ctrl+H / Ctrl+J / Ctrl+Shift+O | Geçmiş / İndirmeler / Yer imleri |
+| Ctrl+D | Sayfayı yer imlerine ekle / çıkar |
+| Ctrl+Shift+Del | Tarama verilerini temizle |
+
+## Veriler ve gizlilik
+
+`%LOCALAPPDATA%\Claxe` altında:
+
+| Dosya | İçerik | Biçim |
+|---|---|---|
+| `history.dat` | Tarama geçmişi (10.000 kayıt / 180 gün) | DPAPI ile şifreli |
+| `session-cookies.dat` | Kapanışta kaydedilen oturum çerezleri (tek kullanımlık, 14 gün) | DPAPI ile şifreli |
+| `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json` | Yer imleri, indirme listesi, site izinleri, web panelleri, kısayollar | JSON |
+| `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
+
+Şifreleme Windows hesabına bağlıdır; dosyalar başka bir hesapta ya da bilgisayarda açılamaz.
+Şifre kaydetme kapalıdır. Telemetri yoktur.
+
+## WebView2'nin Chrome'dan farkları
+
+- Siteler tarayıcıyı Microsoft Edge olarak görür; Chrome Web Mağazası eklentileri kurulamaz.
+- Oturum çerezlerini WebView2 kendisi saklamaz; Claxe bunları kapanışta şifreleyip açılışta geri yükler
+  (Claxe çökerse o oturumun çerezleri kaybolur).
+- Bağlantı ve sertifika hata sayfaları WebView2'nin kendi sayfalarıdır.
+- Tarayıcı süreci çökerse Claxe yeni bir süreç başlatır ve sekmeleri yeniden yükler.

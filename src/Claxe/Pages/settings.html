@@ -22,9 +22,11 @@
             <a href="#duvar">Duvar kâğıdı</a>
             <a href="#renk">Renk ve cam</a>
             <a href="#duzen">Düzen</a>
-            <a href="#hareket">Hareket ve maskot</a>
+            <a href="#hareket">Hareket ve performans</a>
             <a href="#ses">Sesler</a>
+            <a href="#kenar">Kenar çubuğu</a>
             <a href="#arama">Arama ve başlangıç</a>
+            <a href="#gizlilik">Gizlilik ve veriler</a>
             <a href="#hakkinda">Hakkında</a>
         </nav>
 
@@ -90,7 +92,14 @@
             </section>
 
             <section class="card" id="hareket">
-                <h2>Hareket ve maskot</h2>
+                <h2>Hareket ve performans</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Performans modu</span>
+                        <span class="hint">Animasyonları kapatır ve arka plandaki sekmeleri 3 dakika sonra uyutur (normalde 10 dakika). Ses çalan sekmeler uyutulmaz.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="performanceMode" aria-label="Performans modu"></button>
+                </div>
                 <div class="row">
                     <div class="row-text">
                         <span class="label">Animasyonlar</span>
@@ -127,6 +136,24 @@
                 </div>
             </section>
 
+            <section class="card" id="kenar">
+                <h2>Kenar çubuğu</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Web panelleri</span>
+                        <span class="hint">Soldaki şerit. Bir panel kapatılınca arka planda açık kalır (sohbet ve müzik devam eder). Belleği boşaltmak için simgeye sağ tıkla.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="sidebarEnabled" aria-label="Web panelleri"></button>
+                </div>
+                <div class="panel-list" id="panels"></div>
+                <form class="panel-add" id="panel-form" autocomplete="off">
+                    <input type="text" id="panel-name" maxlength="30" placeholder="Ad (isteğe bağlı)" aria-label="Panel adı">
+                    <input type="text" id="panel-url" placeholder="Adres, ör. web.whatsapp.com" aria-label="Panel adresi" spellcheck="false">
+                    <button type="submit" class="chip">Panel ekle</button>
+                </form>
+                <p class="error" id="panel-error" hidden>Geçerli bir adres yaz ya da en fazla 12 panel olabileceğini unutma.</p>
+            </section>
+
             <section class="card" id="arama">
                 <h2>Arama ve başlangıç</h2>
                 <div class="row">
@@ -143,6 +170,40 @@
                     </div>
                     <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Açık sekmeleri yeniden aç"></button>
                 </div>
+            </section>
+
+            <section class="card" id="gizlilik">
+                <h2>Gizlilik ve veriler</h2>
+                <p class="hint">Geçmiş ve kayıtlı oturum çerezleri Windows hesabına özel şifrelenmiş olarak saklanır. Claxe hiçbir yere veri göndermez.</p>
+
+                <div class="clear-box">
+                    <span class="label">Tarama verilerini temizle</span>
+                    <div class="checks">
+                        <label><input type="checkbox" id="clear-history" checked> Tarama geçmişi</label>
+                        <label><input type="checkbox" id="clear-cookies"> Çerezler ve site verileri <span class="hint">(çoğu siteden çıkış yapılır)</span></label>
+                        <label><input type="checkbox" id="clear-cache" checked> Önbellekteki dosyalar</label>
+                        <label><input type="checkbox" id="clear-downloads"> İndirme listesi <span class="hint">(dosyalar silinmez)</span></label>
+                    </div>
+                    <div class="clear-actions">
+                        <div class="segmented" id="clear-range" role="radiogroup" aria-label="Zaman aralığı">
+                            <button type="button" data-value="hour">Son 1 saat</button>
+                            <button type="button" data-value="day">Son 24 saat</button>
+                            <button type="button" data-value="week">Son 7 gün</button>
+                            <button type="button" data-value="all" aria-checked="true">Tümü</button>
+                        </div>
+                        <button type="button" class="chip danger" id="clear-button">Verileri temizle</button>
+                    </div>
+                    <p class="hint" id="clear-status" hidden></p>
+                </div>
+
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Site izinleri</span>
+                        <span class="hint">Kamera, mikrofon, konum gibi istekler için hatırlanan kararlar.</span>
+                    </div>
+                    <button type="button" class="chip" id="permissions-clear">Tümünü sıfırla</button>
+                </div>
+                <div class="perm-list" id="permissions"></div>
             </section>
 
             <section class="card" id="hakkinda">

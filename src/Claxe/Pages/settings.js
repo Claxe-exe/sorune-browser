@@ -80,6 +80,9 @@ function render() {
     $("volume-value").textContent = `%${Math.round(s.soundVolume * 100)}`;
     $("volume").disabled = !s.soundsEnabled;
 
+    renderPanels();
+    renderPermissions();
+
     $("about-version").textContent = state.about.version || "-";
     $("about-webview").textContent = state.about.webView2 || "-";
     $("about-profile").textContent = state.about.profile;
@@ -185,6 +188,37 @@ function renderSwatches(s) {
     $("swatches").replaceChildren(...nodes);
 }
 
+function renderPanels() {
+    $("panels").replaceChildren(...state.panels.map((panel) => el("div", { class: "list-row" }, [
+        el("span", { class: "grow" }, [
+            el("span", { text: panel.name }),
+            el("span", { class: "sub", text: panel.url }),
+        ]),
+        el("button", {
+            type: "button", class: "chip danger", text: "Kaldır", "aria-label": `${panel.name} panelini kaldır`,
+            onclick: () => send({ type: "removePanel", id: panel.id }),
+        }),
+    ])));
+    $("panel-form").hidden = state.panels.length >= state.maxPanels;
+}
+
+function renderPermissions() {
+    const rows = state.permissions.map((p) => el("div", { class: "list-row" }, [
+        el("span", { class: "grow" }, [
+            el("span", { text: p.origin.replace(/^https?:\/\//, "") }),
+            el("span", { class: "sub", text: p.what }),
+        ]),
+        el("span", { class: "badge " + (p.allowed ? "allow" : "deny"), text: p.allowed ? "İzin verildi" : "Engellendi" }),
+        el("button", {
+            type: "button", class: "chip", text: "Sıfırla",
+            onclick: () => send({ type: "forgetPermission", origin: p.origin, kind: p.kind }),
+        }),
+    ]));
+    if (rows.length === 0) rows.push(el("p", { class: "hint", text: "Hatırlanan bir site izni yok." }));
+    $("permissions").replaceChildren(...rows);
+    $("permissions-clear").disabled = state.permissions.length === 0;
+}
+
 function setSegmented(id, value) {
     for (const button of $(id).querySelectorAll("button")) {
         button.setAttribute("role", "radio");
@@ -234,6 +268,53 @@ $("volume").addEventListener("change", () => {
     update("soundVolume", Number($("volume").value) / 100);
 });
 
+// ---------------------------------------------------------------- panels and privacy
+
+$("panel-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const url = $("panel-url").value.trim();
+    if (!url) return;
+    $("panel-error").hidden = true;
+    send({ type: "addPanel", name: $("panel-name").value.trim(), url });
+    $("panel-name").value = "";
+    $("panel-url").value = "";
+});
+
+let clearRange = "all";
+$("clear-range").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    clearRange = button.dataset.value;
+    setSegmented("clear-range", clearRange);
+});
+
+// Two clicks: the first arms the button, the second (within 4 s) clears.
+let clearArmed = null;
+$("clear-button").addEventListener("click", () => {
+    const button = $("clear-button");
+    const kinds = ["history", "cookies", "cache", "downloads"].filter((k) => $(`clear-${k}`).checked);
+    if (kinds.length === 0) return;
+    if (!clearArmed) {
+        button.textContent = "Emin misin? Tekrar bas";
+        button.classList.add("confirm");
+        clearArmed = setTimeout(() => {
+            clearArmed = null;
+            button.textContent = "Verileri temizle";
+            button.classList.remove("confirm");
+        }, 4000);
+        return;
+    }
+    clearTimeout(clearArmed);
+    clearArmed = null;
+    button.textContent = "Temizleniyor…";
+    button.disabled = true;
+    const message = { type: "clearData", range: clearRange };
+    for (const kind of kinds) message[kind] = true;
+    send(message);
+});
+
+$("permissions-clear").addEventListener("click", () => send({ type: "clearPermissions" }));
+
 // Highlight the section being read: the last one whose top has passed near the top of the
 // window (or the last section once the page is scrolled to the bottom).
 const links = [...document.querySelectorAll(".nav a")];
@@ -258,10 +339,26 @@ if (host) {
     host.addEventListener("message", (event) => {
         const message = event.data || {};
         switch (message.type) {
-            case "settings":
+            case "settings": {
+                const first = state === null;
                 state = message;
                 render();
+                // Opened as claxe://ayarlar#section: jump there once the content has its real height.
+                if (first && location.hash) document.querySelector(location.hash)?.scrollIntoView();
                 break;
+            }
+            case "panelRejected":
+                $("panel-error").hidden = false;
+                break;
+            case "dataCleared": {
+                const button = $("clear-button");
+                button.disabled = false;
+                button.textContent = "Verileri temizle";
+                button.classList.remove("confirm");
+                $("clear-status").textContent = message.ok ? "Seçilen veriler temizlendi." : "Bazı veriler temizlenemedi, ayrıntılar günlükte.";
+                $("clear-status").hidden = false;
+                break;
+            }
             case "config":
                 if (message.theme && message.theme.overlay) {
                     const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(message.theme.overlay);

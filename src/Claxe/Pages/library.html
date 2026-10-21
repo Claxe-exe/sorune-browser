@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Geçmiş</title>
+    <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="library.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <div class="layout">
+        <nav class="nav" aria-label="Kitaplık">
+            <h1 class="brand">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.8 6.5 5.5 11.2 12 12-6.5.8-11.2 5.5-12 12-.8-6.5-5.5-11.2-12-12C6.5 11.2 11.2 6.5 12 0z" /></svg>
+                Kitaplık
+            </h1>
+            <a href="#gecmis">Geçmiş <kbd>Ctrl+H</kbd></a>
+            <a href="#yer-imleri">Yer imleri <kbd>Ctrl+Shift+O</kbd></a>
+            <a href="#indirmeler">İndirmeler <kbd>Ctrl+J</kbd></a>
+        </nav>
+
+        <main class="content">
+            <!-- History -->
+            <section class="card view" id="view-gecmis" hidden>
+                <div class="view-head">
+                    <h2>Geçmiş</h2>
+                    <a class="chip link" href="https://claxe.internal/settings.html#gizlilik">Tarama verilerini temizle</a>
+                </div>
+                <input class="search" id="history-search" type="search" placeholder="Geçmişte ara" aria-label="Geçmişte ara">
+                <div id="history-list"></div>
+                <button type="button" class="chip more" id="history-more" hidden>Daha eski kayıtlar</button>
+                <p class="empty" id="history-empty" hidden>Burada henüz bir şey yok.</p>
+            </section>
+
+            <!-- Bookmarks -->
+            <section class="card view" id="view-yer-imleri" hidden>
+                <div class="view-head">
+                    <h2>Yer imleri</h2>
+                    <span class="hint">Bir sayfayı eklemek için adres çubuğundaki yıldıza bas ya da Ctrl+D.</span>
+                </div>
+                <input class="search" id="bookmark-search" type="search" placeholder="Yer imlerinde ara" aria-label="Yer imlerinde ara">
+                <div id="bookmark-list"></div>
+                <p class="empty" id="bookmark-empty" hidden>Henüz yer imi yok.</p>
+            </section>
+
+            <!-- Downloads -->
+            <section class="card view" id="view-indirmeler" hidden>
+                <div class="view-head">
+                    <h2>İndirmeler</h2>
+                    <button type="button" class="chip" id="downloads-clear">Listeyi temizle</button>
+                </div>
+                <div id="download-list"></div>
+                <p class="empty" id="download-empty" hidden>Henüz bir şey indirilmedi.</p>
+                <p class="hint note">Listeyi temizlemek dosyaları silmez. İndirilen programlar açılmadan önce onay sorulur.</p>
+            </section>
+        </main>
+    </div>
+
+    <script src="library.js"></script>
+</body>
+</html>

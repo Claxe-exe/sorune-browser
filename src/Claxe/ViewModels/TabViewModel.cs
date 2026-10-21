@@ -29,7 +29,11 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 {
     private const string NewTabTitle = "Yeni Sekme";
 
-    private static readonly JsonSerializerOptions PageJson = new(JsonSerializerDefaults.Web);
+    // Enums go to pages as camelCase strings ("completed"), the same as in the JSON files.
+    private static readonly JsonSerializerOptions PageJson = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     private Task? _initTask;
     private string? _pendingUrl;
@@ -46,6 +50,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     private bool _canGoBack;
     private bool _canGoForward;
     private bool _isActive;
+    private bool _isSuspended;
     private bool _isContentFullScreen;
     private SecurityState _security;
 
@@ -67,6 +72,12 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// <summary>Raised when a top-level navigation ends; the argument tells whether it succeeded.</summary>
     public event EventHandler<bool>? NavigationFinished;
 
+    /// <summary>The page asks for camera, microphone, location, ... (WebView2's own prompt is replaced).</summary>
+    public event EventHandler<CoreWebView2PermissionRequestedEventArgs>? PermissionRequested;
+
+    /// <summary>The CoreWebView2 exists; app-wide services (downloads) attach here.</summary>
+    public event EventHandler<CoreWebView2>? CoreCreated;
+
     /// <summary>Null until the tab is first shown.</summary>
     public WebView2? WebView
     {
@@ -74,7 +85,22 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _webView, value);
     }
 
-    public CoreWebView2? Core => _webView?.CoreWebView2;
+    /// <summary>Null before creation and after the browser process died.</summary>
+    public CoreWebView2? Core
+    {
+        get
+        {
+            try
+            {
+                return _webView?.CoreWebView2;
+            }
+            catch (InvalidOperationException)
+            {
+                // The WPF control throws once its browser process has crashed; ProcessFailed recovers.
+                return null;
+            }
+        }
+    }
 
     public string? Url
     {
@@ -133,7 +159,50 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     public bool IsActive
     {
         get => _isActive;
-        set => SetProperty(ref _isActive, value);
+        set
+        {
+            if (!SetProperty(ref _isActive, value))
+                return;
+
+            if (value)
+                IsSuspended = false; // WebView2 resumes by itself when it becomes visible
+            else
+                LastActiveAt = DateTime.UtcNow;
+
+            // Background tabs ask the browser to trim memory where it can.
+            if (Core is { } core)
+                core.MemoryUsageTargetLevel = value ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+        }
+    }
+
+    /// <summary>When the tab was last left (UTC); drives background suspension.</summary>
+    public DateTime LastActiveAt { get; private set; } = DateTime.UtcNow;
+
+    public bool IsSuspended
+    {
+        get => _isSuspended;
+        private set => SetProperty(ref _isSuspended, value);
+    }
+
+    /// <summary>
+    /// Freezes a background tab's scripts and timers to save CPU and memory. Pages playing
+    /// audio are left alone, and WebView2 itself refuses pages that can't be suspended.
+    /// </summary>
+    public async Task TrySuspendAsync()
+    {
+        if (IsActive || IsSuspended || Core is not { } core || core.IsDocumentPlayingAudio || InternalPages.IsInternal(Url))
+            return;
+
+        try
+        {
+            IsSuspended = await core.TrySuspendAsync();
+            if (IsSuspended)
+                Log.Info($"Sekme uyutuldu: {Url}");
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Sekme uyutulamadı ({Url}): {ex.Message}");
+        }
     }
 
     /// <summary>True while the page shows an element fullscreen (e.g. a video).</summary>
@@ -278,6 +347,14 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         core.NewWindowRequested += (_, e) => NewWindowRequested?.Invoke(this, e);
         core.WindowCloseRequested += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
         core.ContainsFullScreenElementChanged += (_, _) => IsContentFullScreen = core.ContainsFullScreenElement;
+        core.PermissionRequested += (_, e) => PermissionRequested?.Invoke(this, e);
+        core.ProcessFailed += (_, e) => OnProcessFailed(environment, e);
+        if (!IsActive)
+            core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
+        CoreCreated?.Invoke(this, core);
+
+        // Before the very first page of the run loads, so logins come back with it.
+        SessionCookieStore.RestoreOnce(core);
 
         if (_pendingUrl is { } url)
         {
@@ -306,6 +383,53 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         if (!_addressDirty)
             SetAddressFromPage(core.Source);
         OnPropertyChanged(nameof(IsNewTabPage));
+    }
+
+    /// <summary>
+    /// Keeps tabs usable when WebView2 processes fail: a crashed or hung page is reloaded;
+    /// if the whole browser process exited, the tab drops its dead control and builds a
+    /// new one on a fresh browser (right away if visible, otherwise when next shown).
+    /// </summary>
+    private void OnProcessFailed(CoreWebView2Environment environment, CoreWebView2ProcessFailedEventArgs e)
+    {
+        Log.Error($"WebView2 süreci sorunu: {e.ProcessFailedKind} ({e.Reason}, çıkış kodu {e.ExitCode}) — {Url}");
+        switch (e.ProcessFailedKind)
+        {
+            case CoreWebView2ProcessFailedKind.RenderProcessExited:
+            case CoreWebView2ProcessFailedKind.RenderProcessUnresponsive:
+                Core?.Reload();
+                break;
+
+            case CoreWebView2ProcessFailedKind.BrowserProcessExited:
+                BrowserEnvironment.Reset(environment);
+                // Not from inside the dead control's own event handler.
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(Recover);
+                break;
+        }
+    }
+
+    private void Recover()
+    {
+        if (_disposed)
+            return;
+
+        var dead = _webView;
+        _initTask = null;
+        _pendingUrl = Url ?? InternalPages.NewTabUrl;
+        WebView = null;
+        IsLoading = false;
+        IsSuspended = false;
+        try
+        {
+            dead?.Dispose();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Info($"Çöken WebView bırakılırken: {ex.Message}");
+        }
+
+        if (IsActive)
+            EnsureStarted();
     }
 
     private void OnWebMessage(CoreWebView2WebMessageReceivedEventArgs e)

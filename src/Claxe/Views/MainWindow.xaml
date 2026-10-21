@@ -255,6 +255,13 @@
                                         </DataTrigger.ExitActions>
                                     </DataTrigger>
 
+                                    <!-- Sleeping background tab (wakes up when selected) -->
+                                    <DataTrigger Binding="{Binding IsSuspended}" Value="True">
+                                        <Setter TargetName="TitleText" Property="Opacity" Value="0.5" />
+                                        <Setter TargetName="FaviconImage" Property="Opacity" Value="0.5" />
+                                        <Setter TargetName="TabRoot" Property="ToolTip" Value="Uyutuldu: bellek ve işlemci tasarrufu için. Tıklayınca uyanır." />
+                                    </DataTrigger>
+
                                     <Trigger SourceName="TabRoot" Property="IsMouseOver" Value="True">
                                         <Setter TargetName="HoverChip" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                                         <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -342,9 +349,49 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
-                            Margin="8,0,0,0"
-                            ToolTip="Ayarlar (Ctrl+,)" Command="{Binding OpenSettingsCommand}" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0,0,0">
+                        <!-- Downloads: appears after the first download of the run, with a progress line -->
+                        <Button x:Name="DownloadsButton"
+                                Style="{StaticResource IconButtonStyle}"
+                                Margin="0,0,2,0"
+                                ToolTip="İndirmeler (Ctrl+J)"
+                                Command="{Binding OpenDownloadsCommand}"
+                                Visibility="{Binding ShowDownloadsButton, Converter={StaticResource BoolToVisibility}}">
+                            <Grid Width="22" Height="22">
+                                <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Rectangle Height="2" VerticalAlignment="Bottom" RadiusX="1" RadiusY="1"
+                                           Fill="{DynamicResource GlassBorderBrush}">
+                                    <Rectangle.Style>
+                                        <Style TargetType="Rectangle">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ActiveDownloadCount}" Value="0">
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Rectangle.Style>
+                                </Rectangle>
+                                <Rectangle Height="2" VerticalAlignment="Bottom" RadiusX="1" RadiusY="1"
+                                           Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="0,0.5">
+                                    <Rectangle.RenderTransform>
+                                        <ScaleTransform ScaleX="{Binding DownloadProgress, TargetNullValue=0, FallbackValue=0}" />
+                                    </Rectangle.RenderTransform>
+                                    <Rectangle.Style>
+                                        <Style TargetType="Rectangle">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ActiveDownloadCount}" Value="0">
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Rectangle.Style>
+                                </Rectangle>
+                            </Grid>
+                        </Button>
+                        <Button Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
+                                ToolTip="Ayarlar (Ctrl+,)" Command="{Binding OpenSettingsCommand}" />
+                    </StackPanel>
 
                     <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Content="&#xE72B;"
                             ToolTip="Geri (Alt+Sol ok)" Command="{Binding BackCommand}" />
@@ -394,11 +441,35 @@
                             </Style>
                         </Border.Style>
 
-                        <Grid Margin="14,0,16,0">
+                        <Grid Margin="14,0,6,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+
+                            <!-- Bookmark star (only for real web pages) -->
+                            <Button Grid.Column="2"
+                                    Width="28" Height="28"
+                                    Margin="6,0,0,0"
+                                    Command="{Binding ToggleBookmarkCommand}"
+                                    Visibility="{Binding CanBookmark, Converter={StaticResource BoolToVisibility}}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                                        <Setter Property="Content" Value="&#xE734;" />
+                                        <Setter Property="FontSize" Value="13" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                        <Setter Property="ToolTip" Value="Yer imlerine ekle (Ctrl+D)" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActiveTabBookmarked}" Value="True">
+                                                <Setter Property="Content" Value="&#xE735;" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="ToolTip" Value="Yer iminden kaldır (Ctrl+D)" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
 
                             <!-- Connection state -->
                             <TextBlock Grid.Column="0"
@@ -472,20 +543,191 @@
             <!-- Invisible element whose height follows the title row (0 in fullscreen); the toolbar backdrop offset binds to it. -->
             <Border x:Name="TitleRowProbe" Grid.Row="0" IsHitTestVisible="False" />
 
-            <!-- ============ Layer 4: web content ============ -->
-            <ItemsControl Grid.Row="2" ItemsSource="{Binding HostedTabs}" Focusable="False">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Grid />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:TabViewModel}">
-                        <ContentPresenter Content="{Binding WebView}"
-                                          Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- ============ Layer 4: sidebar, web panel, web content ============ -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="PanelColumn" Width="0" MaxWidth="900" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Sidebar: one button per web panel -->
+                <Border x:Name="SidebarHost" Grid.Column="0" Width="52"
+                        Background="{DynamicResource GlassBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
+                    <DockPanel Margin="0,8">
+                        <Button DockPanel.Dock="Bottom"
+                                Style="{StaticResource IconButtonStyle}"
+                                Content="&#xE710;" FontSize="12"
+                                ToolTip="Panelleri düzenle"
+                                Command="{Binding ManagePanelsCommand}" />
+                        <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PanelViewModel}">
+                                    <Grid Margin="0,2">
+                                        <!-- Active marker -->
+                                        <Border x:Name="Marker" Width="3" Height="18" CornerRadius="1.5"
+                                                HorizontalAlignment="Left" Background="{DynamicResource AccentBrush}"
+                                                Visibility="Hidden">
+                                            <Border.Effect>
+                                                <DropShadowEffect ShadowDepth="0" BlurRadius="8" Color="{DynamicResource AccentColor}" />
+                                            </Border.Effect>
+                                        </Border>
+                                        <Button x:Name="PanelButton"
+                                                Width="38" Height="38"
+                                                Style="{StaticResource IconButtonStyle}"
+                                                ToolTip="{Binding Name}"
+                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.TogglePanelCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Grid Width="22" Height="22">
+                                                <Border x:Name="LetterChip" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}">
+                                                    <TextBlock Text="{Binding Letter}" FontFamily="{StaticResource UiFont}" FontSize="12"
+                                                               FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <Image x:Name="IconImage" Source="{Binding Icon}" Width="20" Height="20"
+                                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                            </Grid>
+                                            <Button.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="Paneli kapat ve belleği boşalt"
+                                                              Command="{Binding UnloadPanelCommand}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                    <MenuItem Header="Kenar çubuğundan kaldır"
+                                                              Command="{Binding RemovePanelCommand}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                            <Setter TargetName="IconImage" Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Icon, Converter={x:Static controls:IsNullConverter.Instance}}" Value="False">
+                                            <Setter TargetName="LetterChip" Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                                            <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="PanelButton" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsLoaded}" Value="False">
+                                            <Setter TargetName="PanelButton" Property="Opacity" Value="0.75" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+                </Border>
+
+                <!-- Open web panel: header + every loaded panel's page (hidden ones stay alive) -->
+                <Border Grid.Column="1" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Height="38" Background="{DynamicResource GlassBrush}">
+                            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Text="{Binding ActivePanel.Name}" TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
+                                <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="12"
+                                        Content="&#xE72C;" ToolTip="Paneli yenile" Command="{Binding ReloadPanelCommand}" />
+                                <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="12"
+                                        Content="&#xE8A7;" ToolTip="Sekmede aç" Command="{Binding PanelToTabCommand}" />
+                                <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="10"
+                                        Content="&#xE711;" ToolTip="Paneli kapat" Command="{Binding ClosePanelCommand}" />
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Grid />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PanelViewModel}">
+                                    <ContentPresenter Content="{Binding Tab.WebView}"
+                                                      Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+                </Border>
+
+                <GridSplitter x:Name="PanelSplitter" Grid.Column="2" Width="4"
+                              ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                              Background="Transparent" Visibility="Collapsed"
+                              DragCompleted="PanelSplitter_DragCompleted" />
+
+                <ItemsControl Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Grid />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TabViewModel}">
+                            <ContentPresenter Content="{Binding WebView}"
+                                              Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+
+            <!-- ============ Permission prompt (a Popup is its own window, so it shows over web content) ============ -->
+            <Popup x:Name="PermissionPopup"
+                   PlacementTarget="{Binding ElementName=AddressPill}"
+                   Placement="Bottom"
+                   VerticalOffset="10"
+                   AllowsTransparency="True"
+                   StaysOpen="True"
+                   PopupAnimation="Fade">
+                <Popup.Style>
+                    <Style TargetType="Popup">
+                        <Setter Property="IsOpen" Value="True" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding PendingPermission}" Value="{x:Null}">
+                                <Setter Property="IsOpen" Value="False" />
+                            </DataTrigger>
+                            <!-- Never float over other apps while Claxe is in the background. -->
+                            <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                <Setter Property="IsOpen" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Popup.Style>
+                <Border Margin="12" Width="360" Padding="18" CornerRadius="16"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
+                        DataContext="{Binding PendingPermission}">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="4" BlurRadius="24" Opacity="0.5" Color="Black" />
+                    </Border.Effect>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="36" Height="36" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Host}" FontWeight="SemiBold" FontSize="14"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="270" />
+                                <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12.5">
+                                    <Run Text="Şu izni istiyor:" />
+                                    <Run Text="{Binding What, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                        <CheckBox Margin="0,16,0,0" Content="Bu site için kararımı hatırla"
+                                  IsChecked="{Binding Remember}" Style="{StaticResource ClaxeCheckBoxStyle}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                            <Button Content="Engelle" Style="{StaticResource GhostButtonStyle}" Command="{Binding DenyCommand}" />
+                            <Button Content="İzin ver" Margin="8,0,0,0" Style="{StaticResource AccentButtonStyle}" Command="{Binding AllowCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Popup>
         </Grid>
     </Border>
 </Window>

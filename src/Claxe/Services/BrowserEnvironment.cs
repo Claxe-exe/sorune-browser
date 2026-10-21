@@ -21,6 +21,21 @@ public static class BrowserEnvironment
         }
     }
 
+    /// <summary>
+    /// After the browser process died, the next <see cref="GetAsync"/> starts a new one.
+    /// Only resets if <paramref name="dead"/> is still the current environment, so the
+    /// many tabs reporting the same crash cause a single restart.
+    /// </summary>
+    public static void Reset(CoreWebView2Environment dead)
+    {
+        if (_environment is { IsCompletedSuccessfully: true } current && ReferenceEquals(current.Result, dead))
+        {
+            _environment = null;
+            SessionCookieStore.OnBrowserRestarted();
+            Log.Info("Tarayıcı süreci yeniden başlatılıyor.");
+        }
+    }
+
     /// <summary>Must be called on the UI thread.</summary>
     public static Task<CoreWebView2Environment> GetAsync()
         => _environment ??= CoreWebView2Environment.CreateAsync(

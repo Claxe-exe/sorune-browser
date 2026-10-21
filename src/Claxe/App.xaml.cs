@@ -28,7 +28,8 @@ public partial class App : Application
         Log.Info($"Claxe başlıyor. WebView2 Runtime {version}");
 
         var settings = SettingsStore.Load();
-        Motion.Enabled = settings.AnimationsEnabled;
+        Motion.Enabled = settings.AnimationsEnabled && !settings.PerformanceMode;
+        SessionCookieStore.Enabled = settings.RestoreSession;
         SoundService.Enabled = settings.SoundsEnabled;
         SoundService.Volume = settings.SoundVolume;
         ThemeService.Apply(settings);

@@ -16,6 +16,12 @@ public static class InternalPages
     public const string NewTabUrl = Origin + "newtab.html";
     public const string SettingsUrl = Origin + "settings.html";
 
+    /// <summary>History, bookmarks and downloads; the fragment picks the section.</summary>
+    public const string LibraryUrl = Origin + "library.html";
+    public const string HistoryUrl = LibraryUrl + "#gecmis";
+    public const string BookmarksUrl = LibraryUrl + "#yer-imleri";
+    public const string DownloadsUrl = LibraryUrl + "#indirmeler";
+
     public const string AssetsHost = "assets.claxe.internal";
     public const string AssetsOrigin = "https://" + AssetsHost + "/";
 
@@ -29,6 +35,12 @@ public static class InternalPages
         ("claxe://settings", SettingsUrl),
         ("claxe://yenisekme", NewTabUrl),
         ("claxe://newtab", NewTabUrl),
+        ("claxe://gecmis", HistoryUrl),
+        ("claxe://history", HistoryUrl),
+        ("claxe://yer-imleri", BookmarksUrl),
+        ("claxe://bookmarks", BookmarksUrl),
+        ("claxe://indirmeler", DownloadsUrl),
+        ("claxe://downloads", DownloadsUrl),
     ];
 
     public static bool IsInternal(string? url)
@@ -38,13 +50,24 @@ public static class InternalPages
 
     public static bool IsSettings(string? url) => IsPage(url, SettingsUrl);
 
+    public static bool IsLibrary(string? url) => IsPage(url, LibraryUrl);
+
     /// <summary>What the address bar shows for a URL (empty for the new tab page).</summary>
     public static string ToDisplayAddress(string? url)
     {
         if (url is null || IsNewTab(url))
             return "";
 
-        return IsSettings(url) ? "claxe://ayarlar" : url;
+        if (IsSettings(url))
+            return "claxe://ayarlar";
+
+        if (IsLibrary(url))
+        {
+            var hash = url.IndexOf('#') is var i and >= 0 ? url[(i + 1)..] : "gecmis";
+            return hash is "yer-imleri" or "indirmeler" ? "claxe://" + hash : "claxe://gecmis";
+        }
+
+        return url;
     }
 
     public static bool TryResolveFriendly(string input, out string url)

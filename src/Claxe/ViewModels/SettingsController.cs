@@ -10,7 +10,7 @@ namespace Claxe.ViewModels;
 /// Validates and stores changes coming from the settings page. Every value is checked
 /// here, so nothing a page sends can put the settings file into an invalid state.
 /// </summary>
-public sealed class SettingsController(AppSettings settings)
+public sealed class SettingsController(AppSettings settings, PermissionStore permissions, PanelStore panels)
 {
     private const long MaxWallpaperBytes = 30 * 1024 * 1024;
     private static readonly string[] WallpaperExtensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp"];
@@ -38,6 +38,8 @@ public sealed class SettingsController(AppSettings settings)
             "mascotEnabled" => SetBool(value, v => settings.MascotEnabled = v),
             "soundsEnabled" => SetBool(value, v => settings.SoundsEnabled = v),
             "restoreSession" => SetBool(value, v => settings.RestoreSession = v),
+            "sidebarEnabled" => SetBool(value, v => settings.SidebarEnabled = v),
+            "performanceMode" => SetBool(value, v => settings.PerformanceMode = v),
             _ => false,
         };
 
@@ -90,6 +92,13 @@ public sealed class SettingsController(AppSettings settings)
         }
     }
 
+    /// <summary>Panel width is changed by dragging, not from the page; saved without a broadcast.</summary>
+    public void SetPanelWidth(double width)
+    {
+        settings.PanelWidth = Math.Clamp(Math.Round(width), 280, 900);
+        SettingsStore.Save(settings);
+    }
+
     public void RemoveCustomWallpaper()
     {
         DeleteCustomWallpapers(except: null);
@@ -120,6 +129,11 @@ public sealed class SettingsController(AppSettings settings)
             },
             current = new { accent = ThemeService.Accent, wallpaperUrl = ThemeService.WallpaperUrl },
             searchEngines = SearchEngines.All.Select(e => new { e.Id, e.Name }),
+            permissions = permissions.Items
+                .OrderBy(p => p.Origin)
+                .Select(p => new { p.Origin, kind = p.Kind.ToString(), what = PermissionStore.Describe(p.Kind), p.Allowed }),
+            panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
+            maxPanels = PanelStore.MaxPanels,
             about = new
             {
                 version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3),

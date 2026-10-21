@@ -39,4 +39,13 @@ public sealed class AppSettings
 
     /// <summary>0..1</summary>
     public double SoundVolume { get; set; } = 0.5;
+
+    /// <summary>The web panel strip on the left.</summary>
+    public bool SidebarEnabled { get; set; } = true;
+
+    /// <summary>Width of an open web panel in DIPs.</summary>
+    public double PanelWidth { get; set; } = 420;
+
+    /// <summary>Turns off decorative motion and puts background tabs to sleep sooner.</summary>
+    public bool PerformanceMode { get; set; }
 }
