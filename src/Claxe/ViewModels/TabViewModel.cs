@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Claxe.Core;
@@ -27,6 +28,8 @@ public enum SecurityState
 public sealed class TabViewModel : ObservableObject, IDisposable
 {
     private const string NewTabTitle = "Yeni Sekme";
+
+    private static readonly JsonSerializerOptions PageJson = new(JsonSerializerDefaults.Web);
 
     private Task? _initTask;
     private string? _pendingUrl;
@@ -57,6 +60,12 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     public event EventHandler<CoreWebView2NewWindowRequestedEventArgs>? NewWindowRequested;
     public event EventHandler? CloseRequested;
+
+    /// <summary>A message posted by one of Claxe's own pages (never by a website).</summary>
+    public event EventHandler<JsonElement>? InternalPageMessage;
+
+    /// <summary>Raised when a top-level navigation ends; the argument tells whether it succeeded.</summary>
+    public event EventHandler<bool>? NavigationFinished;
 
     /// <summary>Null until the tab is first shown.</summary>
     public WebView2? WebView
@@ -184,6 +193,13 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     public void Stop() => Core?.Stop();
 
+    /// <summary>Sends data to the page, but only while it is one of Claxe's own pages.</summary>
+    public void PostToInternalPage(object payload)
+    {
+        if (Core is { } core && InternalPages.IsInternal(core.Source))
+            core.PostWebMessageAsJson(JsonSerializer.Serialize(payload, PageJson));
+    }
+
     /// <summary>Puts the address bar back to the current page URL (Escape).</summary>
     public void RevertAddress()
     {
@@ -204,10 +220,11 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     private async Task InitializeAsync()
     {
+        var background = ThemeService.BaseColor;
         var webView = new WebView2
         {
-            // Matches the window background so a fresh tab never flashes white.
-            DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 14, 12, 19),
+            // Matches the theme background so a fresh tab never flashes white.
+            DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, background.R, background.G, background.B),
         };
         WebView = webView;
 
@@ -233,7 +250,12 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             _certificateError = true;
             UpdateSecurity();
         };
-        core.NavigationCompleted += (_, _) => IsLoading = false;
+        core.NavigationCompleted += (_, e) =>
+        {
+            IsLoading = false;
+            NavigationFinished?.Invoke(this, e.IsSuccess);
+        };
+        core.WebMessageReceived += (_, e) => OnWebMessage(e);
         core.HistoryChanged += (_, _) =>
         {
             CanGoBack = core.CanGoBack;
@@ -259,9 +281,10 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         // Passwords are intentionally not stored until a proper password manager is integrated.
         settings.IsPasswordAutosaveEnabled = false;
 
-        // Pages never get a bridge into the app process.
+        // No host objects: pages never get direct access to app code. Web messaging is on so
+        // the new tab page can talk to the app, but OnWebMessage ignores every other origin.
         settings.AreHostObjectsAllowed = false;
-        settings.IsWebMessageEnabled = false;
+        settings.IsWebMessageEnabled = true;
 
         settings.AreBrowserAcceleratorKeysEnabled = true;
         settings.IsZoomControlEnabled = true;
@@ -273,6 +296,24 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         if (!_addressDirty)
             SetAddressFromPage(core.Source);
         OnPropertyChanged(nameof(IsNewTabPage));
+    }
+
+    private void OnWebMessage(CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        // e.Source is the top-level document URL that posted the message.
+        if (!InternalPages.IsInternal(e.Source))
+            return;
+
+        try
+        {
+            using var document = JsonDocument.Parse(e.WebMessageAsJson);
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+                InternalPageMessage?.Invoke(this, document.RootElement.Clone());
+        }
+        catch (JsonException ex)
+        {
+            Log.Error("Dahili sayfadan geçersiz mesaj geldi.", ex);
+        }
     }
 
     private void SetAddressFromPage(string? url)
@@ -292,17 +333,28 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         try
         {
             using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
-            if (_disposed || stream is null || stream.Length == 0)
+            if (_disposed || stream is null)
             {
                 Favicon = null;
                 return;
             }
 
+            // The WebView2 stream wraps a COM IStream; decode from a plain copy so the
+            // bitmap is fully loaded (and freezable) before EndInit returns.
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            if (buffer.Length == 0)
+            {
+                Favicon = null;
+                return;
+            }
+            buffer.Position = 0;
+
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.DecodePixelWidth = 32;
-            bitmap.StreamSource = stream;
+            bitmap.StreamSource = buffer;
             bitmap.EndInit();
             bitmap.Freeze();
             Favicon = bitmap;

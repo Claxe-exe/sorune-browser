@@ -3,35 +3,52 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
     <title>Yeni Sekme</title>
-    <!-- Phase 1 placeholder. The real new tab page (search, clock, shortcuts) comes in Phase 2. -->
-    <style>
-        :root { color-scheme: dark; }
-        html, body { height: 100%; margin: 0; }
-        body {
-            display: grid;
-            place-items: center;
-            background: radial-gradient(ellipse at 50% 35%, #1d1530 0%, #0e0c13 65%);
-            color: #ece8f5;
-            font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
-            user-select: none;
-        }
-        .mark { text-align: center; }
-        h1 {
-            margin: 0;
-            font-size: 64px;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            color: #a77bff;
-            text-shadow: 0 0 28px rgba(167, 123, 255, 0.35);
-        }
-        p { margin: 10px 0 0; color: #9a92b0; font-size: 15px; }
-    </style>
+    <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
-    <div class="mark">
-        <h1>CLAXE</h1>
-        <p>Yukarıdaki adres çubuğuna bir adres veya arama yaz.</p>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+    <canvas class="particles" id="particles" aria-hidden="true"></canvas>
+
+    <main class="content">
+        <p class="greeting" id="greeting"></p>
+        <h1 class="clock" id="clock">--:--</h1>
+        <p class="date" id="date"></p>
+
+        <form class="search" id="search" autocomplete="off">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M16 16l4.5 4.5" />
+            </svg>
+            <input id="query" type="text" spellcheck="false" aria-label="Ara veya adres yaz"
+                   placeholder="Ara veya adres yaz">
+        </form>
+
+        <section class="shortcuts" id="shortcuts" aria-label="Kısayollar"></section>
+    </main>
+
+    <div class="dialog-backdrop" id="dialog" hidden>
+        <form class="dialog" id="dialog-form" autocomplete="off">
+            <h2>Kısayol ekle</h2>
+            <label>
+                <span>Ad</span>
+                <input id="shortcut-title" type="text" maxlength="40" placeholder="İsteğe bağlı">
+            </label>
+            <label>
+                <span>Adres</span>
+                <input id="shortcut-url" type="text" spellcheck="false" placeholder="ör. youtube.com" required>
+            </label>
+            <p class="dialog-error" id="dialog-error" hidden>Geçerli bir adres yaz (ör. youtube.com).</p>
+            <div class="dialog-actions">
+                <button type="button" class="btn ghost" id="dialog-cancel">Vazgeç</button>
+                <button type="submit" class="btn primary">Ekle</button>
+            </div>
+        </form>
     </div>
+
+    <script src="newtab.js"></script>
 </body>
 </html>

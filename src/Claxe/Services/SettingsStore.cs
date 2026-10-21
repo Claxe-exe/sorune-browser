@@ -7,12 +7,9 @@ public static class SettingsStore
 {
     public static AppSettings Load()
     {
-        var settings = JsonStore.Load<AppSettings>(AppPaths.SettingsFile);
-        if (settings is not null)
-            return settings;
-
-        // First run (or recovered from a corrupt file): write defaults so the file exists.
-        settings = new AppSettings();
+        // Missing keys get their defaults; saving right away writes them into the file,
+        // so settings added in newer versions show up for hand editing too.
+        var settings = JsonStore.Load<AppSettings>(AppPaths.SettingsFile) ?? new AppSettings();
         Save(settings);
         return settings;
     }

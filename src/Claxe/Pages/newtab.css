@@ -1,0 +1,338 @@
+/* Claxe new tab page. Colours come from the theme via the --accent / --accent2 / --overlay variables. */
+
+:root {
+    color-scheme: dark;
+    --accent: #b583ff;
+    --accent2: #dd7fd0;
+    --overlay: 11, 9, 16;
+    --text: #eee9f7;
+    --text-dim: #b3aac9;
+    --glass: rgba(255, 255, 255, 0.07);
+    --glass-strong: rgba(255, 255, 255, 0.11);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: rgb(var(--overlay));
+    color: var(--text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Background ---------- */
+
+.wall {
+    position: fixed;
+    inset: 0;
+    background-image: var(--wallpaper, none);
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+.wall.ready { opacity: 1; }
+
+.shade {
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(90deg,
+            rgba(var(--overlay), 0.9) 0%,
+            rgba(var(--overlay), 0.62) 34%,
+            rgba(var(--overlay), 0.12) 62%,
+            rgba(var(--overlay), 0) 78%),
+        linear-gradient(0deg, rgba(var(--overlay), 0.55) 0%, rgba(var(--overlay), 0) 35%);
+}
+
+.particles {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* ---------- Content ---------- */
+
+.content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    max-width: 680px;
+    padding: 0 0 4vh clamp(32px, 8vw, 150px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.greeting {
+    margin: 0 0 6px 4px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.clock {
+    margin: 0;
+    font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    font-size: clamp(64px, 9vw, 112px);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+}
+
+.date {
+    margin: 10px 0 34px 4px;
+    font-size: 17px;
+    color: var(--text-dim);
+}
+
+/* ---------- Search ---------- */
+
+.search {
+    position: relative;
+    width: min(560px, 100%);
+}
+
+.search input {
+    width: 100%;
+    height: 56px;
+    padding: 0 22px 0 54px;
+    border-radius: var(--radius);
+    border: 1px solid var(--glass-border);
+    background: var(--glass);
+    backdrop-filter: blur(18px) saturate(140%);
+    color: var(--text);
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.search input::placeholder { color: var(--text-dim); }
+
+.search input:hover { background: var(--glass-strong); }
+
+.search input:focus {
+    border-color: var(--accent);
+    background: var(--glass-strong);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent),
+        0 0 28px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.search-icon {
+    position: absolute;
+    /* The input's backdrop-filter creates its own layer, which would paint over the icon. */
+    z-index: 1;
+    left: 20px;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--text-dim);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+/* ---------- Shortcuts ---------- */
+
+.shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 28px;
+    max-width: 600px;
+}
+
+.tile {
+    position: relative;
+    width: 88px;
+    padding: 12px 6px 10px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    color: var(--text);
+    text-decoration: none;
+    text-align: center;
+    transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.tile:hover, .tile:focus-visible {
+    background: var(--glass);
+    border-color: var(--glass-border);
+    backdrop-filter: blur(14px);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+.tile:focus-visible { border-color: var(--accent); }
+
+.tile-icon {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 8px;
+    border-radius: 14px;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.tile-icon img { width: 24px; height: 24px; }
+
+.tile-name {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.tile:hover .tile-name { color: var(--text); }
+
+.tile-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.45);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 22px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.tile:hover .tile-remove, .tile:focus-within .tile-remove { opacity: 1; }
+.tile-remove:hover { background: #e5484d; }
+
+.tile.add { cursor: pointer; background: none; font: inherit; }
+.tile.add .tile-icon {
+    background: transparent;
+    border: 1px dashed var(--glass-border);
+    color: var(--text-dim);
+    font-weight: 300;
+    font-size: 24px;
+}
+.tile.add:hover .tile-icon { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Dialog ---------- */
+
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.dialog-backdrop[hidden] { display: none; }
+
+.dialog {
+    width: min(380px, calc(100% - 32px));
+    padding: 22px;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    background: rgba(var(--overlay), 0.72);
+    backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.dialog h2 { margin: 0 0 16px; font-size: 17px; font-weight: 600; }
+
+.dialog label { display: block; margin-bottom: 12px; }
+.dialog label span { display: block; margin-bottom: 6px; font-size: 12px; color: var(--text-dim); }
+
+.dialog input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text);
+    font: inherit;
+    outline: none;
+}
+
+.dialog input:focus { border-color: var(--accent); }
+
+.dialog-error { margin: 0 0 12px; font-size: 12px; color: #ff8a8f; }
+
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+.btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 11px;
+    border: 1px solid var(--glass-border);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn.ghost { background: transparent; color: var(--text); }
+.btn.ghost:hover { background: var(--glass); }
+.btn.primary { background: var(--accent); border-color: transparent; color: #140f1d; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+
+/* ---------- Motion (only when enabled in settings) ---------- */
+
+body.motion .wall.ready { animation: settle 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+body.motion .content > * {
+    animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+body.motion .content > :nth-child(2) { animation-delay: 0.05s; }
+body.motion .content > :nth-child(3) { animation-delay: 0.1s; }
+body.motion .content > :nth-child(4) { animation-delay: 0.16s; }
+body.motion .content > :nth-child(5) { animation-delay: 0.22s; }
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes settle {
+    from { transform: scale(1.05); }
+    to { transform: scale(1); }
+}
+
+body:not(.motion) * { transition: none !important; }
+
+/* ---------- Narrow windows ---------- */
+
+@media (max-width: 860px) {
+    .content {
+        margin: 0 auto;
+        padding: 0 24px 4vh;
+        align-items: center;
+        text-align: center;
+    }
+    .greeting, .date { margin-left: 0; }
+    .shortcuts { justify-content: center; }
+    .shade { background: rgba(var(--overlay), 0.7); }
+}

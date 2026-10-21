@@ -1,11 +1,15 @@
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Claxe.Controls;
 using Claxe.Interop;
+using Claxe.Services;
 using Claxe.ViewModels;
 
 namespace Claxe.Views;
@@ -17,6 +21,12 @@ public partial class MainWindow : Window
     private TabViewModel? _dragTab;
     private Point _dragStart;
     private bool _isDragging;
+
+    /// <summary>Below this window width the mascot steps aside to leave room for tabs.</summary>
+    private const double MascotMinWindowWidth = 760;
+
+    // Tabs that already played their intro, so reordering (which re-creates containers) doesn't replay it.
+    private readonly ConditionalWeakTable<TabViewModel, object> _introPlayed = new();
 
     private bool _isBrowserFullScreen;
     private WindowState _stateBeforeFullScreen;
@@ -31,11 +41,20 @@ public partial class MainWindow : Window
         viewModel.FocusContentRequested += (_, _) => FocusActiveWebView();
         viewModel.CloseWindowRequested += (_, _) => Close();
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.Mascot.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MascotViewModel.IsEnabled))
+                UpdateMascotVisibility();
+        };
+        viewModel.Tabs.CollectionChanged += (_, _) => EnsureActiveTabVisible();
 
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseDown += (_, _) => _viewModel.Mascot.NoteActivity();
         StateChanged += (_, _) => UpdateWindowStateVisuals();
+        SizeChanged += (_, _) => UpdateMascotVisibility();
         Closing += (_, _) => _viewModel.Shutdown();
         UpdateWindowStateVisuals();
+        UpdateMascotVisibility();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -59,6 +78,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        _viewModel.Mascot.NoteActivity();
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var mods = Keyboard.Modifiers;
         var ctrl = mods == ModifierKeys.Control;
@@ -125,6 +145,49 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------- tab strip
 
+    /// <summary>New tabs fade and rise in once.</summary>
+    private void Tab_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TabViewModel tab } element)
+            return;
+
+        if (_introPlayed.TryGetValue(tab, out _))
+            return;
+
+        _introPlayed.Add(tab, new object());
+        if (!Motion.Enabled)
+            return;
+
+        // Created here: transforms declared inside a DataTemplate are frozen and can't be animated.
+        var offset = new TranslateTransform();
+        element.RenderTransform = offset;
+        var duration = TimeSpan.FromMilliseconds(200);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        element.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration));
+        offset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(6, 0, duration) { EasingFunction = ease });
+    }
+
+    private void TabStrip_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (TabStripPanelOrNull() is not { CanScroll: true } panel)
+            return;
+
+        panel.ScrollBy(-e.Delta / 120.0 * panel.TabWidth);
+        e.Handled = true;
+    }
+
+    private void EnsureActiveTabVisible()
+    {
+        // After layout, so the panel knows the new tab width.
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_viewModel.ActiveTab is { } tab)
+                TabStripPanelOrNull()?.EnsureVisible(_viewModel.Tabs.IndexOf(tab));
+        }, DispatcherPriority.Loaded);
+    }
+
+    private TabStripPanel? TabStripPanelOrNull() => FindDescendant<TabStripPanel>(TabStrip);
+
     private void Tab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TabViewModel tab })
@@ -161,11 +224,11 @@ public partial class MainWindow : Window
             return;
 
         _isDragging = true;
-        var panel = FindDescendant<TabStripPanel>(TabStrip);
+        var panel = TabStripPanelOrNull();
         if (panel is null || panel.TabWidth <= 0)
             return;
 
-        _viewModel.MoveTab(_dragTab, (int)(position.X / panel.TabWidth));
+        _viewModel.MoveTab(_dragTab, (int)((position.X + panel.HorizontalOffset) / panel.TabWidth));
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
@@ -257,8 +320,61 @@ public partial class MainWindow : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.IsContentFullScreen))
-            SetBrowserFullScreen(_viewModel.IsContentFullScreen);
+        switch (e.PropertyName)
+        {
+            case nameof(MainViewModel.IsContentFullScreen):
+                SetBrowserFullScreen(_viewModel.IsContentFullScreen);
+                break;
+            case nameof(MainViewModel.IsActiveTabLoading):
+                UpdateLoadingBar(_viewModel.IsActiveTabLoading);
+                break;
+            case nameof(MainViewModel.ActiveTab):
+                EnsureActiveTabVisible();
+                break;
+        }
+    }
+
+    // ------------------------------------------------------- toolbar effects
+
+    /// <summary>A highlight sweeps along the toolbar's neon edge while the active page loads.</summary>
+    private void UpdateLoadingBar(bool loading)
+    {
+        if (loading)
+        {
+            LoadingBar.BeginAnimation(OpacityProperty, null);
+            LoadingBar.Opacity = 1;
+            if (!Motion.Enabled)
+            {
+                LoadingBar.Width = ActualWidth;
+                LoadingBarOffset.BeginAnimation(TranslateTransform.XProperty, null);
+                LoadingBarOffset.X = 0;
+                return;
+            }
+
+            LoadingBar.Width = 220;
+            var sweep = new DoubleAnimation(-220, ActualWidth, TimeSpan.FromSeconds(1.1))
+            {
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            };
+            LoadingBarOffset.BeginAnimation(TranslateTransform.XProperty, sweep);
+            return;
+        }
+
+        var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(Motion.Enabled ? 250 : 0));
+        fade.Completed += (_, _) =>
+        {
+            if (!_viewModel.IsActiveTabLoading)
+                LoadingBarOffset.BeginAnimation(TranslateTransform.XProperty, null);
+        };
+        LoadingBar.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private void UpdateMascotVisibility()
+    {
+        var visible = _viewModel.Mascot.IsEnabled && ActualWidth >= MascotMinWindowWidth && !_isBrowserFullScreen;
+        Mascot.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        MascotSlot.Visibility = Mascot.Visibility;
     }
 
     private void ToggleBrowserFullScreen() => SetBrowserFullScreen(!_isBrowserFullScreen);
@@ -270,6 +386,7 @@ public partial class MainWindow : Window
             return;
 
         _isBrowserFullScreen = fullScreen;
+        UpdateMascotVisibility();
         if (fullScreen)
         {
             _stateBeforeFullScreen = WindowState;
@@ -283,8 +400,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            TitleRow.Height = new GridLength(40);
-            ToolbarRow.Height = new GridLength(46);
+            TitleRow.Height = (GridLength)FindResource("TitleBarRowHeight");
+            ToolbarRow.Height = (GridLength)FindResource("ToolbarRowHeight");
             WindowStyle = WindowStyle.SingleBorderWindow;
             ResizeMode = ResizeMode.CanResize;
             WindowState = _stateBeforeFullScreen;

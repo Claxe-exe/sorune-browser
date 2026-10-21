@@ -26,7 +26,11 @@ public partial class App : Application
 
         Log.Info($"Claxe başlıyor. WebView2 Runtime {version}");
 
-        var viewModel = new MainViewModel(SettingsStore.Load());
+        var settings = SettingsStore.Load();
+        Motion.Enabled = settings.AnimationsEnabled;
+        ThemeService.Apply(settings.Theme);
+
+        var viewModel = new MainViewModel(settings);
         var window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();

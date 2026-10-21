@@ -26,7 +26,26 @@ src/Claxe/
   Interop/     Win32 / DWM çağrıları
 ```
 
-Kullanıcı verileri `%LOCALAPPDATA%\Claxe` altında tutulur (ayarlar, oturum, WebView2 profili, log).
+```
+  Assets/      Tema duvar kâğıtları + JSON'ları, maskot pozları (çıktıya kopyalanır)
+```
+
+Kullanıcı verileri `%LOCALAPPDATA%\Claxe` altında tutulur (ayarlar, oturum, kısayollar, WebView2 profili, log).
+Test için ayrı profil: `CLAXE_PROFILE_DIR` ortam değişkeni başka bir klasörü gösterirse gerçek profile dokunulmaz.
+
+Ham görseller (`/assets`) Git'e eklenmez; uygulamanın kullandığı kopyalar `src/Claxe/Assets` altındadır.
+
+## Ayarlar
+
+Ayarlar ekranı gelene kadar `%LOCALAPPDATA%\Claxe\settings.json` elle düzenlenebilir:
+
+| Anahtar | Varsayılan | Açıklama |
+|---|---|---|
+| `searchEngine` | `google` | `google`, `duckduckgo`, `bing`, `brave` |
+| `restoreSession` | `true` | Açık sekmeleri yeniden açılışta geri getir |
+| `theme` | `midnight-mei` | `Assets/Themes` altındaki tema |
+| `animationsEnabled` | `true` | Arayüz animasyonları ve yeni sekme efektleri |
+| `mascotEnabled` | `true` | Araç çubuğunun arkasından bakan maskot |
 
 ## Klavye kısayolları
 

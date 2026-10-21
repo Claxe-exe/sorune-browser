@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Claxe.Core;
 using Claxe.Models;
@@ -15,6 +17,7 @@ public sealed class MainViewModel : ObservableObject
     private const int MaxClosedTabs = 25;
 
     private readonly AppSettings _settings;
+    private readonly ShortcutStore _shortcuts = new();
     private readonly DispatcherTimer _saveTimer;
     private readonly List<string> _closedTabs = [];
     private TabViewModel? _activeTab;
@@ -23,6 +26,7 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(AppSettings settings)
     {
         _settings = settings;
+        Mascot = new MascotViewModel(settings.MascotEnabled);
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _saveTimer.Tick += (_, _) =>
         {
@@ -58,6 +62,11 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<TabViewModel> HostedTabs { get; } = [];
 
+    public MascotViewModel Mascot { get; }
+
+    /// <summary>Blurred wallpaper behind the tab strip and toolbar.</summary>
+    public ImageSource? Backdrop => ThemeService.Backdrop;
+
     public ICommand NewTabCommand { get; }
     public ICommand CloseTabCommand { get; }
     public ICommand ActivateTabCommand { get; }
@@ -85,10 +94,12 @@ public sealed class MainViewModel : ObservableObject
             _activeTab = value;
             value.IsActive = true;
             value.EnsureStarted();
+            Mascot.NoteActivity();
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(IsContentFullScreen));
+            OnPropertyChanged(nameof(IsActiveTabLoading));
             CommandManager.InvalidateRequerySuggested();
             ScheduleSave();
         }
@@ -97,6 +108,8 @@ public sealed class MainViewModel : ObservableObject
     public string WindowTitle => ActiveTab is { } tab ? $"{tab.Title} - Claxe" : "Claxe";
 
     public bool IsContentFullScreen => ActiveTab?.IsContentFullScreen == true;
+
+    public bool IsActiveTabLoading => ActiveTab?.IsLoading == true;
 
     public SearchEngine SearchEngine => SearchEngines.Find(_settings.SearchEngine);
 
@@ -231,6 +244,8 @@ public sealed class MainViewModel : ObservableObject
         tab.PropertyChanged += OnTabPropertyChanged;
         tab.NewWindowRequested += OnNewWindowRequested;
         tab.CloseRequested += OnTabCloseRequested;
+        tab.InternalPageMessage += OnInternalPageMessage;
+        tab.NavigationFinished += OnNavigationFinished;
 
         Tabs.Insert(Math.Clamp(index, 0, Tabs.Count), tab);
         HostedTabs.Add(tab);
@@ -243,6 +258,84 @@ public sealed class MainViewModel : ObservableObject
         tab.PropertyChanged -= OnTabPropertyChanged;
         tab.NewWindowRequested -= OnNewWindowRequested;
         tab.CloseRequested -= OnTabCloseRequested;
+        tab.InternalPageMessage -= OnInternalPageMessage;
+        tab.NavigationFinished -= OnNavigationFinished;
+    }
+
+    private void OnNavigationFinished(object? sender, bool success)
+    {
+        if (!ReferenceEquals(sender, ActiveTab))
+            return;
+
+        // Opening a new tab is not worth a celebration; real pages are.
+        if (InternalPages.IsInternal(ActiveTab?.Url))
+            Mascot.NoteActivity();
+        else
+            Mascot.OnPageLoaded(success);
+    }
+
+    /// <summary>Requests from the new tab page. The tab already verified the sender is internal.</summary>
+    private void OnInternalPageMessage(object? sender, JsonElement message)
+    {
+        if (sender is not TabViewModel tab)
+            return;
+
+        string? Text(string name)
+            => message.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+        switch (Text("type"))
+        {
+            case "ready":
+                tab.PostToInternalPage(BuildNewTabConfig());
+                break;
+
+            case "navigate" when !string.IsNullOrWhiteSpace(Text("text")):
+                tab.Navigate(AddressResolver.Resolve(Text("text")!, SearchEngine));
+                FocusContentRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "addShortcut":
+                var added = _shortcuts.Add(Text("title"), Text("url"));
+                if (!added)
+                    tab.PostToInternalPage(new { type = "shortcutRejected" });
+                BroadcastShortcuts();
+                break;
+
+            case "removeShortcut":
+                _shortcuts.Remove(Text("url"));
+                BroadcastShortcuts();
+                break;
+        }
+    }
+
+    private void BroadcastShortcuts()
+    {
+        var payload = new { type = "shortcuts", shortcuts = _shortcuts.Items };
+        foreach (var tab in HostedTabs)
+            tab.PostToInternalPage(payload);
+    }
+
+    private object BuildNewTabConfig()
+    {
+        var theme = ThemeService.Current;
+        return new
+        {
+            type = "config",
+            theme = new
+            {
+                id = theme.Id,
+                name = theme.Name,
+                wallpaper = ThemeService.WallpaperUrl,
+                accent = theme.Colors.Accent,
+                accentSecondary = theme.Colors.AccentSecondary,
+                overlay = theme.NewTab.Overlay,
+                particles = theme.NewTab.Particles,
+            },
+            animations = _settings.AnimationsEnabled,
+            searchEngine = SearchEngine.Name,
+            shortcuts = _shortcuts.Items,
+            maxShortcuts = ShortcutStore.MaxShortcuts,
+        };
     }
 
     private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -262,9 +355,12 @@ public sealed class MainViewModel : ObservableObject
             case nameof(TabViewModel.IsContentFullScreen):
                 OnPropertyChanged(nameof(IsContentFullScreen));
                 break;
+            case nameof(TabViewModel.IsLoading):
+                OnPropertyChanged(nameof(IsActiveTabLoading));
+                CommandManager.InvalidateRequerySuggested();
+                break;
             case nameof(TabViewModel.CanGoBack):
             case nameof(TabViewModel.CanGoForward):
-            case nameof(TabViewModel.IsLoading):
             case nameof(TabViewModel.WebView):
                 CommandManager.InvalidateRequerySuggested();
                 break;

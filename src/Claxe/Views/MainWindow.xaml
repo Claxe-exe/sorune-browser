@@ -13,10 +13,11 @@
         Background="{DynamicResource WindowBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}"
         FontFamily="{StaticResource UiFont}"
+        FontSize="{StaticResource BodyFontSize}"
         UseLayoutRounding="True">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="40"
+        <WindowChrome CaptionHeight="44"
                       ResizeBorderThickness="6"
                       GlassFrameThickness="-1"
                       CornerRadius="0"
@@ -25,20 +26,45 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!-- Neon line under the toolbar. -->
+        <LinearGradientBrush x:Key="NeonLineBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Offset="0" Color="Transparent" />
+            <GradientStop Offset="0.18" Color="{DynamicResource AccentColor}" />
+            <GradientStop Offset="0.62" Color="{DynamicResource AccentSecondaryColor}" />
+            <GradientStop Offset="1" Color="Transparent" />
+        </LinearGradientBrush>
     </Window.Resources>
 
     <Border x:Name="RootBorder">
-        <Grid>
+        <Grid x:Name="RootGrid" ClipToBounds="True">
             <Grid.RowDefinitions>
-                <RowDefinition x:Name="TitleRow" Height="40" />
-                <RowDefinition x:Name="ToolbarRow" Height="46" />
+                <RowDefinition x:Name="TitleRow" Height="{StaticResource TitleBarRowHeight}" />
+                <RowDefinition x:Name="ToolbarRow" Height="{StaticResource ToolbarRowHeight}" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- ============ Title bar: tabs + caption buttons ============ -->
+            <!-- ============ Layer 0: blurred wallpaper + theme tint ============ -->
+            <Image Grid.RowSpan="3"
+                   Source="{Binding Backdrop}"
+                   Stretch="UniformToFill"
+                   IsHitTestVisible="False" />
+            <Rectangle Grid.RowSpan="3" Fill="{DynamicResource ChromeTintBrush}" IsHitTestVisible="False" />
+
+            <!-- ============ Layer 1: mascot (its body is hidden behind the toolbar) ============ -->
+            <controls:MascotView x:Name="Mascot"
+                                 Grid.Row="0" Grid.RowSpan="2"
+                                 Width="84"
+                                 Margin="0,0,138,0"
+                                 HorizontalAlignment="Right"
+                                 EyeLine="38"
+                                 Mood="{Binding Mascot.Mood}" />
+
+            <!-- ============ Layer 2: title bar (tabs + caption buttons) ============ -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -52,25 +78,56 @@
                                   WindowChrome.IsHitTestVisibleInChrome="True"
                                   MouseMove="TabStrip_MouseMove"
                                   MouseLeftButtonUp="TabStrip_MouseLeftButtonUp"
-                                  LostMouseCapture="TabStrip_LostMouseCapture">
+                                  LostMouseCapture="TabStrip_LostMouseCapture"
+                                  PreviewMouseWheel="TabStrip_PreviewMouseWheel">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <controls:TabStripPanel ReservedWidth="120" />
+                                <controls:TabStripPanel ReservedWidth="72" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
 
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TabViewModel}">
-                                <Border x:Name="TabRoot"
-                                        Height="34"
-                                        Margin="0,0,2,0"
-                                        Padding="10,0,5,0"
-                                        CornerRadius="10,10,0,0"
-                                        Background="Transparent"
-                                        ToolTip="{Binding Title}"
-                                        PreviewMouseLeftButtonDown="Tab_PreviewMouseLeftButtonDown"
-                                        MouseUp="Tab_MouseUp">
-                                    <Grid>
+                                <Grid x:Name="TabRoot"
+                                      Height="36"
+                                      Margin="0,0,2,0"
+                                      Background="Transparent"
+                                      ToolTip="{Binding Title}"
+                                      Loaded="Tab_Loaded"
+                                      PreviewMouseLeftButtonDown="Tab_PreviewMouseLeftButtonDown"
+                                      MouseUp="Tab_MouseUp">
+
+                                    <Border x:Name="TabBackground"
+                                            CornerRadius="{StaticResource TabCornerRadius}"
+                                            Background="Transparent" />
+
+                                    <!-- Neon accent on the active tab -->
+                                    <Border x:Name="AccentBar"
+                                            Height="2"
+                                            Margin="16,0"
+                                            VerticalAlignment="Top"
+                                            CornerRadius="1"
+                                            Opacity="0">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
+                                                <GradientStop Offset="1" Color="{DynamicResource AccentSecondaryColor}" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.Effect>
+                                            <DropShadowEffect ShadowDepth="0" BlurRadius="8" Opacity="0.9"
+                                                              Color="{DynamicResource AccentColor}" />
+                                        </Border.Effect>
+                                    </Border>
+
+                                    <!-- Divider between inactive tabs -->
+                                    <Rectangle x:Name="Divider"
+                                               Width="1" Height="16"
+                                               Margin="0,0,-1.5,0"
+                                               HorizontalAlignment="Right"
+                                               Fill="{DynamicResource GlassBorderBrush}" />
+
+                                    <Grid Margin="12,0,6,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -105,22 +162,24 @@
 
                                         <TextBlock x:Name="TitleText"
                                                    Grid.Column="1"
-                                                   Margin="8,0,4,0"
+                                                   Margin="9,0,4,1"
                                                    VerticalAlignment="Center"
-                                                   FontSize="12.5"
+                                                   FontSize="{StaticResource TabFontSize}"
                                                    Text="{Binding Title}"
                                                    TextTrimming="CharacterEllipsis"
                                                    Foreground="{DynamicResource TextSecondaryBrush}" />
 
-                                        <Button Grid.Column="2"
+                                        <Button x:Name="CloseButton"
+                                                Grid.Column="2"
                                                 Style="{StaticResource TabCloseButtonStyle}"
                                                 VerticalAlignment="Center"
                                                 Content="&#xE711;"
                                                 ToolTip="Sekmeyi kapat (Ctrl+W)"
+                                                Visibility="Hidden"
                                                 Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}" />
                                     </Grid>
-                                </Border>
+                                </Grid>
 
                                 <DataTemplate.Triggers>
                                     <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
@@ -147,12 +206,17 @@
                                     </DataTrigger>
 
                                     <Trigger SourceName="TabRoot" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabRoot" Property="Background" Value="{DynamicResource TabHoverBrush}" />
+                                        <Setter TargetName="TabBackground" Property="Background" Value="{DynamicResource GlassHoverBrush}" />
+                                        <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="Divider" Property="Visibility" Value="Hidden" />
                                     </Trigger>
 
                                     <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                        <Setter TargetName="TabRoot" Property="Background" Value="{DynamicResource ToolbarBrush}" />
+                                        <Setter TargetName="TabBackground" Property="Background" Value="{DynamicResource GlassBrush}" />
+                                        <Setter TargetName="AccentBar" Property="Opacity" Value="1" />
                                         <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="Divider" Property="Visibility" Value="Hidden" />
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
@@ -160,16 +224,20 @@
                     </ItemsControl>
 
                     <Button DockPanel.Dock="Left"
-                            Margin="4,4,0,0"
+                            Margin="6,4,0,0"
                             VerticalAlignment="Center"
                             Style="{StaticResource IconButtonStyle}"
+                            Width="32" Height="32"
                             Content="&#xE710;"
                             ToolTip="Yeni sekme (Ctrl+T)"
                             Command="{Binding NewTabCommand}"
                             WindowChrome.IsHitTestVisibleInChrome="True" />
                 </DockPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top"
+                <!-- Keeps tabs from running under the mascot. -->
+                <Border x:Name="MascotSlot" Grid.Column="1" Width="84" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
                             WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource CaptionButtonStyle}" Content="&#xE921;"
                             ToolTip="Simge durumuna küçült" Click="Minimize_Click" />
@@ -180,12 +248,40 @@
                 </StackPanel>
             </Grid>
 
-            <!-- ============ Toolbar: navigation + address bar ============ -->
-            <Border Grid.Row="1"
-                    Background="{DynamicResource ToolbarBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="0,0,0,1">
-                <Grid Margin="8,0">
+            <!-- ============ Layer 3: toolbar (glass) ============ -->
+            <Grid Grid.Row="1" ClipToBounds="True">
+                <!-- Opaque base + the same backdrop as the window, offset so the two line up seamlessly. -->
+                <Rectangle Fill="{DynamicResource WindowBackgroundBrush}" IsHitTestVisible="False" />
+                <Canvas IsHitTestVisible="False">
+                    <Image Canvas.Top="{Binding ActualHeight, ElementName=TitleRowProbe, Converter={x:Static controls:NegateConverter.Instance}}"
+                           Width="{Binding ActualWidth, ElementName=RootGrid}"
+                           Height="{Binding ActualHeight, ElementName=RootGrid}"
+                           Source="{Binding Backdrop}"
+                           Stretch="UniformToFill" />
+                </Canvas>
+                <Rectangle Fill="{DynamicResource ChromeTintBrush}" IsHitTestVisible="False" />
+                <Rectangle Fill="{DynamicResource GlassBrush}" IsHitTestVisible="False" />
+
+                <!-- Neon edge; turns into a moving highlight while the page loads. -->
+                <Rectangle Height="1" VerticalAlignment="Bottom" Opacity="0.55"
+                           Fill="{StaticResource NeonLineBrush}" IsHitTestVisible="False" />
+                <Rectangle x:Name="LoadingBar"
+                           Height="2" Width="220"
+                           VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                           Opacity="0" IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="Transparent" />
+                            <GradientStop Offset="0.7" Color="{DynamicResource AccentColor}" />
+                            <GradientStop Offset="1" Color="{DynamicResource AccentSecondaryColor}" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                    <Rectangle.RenderTransform>
+                        <TranslateTransform x:Name="LoadingBarOffset" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+
+                <Grid Margin="8,0,10,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -215,27 +311,33 @@
                     <!-- Address pill -->
                     <Border x:Name="AddressPill"
                             Grid.Column="3"
-                            Height="34"
-                            Margin="8,0,0,0"
-                            CornerRadius="17"
+                            Height="36"
+                            Margin="10,0,0,0"
+                            CornerRadius="{StaticResource PillCornerRadius}"
                             BorderThickness="1">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-                                <Setter Property="BorderBrush" Value="Transparent" />
+                                <Setter Property="Background" Value="{DynamicResource InsetBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource InsetHoverBrush}" />
                                     </Trigger>
                                     <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource InsetHoverBrush}" />
                                         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect ShadowDepth="0" BlurRadius="14" Opacity="0.45"
+                                                                  Color="{DynamicResource AccentColor}" />
+                                            </Setter.Value>
+                                        </Setter>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
 
-                        <Grid Margin="12,0,14,0">
+                        <Grid Margin="14,0,16,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -243,7 +345,7 @@
 
                             <!-- Connection state -->
                             <TextBlock Grid.Column="0"
-                                       Margin="0,0,8,0"
+                                       Margin="0,0,10,0"
                                        VerticalAlignment="Center"
                                        FontFamily="{StaticResource IconFont}"
                                        FontSize="12">
@@ -278,7 +380,7 @@
 
                             <TextBlock Grid.Column="1"
                                        VerticalAlignment="Center"
-                                       FontSize="13.5"
+                                       FontSize="{StaticResource AddressFontSize}"
                                        IsHitTestVisible="False"
                                        Text="Ara veya adres yaz"
                                        Foreground="{DynamicResource TextSecondaryBrush}">
@@ -308,9 +410,12 @@
                         </Grid>
                     </Border>
                 </Grid>
-            </Border>
+            </Grid>
 
-            <!-- ============ Web content ============ -->
+            <!-- Invisible element whose height follows the title row (0 in fullscreen); the toolbar backdrop offset binds to it. -->
+            <Border x:Name="TitleRowProbe" Grid.Row="0" IsHitTestVisible="False" />
+
+            <!-- ============ Layer 4: web content ============ -->
             <ItemsControl Grid.Row="2" ItemsSource="{Binding HostedTabs}" Focusable="False">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

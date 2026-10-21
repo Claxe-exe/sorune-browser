@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Raw source images; app-ready copies live in src/Claxe/Assets
+/assets/
