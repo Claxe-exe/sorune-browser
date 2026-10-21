@@ -9,11 +9,21 @@ namespace Claxe;
 
 public partial class App : Application
 {
+    private SingleInstance? _instance;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         AppPaths.EnsureCreated();
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        // Already running: hand the links over and quit, so there is only ever one window.
+        _instance = SingleInstance.TryAcquire();
+        if (_instance is null && SingleInstance.SendToRunning(e.Args))
+        {
+            Shutdown(0);
+            return;
+        }
 
         if (!BrowserEnvironment.IsRuntimeAvailable(out var version))
         {
@@ -42,7 +52,20 @@ public partial class App : Application
         var window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();
-        viewModel.Start();
+        viewModel.Start(e.Args);
+
+        _instance?.Listen(args => Dispatcher.BeginInvoke(() =>
+        {
+            if (viewModel.OpenExternal(args) == 0)
+                viewModel.NewTab();
+            window.BringToFront();
+        }));
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _instance?.Dispose();
+        base.OnExit(e);
     }
 
     private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

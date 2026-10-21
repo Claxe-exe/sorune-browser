@@ -29,6 +29,15 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     public static partial uint GetDpiForWindow(nint hwnd);
 
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetNamedPipeServerProcessId(nint pipe, out uint processId);
+
+    /// <summary>Lets the already running Claxe bring its window to the front when we hand it a link.</summary>
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool AllowSetForegroundWindow(uint processId);
+
     public static int GetXLParam(nint lParam) => unchecked((short)(long)lParam);
 
     public static int GetYLParam(nint lParam) => unchecked((short)((long)lParam >> 16));

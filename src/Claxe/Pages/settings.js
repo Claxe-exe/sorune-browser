@@ -83,6 +83,17 @@ function render() {
     renderPanels();
     renderPermissions();
 
+    const db = state.defaultBrowser;
+    const registered = Boolean(db.registeredExe);
+    const moved = registered && db.registeredExe.toLowerCase() !== (db.currentExe || "").toLowerCase();
+    $("default-browser-hint").textContent = !registered
+        ? "Linkler Claxe'te açılsın. Windows, seçimi Ayarlar › Varsayılan uygulamalar ekranında senin yapmanı ister."
+        : moved
+            ? `Kayıtlı Claxe başka bir yerde: ${db.registeredExe}. Bu kopyayı kaydetmek için tekrar bas.`
+            : "Claxe tarayıcı olarak kayıtlı. Windows ayarlarında Claxe'i seçtiysen linkler burada açılır.";
+    $("default-browser-set").textContent = registered && !moved ? "Windows ayarlarını aç" : "Varsayılan yap";
+    $("default-browser-remove").hidden = !registered;
+
     $("about-version").textContent = state.about.version || "-";
     $("about-webview").textContent = state.about.webView2 || "-";
     $("about-profile").textContent = state.about.profile;
@@ -336,6 +347,9 @@ $("import-button").addEventListener("click", () => {
     $("import-status").hidden = true;
     send({ type: "importData", source, bookmarks, history });
 });
+
+$("default-browser-set").addEventListener("click", () => send({ type: "registerDefaultBrowser" }));
+$("default-browser-remove").addEventListener("click", () => send({ type: "unregisterDefaultBrowser" }));
 
 $("sidebar-position").addEventListener("click", (event) => {
     const button = event.target.closest("button");

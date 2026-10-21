@@ -86,6 +86,9 @@ tema ayarlar sayfasında kendiliğinden listelenir. Parçacık efektleri: `petal
 | Ctrl+, | Ayarlar |
 | Ctrl+H / Ctrl+J / Ctrl+Shift+O | Geçmiş / İndirmeler / Yer imleri |
 | Ctrl+D | Sayfayı yer imlerine ekle / çıkar |
+| Ctrl+F | Sayfada bul (Enter / Shift+Enter: sonraki / önceki) |
+| Ctrl+Shift+N | Yeni gizli sekme |
+| ↑ / ↓ (adres çubuğunda) | Öneriler arasında gezin |
 | Ctrl+Shift+Del | Tarama verilerini temizle |
 
 ## Veriler ve gizlilik

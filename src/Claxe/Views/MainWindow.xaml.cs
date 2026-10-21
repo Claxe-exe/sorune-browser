@@ -11,6 +11,7 @@ using Claxe.Controls;
 using Claxe.Interop;
 using Claxe.Services;
 using Claxe.ViewModels;
+using Microsoft.Web.WebView2.Core;
 
 namespace Claxe.Views;
 
@@ -54,6 +55,17 @@ public partial class MainWindow : Window
         viewModel.AppearanceChanged += (_, _) => ApplyAppearance();
         viewModel.WallpaperPickRequested += (_, _) => PickWallpaper();
         viewModel.ConfirmOpenRiskyFile = ConfirmOpenRiskyFile;
+        viewModel.PageContextMenuRequested += (_, e) => ShowPageContextMenu(e);
+
+        AddressBox.TextChanged += (_, _) =>
+        {
+            if (AddressBox.IsKeyboardFocusWithin)
+                _viewModel.UpdateSuggestions(AddressBox.Text);
+        };
+        AddressBox.PreviewKeyDown += AddressBox_PreviewKeyDown;
+        // Deferred, so a click on a suggestion is handled before the list closes.
+        AddressBox.LostKeyboardFocus += (_, _) =>
+            Dispatcher.BeginInvoke(() => _viewModel.ClearSuggestions(), DispatcherPriority.Input);
         ApplyAppearance();
         UpdatePanelColumn();
 
@@ -117,6 +129,8 @@ public partial class MainWindow : Window
             case Key.Right when alt: Execute(_viewModel.ForwardCommand); break;
             case Key.F11 when none: ToggleBrowserFullScreen(); break;
             case Key.OemComma when ctrl: _viewModel.OpenSettings(); break;
+            case Key.F when ctrl: OpenFind(); break;
+            case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
             case Key.D when ctrl: _viewModel.ToggleBookmark(); break;
@@ -187,7 +201,7 @@ public partial class MainWindow : Window
         if (TabStripPanelOrNull() is not { CanScroll: true } panel)
             return;
 
-        panel.ScrollBy(-e.Delta / 120.0 * panel.TabWidth);
+        panel.ScrollBy(-e.Delta / 120.0 * Math.Max(panel.TabWidth, 60));
         e.Handled = true;
     }
 
@@ -239,11 +253,8 @@ public partial class MainWindow : Window
             return;
 
         _isDragging = true;
-        var panel = TabStripPanelOrNull();
-        if (panel is null || panel.TabWidth <= 0)
-            return;
-
-        _viewModel.MoveTab(_dragTab, (int)((position.X + panel.HorizontalOffset) / panel.TabWidth));
+        if (TabStripPanelOrNull() is { } panel)
+            _viewModel.MoveTab(_dragTab, panel.IndexAt(position.X));
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
@@ -345,6 +356,8 @@ public partial class MainWindow : Window
                 break;
             case nameof(MainViewModel.ActiveTab):
                 EnsureActiveTabVisible();
+                if (FindPopup.IsOpen)
+                    CloseFind();
                 break;
             case nameof(MainViewModel.ActivePanel):
             case nameof(MainViewModel.IsSidebarVisible):
@@ -438,6 +451,196 @@ public partial class MainWindow : Window
             _readyToClose = true;
             Close();
         }
+    }
+
+    // ------------------------------------------------------ address suggestions
+
+    private void AddressBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_viewModel.HasSuggestions || e.Key is not (Key.Down or Key.Up))
+            return;
+
+        _viewModel.MoveSuggestion(e.Key == Key.Down ? 1 : -1);
+        HighlightSuggestion();
+        e.Handled = true;
+    }
+
+    private void HighlightSuggestion()
+    {
+        for (var i = 0; i < _viewModel.Suggestions.Count; i++)
+        {
+            if (SuggestionList.ItemContainerGenerator.ContainerFromIndex(i) is ContentPresenter container
+                && FindDescendant<Border>(container) is { } row)
+            {
+                row.Background = i == _viewModel.SelectedSuggestionIndex
+                    ? (Brush)FindResource("ControlHoverBrush")
+                    : Brushes.Transparent;
+            }
+        }
+    }
+
+    private void Suggestion_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: SuggestionViewModel suggestion })
+        {
+            _viewModel.OpenSuggestion(suggestion);
+            e.Handled = true;
+        }
+    }
+
+    // ---------------------------------------------------------- zoom and find
+
+    private void ResetZoom_Click(object sender, RoutedEventArgs e) => _viewModel.ActiveTab?.ResetZoom();
+
+    private TabViewModel? _findTab;
+
+    private void OpenFind()
+    {
+        if (_viewModel.ActiveTab is not { Core: not null } tab)
+            return;
+
+        _findTab = tab;
+        tab.PropertyChanged -= OnFindTabChanged;
+        tab.PropertyChanged += OnFindTabChanged;
+        FindPopup.IsOpen = true;
+        FindBox.Focus();
+        FindBox.SelectAll();
+        UpdateFindCount();
+    }
+
+    private void CloseFind()
+    {
+        if (_findTab is { } tab)
+        {
+            tab.PropertyChanged -= OnFindTabChanged;
+            tab.StopFind();
+        }
+
+        _findTab = null;
+        FindPopup.IsOpen = false;
+        FocusActiveWebView();
+    }
+
+    private void OnFindTabChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(TabViewModel.FindMatchCount) or nameof(TabViewModel.FindActiveIndex))
+            UpdateFindCount();
+    }
+
+    private void UpdateFindCount()
+    {
+        var tab = _findTab;
+        FindCount.Text = tab is null || FindBox.Text.Length == 0
+            ? ""
+            : tab.FindMatchCount == 0 ? "Bulunamadı" : $"{tab.FindActiveIndex + 1}/{tab.FindMatchCount}";
+    }
+
+    private async void FindBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_findTab is { } tab)
+            await tab.FindAsync(FindBox.Text);
+        UpdateFindCount();
+    }
+
+    private void FindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter when Keyboard.Modifiers == ModifierKeys.Shift:
+                _findTab?.FindPrevious();
+                e.Handled = true;
+                break;
+            case Key.Enter:
+                _findTab?.FindNext();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                CloseFind();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void FindNext_Click(object sender, RoutedEventArgs e) => _findTab?.FindNext();
+
+    private void FindPrevious_Click(object sender, RoutedEventArgs e) => _findTab?.FindPrevious();
+
+    private void FindClose_Click(object sender, RoutedEventArgs e) => CloseFind();
+
+    // ------------------------------------------------------- page context menu
+
+    /// <summary>
+    /// Shows WebView2's own menu items (already in Turkish) in a Claxe-styled menu. The page
+    /// waits on a deferral until an item is picked or the menu closes.
+    /// </summary>
+    private void ShowPageContextMenu(CoreWebView2ContextMenuRequestedEventArgs e)
+    {
+        var deferral = e.GetDeferral();
+        var completed = false;
+        void Complete(int? commandId)
+        {
+            if (completed)
+                return;
+            completed = true;
+            if (commandId is { } id)
+                e.SelectedCommandId = id;
+            deferral.Complete();
+        }
+
+        e.Handled = true;
+        var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+        AddMenuItems(menu.Items, e.MenuItems, depth: 0, Complete);
+        menu.Closed += (_, _) => Dispatcher.BeginInvoke(() => Complete(null), DispatcherPriority.Background);
+        menu.IsOpen = true;
+    }
+
+    private static void AddMenuItems(ItemCollection target, IList<CoreWebView2ContextMenuItem> items, int depth, Action<int?> pick)
+    {
+        foreach (var item in items)
+        {
+            if (item.Kind == CoreWebView2ContextMenuItemKind.Separator)
+            {
+                if (target.Count > 0 && target[^1] is not Separator)
+                    target.Add(new Separator());
+                continue;
+            }
+
+            if (item.Kind == CoreWebView2ContextMenuItemKind.Submenu)
+            {
+                // Nested menus are flattened (indented), so one simple menu style covers everything.
+                AddMenuItems(target, item.Children, depth + 1, pick);
+                continue;
+            }
+
+            var label = item.Label.Replace("&&", "\u0001").Replace("&", "").Replace("\u0001", "&");
+            var menuItem = new MenuItem
+            {
+                Header = new string(' ', depth * 4) + label,
+                InputGestureText = item.ShortcutKeyDescription,
+                IsEnabled = item.IsEnabled,
+                IsCheckable = item.Kind is CoreWebView2ContextMenuItemKind.CheckBox or CoreWebView2ContextMenuItemKind.Radio,
+                IsChecked = item.IsChecked,
+            };
+            var id = item.CommandId;
+            menuItem.Click += (_, _) => pick(id);
+            target.Add(menuItem);
+        }
+
+        if (target.Count > 0 && target[^1] is Separator)
+            target.RemoveAt(target.Count - 1);
+    }
+
+    /// <summary>A link arrived from another app or launch: show the window above everything once.</summary>
+    public void BringToFront()
+    {
+        if (!IsVisible)
+            Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
     }
 
     private bool ConfirmOpenRiskyFile(string path)

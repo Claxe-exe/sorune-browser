@@ -11,6 +11,7 @@
     <Product>Claxe Browser</Product>
     <Version>0.1.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\claxe.ico</ApplicationIcon>
     <!-- Required by the LibraryImport source generator in Interop\NativeMethods.cs. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

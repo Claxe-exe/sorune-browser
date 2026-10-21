@@ -126,6 +126,31 @@ public sealed class HistoryStore
         return items.Take(Math.Clamp(limit, 1, 500)).ToList();
     }
 
+    /// <summary>
+    /// Address bar suggestions: pages whose address or title contains the text, best first
+    /// (address starting with the text, then most visited, then most recent).
+    /// </summary>
+    public IReadOnlyList<HistoryEntry> Suggest(string text, int limit)
+    {
+        text = text.Trim();
+        if (text.Length == 0)
+            return [];
+
+        static string Bare(string url) => url.Replace("https://", "").Replace("http://", "").Replace("www.", "");
+
+        return Enumerable.Reverse(_entries)
+            .Where(e => Compare.IndexOf(e.Url, text, CompareOptions.IgnoreCase) >= 0
+                        || Compare.IndexOf(e.Title, text, CompareOptions.IgnoreCase) >= 0)
+            .GroupBy(e => e.Url)
+            .Select(g => (Latest: g.First(), Visits: g.Count()))
+            .OrderByDescending(x => Compare.IsPrefix(Bare(x.Latest.Url), text, CompareOptions.IgnoreCase))
+            .ThenByDescending(x => x.Visits)
+            .ThenByDescending(x => x.Latest.VisitedAt)
+            .Take(limit)
+            .Select(x => x.Latest)
+            .ToList();
+    }
+
     public void Delete(IEnumerable<long> ids)
     {
         var set = ids.ToHashSet();

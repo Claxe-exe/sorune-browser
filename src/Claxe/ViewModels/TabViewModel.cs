@@ -54,8 +54,18 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     private bool _isContentFullScreen;
     private SecurityState _security;
 
-    public TabViewModel(string? initialUrl, string? title = null)
+    private CoreWebView2Environment? _environment;
+    private bool _isPinned;
+    private bool _isPlayingAudio;
+    private bool _isMuted;
+    private string? _zoomPercent;
+    private int _findMatchCount;
+    private int _findActiveIndex = -1;
+
+    public TabViewModel(string? initialUrl, string? title = null, bool isPrivate = false, bool isPinned = false)
     {
+        IsPrivate = isPrivate;
+        _isPinned = isPinned;
         _pendingUrl = initialUrl;
         _url = initialUrl;
         _title = string.IsNullOrWhiteSpace(title) ? TitleFor(initialUrl) : title;
@@ -77,6 +87,99 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     /// <summary>The CoreWebView2 exists; app-wide services (downloads) attach here.</summary>
     public event EventHandler<CoreWebView2>? CoreCreated;
+
+    /// <summary>Right click on the page; the view replaces WebView2's menu with a themed one.</summary>
+    public event EventHandler<CoreWebView2ContextMenuRequestedEventArgs>? PageContextMenuRequested;
+
+    /// <summary>InPrivate: separate throw-away profile, no history, not restored next time.</summary>
+    public bool IsPrivate { get; }
+
+    public bool IsPinned
+    {
+        get => _isPinned;
+        set => SetProperty(ref _isPinned, value);
+    }
+
+    public bool IsPlayingAudio
+    {
+        get => _isPlayingAudio;
+        private set => SetProperty(ref _isPlayingAudio, value);
+    }
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        private set => SetProperty(ref _isMuted, value);
+    }
+
+    /// <summary>"%125" when the page is zoomed, null at 100 %.</summary>
+    public string? ZoomPercent
+    {
+        get => _zoomPercent;
+        private set => SetProperty(ref _zoomPercent, value);
+    }
+
+    public int FindMatchCount
+    {
+        get => _findMatchCount;
+        private set => SetProperty(ref _findMatchCount, value);
+    }
+
+    /// <summary>0-based index of the highlighted match, -1 when none.</summary>
+    public int FindActiveIndex
+    {
+        get => _findActiveIndex;
+        private set => SetProperty(ref _findActiveIndex, value);
+    }
+
+    public void ToggleMute()
+    {
+        if (Core is { } core)
+            core.IsMuted = !core.IsMuted;
+    }
+
+    public void ResetZoom()
+    {
+        if (_webView is not null)
+            _webView.ZoomFactor = 1;
+    }
+
+    /// <summary>Highlights every match of <paramref name="term"/> (empty clears the search).</summary>
+    public async Task FindAsync(string term)
+    {
+        if (Core is not { } core || _environment is null)
+            return;
+
+        if (string.IsNullOrEmpty(term))
+        {
+            StopFind();
+            return;
+        }
+
+        var options = _environment.CreateFindOptions();
+        options.FindTerm = term;
+        options.SuppressDefaultFindDialog = true;
+        options.ShouldHighlightAllMatches = true;
+        try
+        {
+            await core.Find.StartAsync(options);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Sayfada bul başarısız: {ex.Message}");
+        }
+    }
+
+    public void FindNext() => Core?.Find.FindNext();
+
+    public void FindPrevious() => Core?.Find.FindPrevious();
+
+    public void StopFind()
+    {
+        Core?.Find.Stop();
+        FindMatchCount = 0;
+        FindActiveIndex = -1;
+    }
 
     /// <summary>Null until the tab is first shown.</summary>
     public WebView2? WebView
@@ -308,7 +411,20 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         WebView = webView;
 
         var environment = await BrowserEnvironment.GetAsync();
-        await webView.EnsureCoreWebView2Async(environment);
+        _environment = environment;
+        if (IsPrivate)
+        {
+            // All InPrivate tabs share one throw-away profile; WebView2 deletes its data when the last one closes.
+            var options = environment.CreateCoreWebView2ControllerOptions();
+            options.IsInPrivateModeEnabled = true;
+            options.ProfileName = "inprivate";
+            await webView.EnsureCoreWebView2Async(environment, options);
+        }
+        else
+        {
+            await webView.EnsureCoreWebView2Async(environment);
+        }
+
         if (_disposed)
             return;
 
@@ -353,10 +469,19 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         core.ProcessFailed += (_, e) => OnProcessFailed(environment, e);
         if (!IsActive)
             core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
+        core.IsDocumentPlayingAudioChanged += (_, _) => IsPlayingAudio = core.IsDocumentPlayingAudio;
+        core.IsMutedChanged += (_, _) => IsMuted = core.IsMuted;
+        core.Find.MatchCountChanged += (_, _) => FindMatchCount = core.Find.MatchCount;
+        core.Find.ActiveMatchIndexChanged += (_, _) => FindActiveIndex = core.Find.ActiveMatchIndex;
+        core.ContextMenuRequested += (_, e) => PageContextMenuRequested?.Invoke(this, e);
+        webView.ZoomFactorChanged += (_, _) =>
+            ZoomPercent = Math.Abs(webView.ZoomFactor - 1) < 0.001 ? null : $"%{Math.Round(webView.ZoomFactor * 100)}";
         CoreCreated?.Invoke(this, core);
 
         // Before the very first page of the run loads, so logins come back with it.
-        SessionCookieStore.RestoreOnce(core);
+        // Never into an InPrivate profile: that would also hide them from normal tabs.
+        if (!IsPrivate)
+            SessionCookieStore.RestoreOnce(core);
 
         if (_pendingUrl is { } url)
         {

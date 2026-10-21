@@ -135,6 +135,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
                 .Select(p => new { p.Origin, kind = p.Kind.ToString(), what = PermissionStore.Describe(p.Kind), p.Allowed }),
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
             maxPanels = PanelStore.MaxPanels,
+            defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
             about = new
             {
                 version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3),

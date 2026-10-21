@@ -10,4 +10,5 @@ public sealed class SessionTab
 {
     public string Url { get; set; } = "";
     public string? Title { get; set; }
+    public bool IsPinned { get; set; }
 }

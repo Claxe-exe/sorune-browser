@@ -261,14 +261,37 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" Padding="12,7">
-                        <ContentPresenter ContentSource="Header" />
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" Padding="8,7,12,7" MinWidth="220">
+                        <DockPanel>
+                            <TextBlock x:Name="Check" DockPanel.Dock="Left" Width="20" Text="&#xE73E;"
+                                       FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AccentBrush}" Visibility="Hidden" />
+                            <TextBlock DockPanel.Dock="Right" Margin="24,0,0,0" Text="{TemplateBinding InputGestureText}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" VerticalAlignment="Center" />
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
+                        </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                         </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Margin="8,4" Background="{DynamicResource GlassBorderBrush}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

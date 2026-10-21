@@ -111,6 +111,7 @@
                         <!-- The active tab draws on top so its "feet" overlap the neighbours. -->
                         <ItemsControl.ItemContainerStyle>
                             <Style TargetType="ContentPresenter">
+                                <Setter Property="controls:TabStripPanel.IsCompact" Value="{Binding IsPinned}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsActive}" Value="True">
                                         <Setter Property="Panel.ZIndex" Value="1" />
@@ -125,9 +126,32 @@
                                       Height="{DynamicResource TabHeight}"
                                       Background="Transparent"
                                       ToolTip="{Binding Title}"
+                                      Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                       Loaded="Tab_Loaded"
                                       PreviewMouseLeftButtonDown="Tab_PreviewMouseLeftButtonDown"
                                       MouseUp="Tab_MouseUp">
+                                    <Grid.ContextMenu>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                            <MenuItem Header="Yeni sekme" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
+                                            <MenuItem Header="Yeni gizli sekme" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
+                                            <Separator />
+                                            <MenuItem Header="Yeniden yükle" Command="{Binding ReloadTabCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Çoğalt" Command="{Binding DuplicateTabCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Sabitle / sabitlemeyi kaldır" Command="{Binding TogglePinCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Sesi kapat / aç" Command="{Binding ToggleMuteCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator />
+                                            <MenuItem Header="Diğer sekmeleri kapat" Command="{Binding CloseOtherTabsCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Sağdaki sekmeleri kapat" Command="{Binding CloseTabsToRightCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Kapat" InputGestureText="Ctrl+W" Command="{Binding CloseTabCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
 
                                     <!-- Inactive hover: a rounded glass chip inside the tab -->
                                     <Border x:Name="HoverChip"
@@ -177,12 +201,27 @@
                                         </Rectangle.Fill>
                                     </Rectangle>
 
-                                    <Grid Margin="13,0,7,0">
+
+
+                                    <Grid x:Name="TabContent" Margin="13,0,7,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
+
+                                        <!-- Plays sound: click to mute / unmute -->
+                                        <Button x:Name="AudioButton"
+                                                Grid.Column="2"
+                                                Style="{StaticResource TabCloseButtonStyle}"
+                                                FontSize="11"
+                                                VerticalAlignment="Center"
+                                                Content="&#xE767;"
+                                                ToolTip="Sekmenin sesini kapat"
+                                                Visibility="Collapsed"
+                                                Command="{Binding DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" />
 
                                         <Grid Width="16" Height="16" VerticalAlignment="Center">
                                             <Image x:Name="FaviconImage"
@@ -210,17 +249,22 @@
                                             </Path>
                                         </Grid>
 
-                                        <TextBlock x:Name="TitleText"
-                                                   Grid.Column="1"
-                                                   Margin="9,0,4,1"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="{StaticResource TabFontSize}"
-                                                   Text="{Binding Title}"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <DockPanel x:Name="TitlePanel" Grid.Column="1" Margin="9,0,4,1">
+                                            <Border x:Name="PrivateBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Padding="5,1"
+                                                    CornerRadius="5" VerticalAlignment="Center"
+                                                    Background="{DynamicResource AccentSoftBrush}" Visibility="Collapsed">
+                                                <TextBlock Text="Gizli" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                                            </Border>
+                                            <TextBlock x:Name="TitleText"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource TabFontSize}"
+                                                       Text="{Binding Title}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </DockPanel>
 
                                         <Button x:Name="CloseButton"
-                                                Grid.Column="2"
+                                                Grid.Column="3"
                                                 Style="{StaticResource TabCloseButtonStyle}"
                                                 VerticalAlignment="Center"
                                                 Content="&#xE711;"
@@ -276,6 +320,26 @@
                                         <Setter TargetName="TitleText" Property="FontWeight" Value="Medium" />
                                         <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="Divider" Property="Visibility" Value="Hidden" />
+                                    </DataTrigger>
+
+                                    <DataTrigger Binding="{Binding IsPrivate}" Value="True">
+                                        <Setter TargetName="PrivateBadge" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsPlayingAudio}" Value="True">
+                                        <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                        <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="AudioButton" Property="Content" Value="&#xE74F;" />
+                                        <Setter TargetName="AudioButton" Property="ToolTip" Value="Sekmenin sesini aç" />
+                                    </DataTrigger>
+
+                                    <!-- Pinned: icon only (last, so it wins over hover/active) -->
+                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                        <Setter TargetName="TitlePanel" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="CloseButton" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="AudioButton" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="TabContent" Property="Margin" Value="16,0,0,0" />
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
@@ -448,9 +512,17 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <!-- Zoom level (only when not 100 %); click resets -->
+                            <Button Height="24" Margin="6,0,0,0" Padding="8,0"
+                                    Style="{StaticResource GhostButtonStyle}" FontSize="11.5"
+                                    Content="{Binding ActiveTab.ZoomPercent}"
+                                    ToolTip="Yakınlaştırmayı sıfırla (Ctrl+0)"
+                                    Click="ResetZoom_Click"
+                                    Visibility="{Binding ActiveTab.ZoomPercent, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
+
                             <!-- Bookmark star (only for real web pages) -->
-                            <Button Grid.Column="2"
-                                    Width="28" Height="28"
+                            <Button Width="28" Height="28"
                                     Margin="6,0,0,0"
                                     Command="{Binding ToggleBookmarkCommand}"
                                     Visibility="{Binding CanBookmark, Converter={StaticResource BoolToVisibility}}">
@@ -470,6 +542,7 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
+                            </StackPanel>
 
                             <!-- Connection state -->
                             <TextBlock Grid.Column="0"
@@ -674,6 +747,70 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
+
+            <!-- ============ Address suggestions ============ -->
+            <Popup x:Name="SuggestionPopup"
+                   PlacementTarget="{Binding ElementName=AddressPill}"
+                   Placement="Bottom" VerticalOffset="6"
+                   Width="{Binding ActualWidth, ElementName=AddressPill}"
+                   AllowsTransparency="True" StaysOpen="True"
+                   IsOpen="{Binding HasSuggestions, Mode=OneWay}">
+                <Border Padding="6" CornerRadius="14" Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="4" BlurRadius="20" Opacity="0.45" Color="Black" />
+                    </Border.Effect>
+                    <ItemsControl x:Name="SuggestionList" ItemsSource="{Binding Suggestions}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SuggestionViewModel}">
+                                <Border x:Name="Row" Padding="10,7" CornerRadius="9" Background="Transparent" Cursor="Hand"
+                                        PreviewMouseLeftButtonDown="Suggestion_PreviewMouseLeftButtonDown">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Width="24" Text="{Binding Glyph}" VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{DynamicResource AccentBrush}" />
+                                        <TextBlock DockPanel.Dock="Right" Margin="12,0,0,0" MaxWidth="320" VerticalAlignment="Center"
+                                                   Text="{Binding Subtitle}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Title}" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </DockPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </Popup>
+
+            <!-- ============ Find in page ============ -->
+            <Popup x:Name="FindPopup"
+                   PlacementTarget="{Binding ElementName=AddressPill}"
+                   Placement="Bottom" VerticalOffset="10"
+                   HorizontalOffset="{Binding ActualWidth, ElementName=AddressPill, Converter={x:Static controls:FindOffsetConverter.Instance}}"
+                   AllowsTransparency="True" StaysOpen="True">
+                <Border Width="380" Padding="10,8" Margin="0,0,12,12" CornerRadius="14"
+                        Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="4" BlurRadius="20" Opacity="0.45" Color="Black" />
+                    </Border.Effect>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="10"
+                                Content="&#xE711;" ToolTip="Kapat (Esc)" Click="FindClose_Click" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="11"
+                                Content="&#xE70D;" ToolTip="Sonraki (Enter)" Click="FindNext_Click" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="11"
+                                Content="&#xE70E;" ToolTip="Önceki (Shift+Enter)" Click="FindPrevious_Click" />
+                        <TextBlock x:Name="FindCount" DockPanel.Dock="Right" Margin="8,0" VerticalAlignment="Center"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBox x:Name="FindBox" Style="{StaticResource AddressTextBoxStyle}" FontSize="13"
+                                 TextChanged="FindBox_TextChanged" PreviewKeyDown="FindBox_PreviewKeyDown" />
+                    </DockPanel>
+                </Border>
+            </Popup>
 
             <!-- ============ Permission prompt (a Popup is its own window, so it shows over web content) ============ -->
             <Popup x:Name="PermissionPopup"

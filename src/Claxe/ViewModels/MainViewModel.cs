@@ -38,6 +38,7 @@ public sealed class MainViewModel : ObservableObject
     private TabViewModel? _activeTab;
     private PanelViewModel? _activePanel;
     private PermissionRequestViewModel? _pendingPermission;
+    private int _selectedSuggestion = -1;
     private bool _isShuttingDown;
 
     public MainViewModel(AppSettings settings)
@@ -95,6 +96,7 @@ public sealed class MainViewModel : ObservableObject
         OpenSettingsCommand = new RelayCommand(() => OpenSettings());
         RevertAddressCommand = new RelayCommand(() =>
         {
+            ClearSuggestions();
             ActiveTab?.RevertAddress();
             FocusContentRequested?.Invoke(this, EventArgs.Empty);
         });
@@ -242,24 +244,174 @@ public sealed class MainViewModel : ObservableObject
 
     // ---------------------------------------------------------------- lifecycle
 
-    /// <summary>Called once the window is shown (WebView2 needs a live window handle).</summary>
-    public void Start()
+    /// <summary>
+    /// Called once the window is shown (WebView2 needs a live window handle).
+    /// <paramref name="args"/> are links/files Claxe was started with (e.g. as default browser).
+    /// </summary>
+    public void Start(IReadOnlyList<string> args)
     {
         if (_settings.RestoreSession && SessionStore.Load() is { Tabs.Count: > 0 } session)
         {
             foreach (var saved in session.Tabs.Where(t => AddressResolver.IsNavigable(t.Url)))
-                CreateTab(saved.Url, Tabs.Count, saved.Title);
+                CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
 
             if (Tabs.Count > 0)
             {
                 ActiveTab = Tabs[Math.Clamp(session.ActiveIndex, 0, Tabs.Count - 1)];
                 Log.Info($"Oturum geri yüklendi: {Tabs.Count} sekme.");
-                return;
             }
         }
 
-        NewTab();
+        if (OpenExternal(args) == 0 && Tabs.Count == 0)
+            NewTab();
     }
+
+    /// <summary>Opens links or files handed over by Windows or a second Claxe launch. Returns how many opened.</summary>
+    public int OpenExternal(IEnumerable<string> args)
+    {
+        var opened = 0;
+        foreach (var arg in args)
+        {
+            string? url = null;
+            if (AddressResolver.IsNavigable(arg) && !arg.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+                url = new Uri(arg).AbsoluteUri;
+            else if (File.Exists(arg))
+                url = new Uri(Path.GetFullPath(arg)).AbsoluteUri;
+
+            if (url is null)
+                continue;
+
+            ActiveTab = CreateTab(url, Tabs.Count);
+            opened++;
+        }
+
+        return opened;
+    }
+
+    public void NewPrivateTab()
+    {
+        ActiveTab = CreateTab(InternalPages.NewTabUrl, Tabs.Count, isPrivate: true);
+        SoundService.Play(UiSound.TabOpen);
+        FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ---------------------------------------------------------------- address suggestions
+
+    public ObservableCollection<SuggestionViewModel> Suggestions { get; } = [];
+
+    /// <summary>Highlighted row (keyboard), -1 when none: Enter then uses what was typed.</summary>
+    public int SelectedSuggestionIndex
+    {
+        get => _selectedSuggestion;
+        set => SetProperty(ref _selectedSuggestion, Math.Clamp(value, -1, Suggestions.Count - 1));
+    }
+
+    public bool HasSuggestions => Suggestions.Count > 0;
+
+    /// <summary>Local suggestions only (bookmarks + history): nothing typed is sent anywhere.</summary>
+    public void UpdateSuggestions(string text)
+    {
+        Suggestions.Clear();
+        _selectedSuggestion = -1;
+        text = text.Trim();
+        if (text.Length > 0)
+        {
+            var resolved = AddressResolver.Resolve(text, SearchEngine);
+            var isSearch = resolved.StartsWith(SearchEngine.BuildUrl(""), StringComparison.Ordinal);
+            Suggestions.Add(isSearch
+                ? new SuggestionViewModel(text, $"{SearchEngine.Name} ile ara", resolved, "")
+                : new SuggestionViewModel(resolved, "Siteye git", resolved, ""));
+
+            var seen = new HashSet<string> { resolved };
+            var compare = System.Globalization.CultureInfo.GetCultureInfo("tr-TR").CompareInfo;
+            foreach (var bookmark in _bookmarks.Items
+                         .Where(b => compare.IndexOf(b.Title, text, System.Globalization.CompareOptions.IgnoreCase) >= 0
+                                     || compare.IndexOf(b.Url, text, System.Globalization.CompareOptions.IgnoreCase) >= 0)
+                         .Take(3))
+            {
+                if (seen.Add(bookmark.Url))
+                    Suggestions.Add(new SuggestionViewModel(bookmark.Title, bookmark.Url, bookmark.Url, ""));
+            }
+
+            foreach (var entry in _history.Suggest(text, 8))
+            {
+                if (Suggestions.Count >= 8)
+                    break;
+                if (seen.Add(entry.Url))
+                    Suggestions.Add(new SuggestionViewModel(string.IsNullOrWhiteSpace(entry.Title) ? entry.Url : entry.Title, entry.Url, entry.Url, ""));
+            }
+        }
+
+        OnPropertyChanged(nameof(SelectedSuggestionIndex));
+        OnPropertyChanged(nameof(HasSuggestions));
+    }
+
+    public void ClearSuggestions() => UpdateSuggestions("");
+
+    /// <summary>Arrow keys in the address bar; wraps through "nothing selected".</summary>
+    public void MoveSuggestion(int delta)
+    {
+        if (Suggestions.Count == 0)
+            return;
+
+        var next = SelectedSuggestionIndex + delta;
+        SelectedSuggestionIndex = next < -1 ? Suggestions.Count - 1 : next >= Suggestions.Count ? -1 : next;
+    }
+
+    public void OpenSuggestion(SuggestionViewModel suggestion)
+    {
+        ActiveTab?.Navigate(suggestion.Url);
+        ClearSuggestions();
+        FocusContentRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ---------------------------------------------------------------- tab context menu
+
+    public ICommand DuplicateTabCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel { Url: { } url } tab)
+            ActiveTab = CreateTab(url, Tabs.IndexOf(tab) + 1, tab.Title, tab.IsPrivate);
+    });
+
+    public ICommand ReloadTabCommand => new RelayCommand(p => (p as TabViewModel)?.Reload());
+
+    public ICommand ToggleMuteCommand => new RelayCommand(p => (p as TabViewModel)?.ToggleMute());
+
+    public ICommand TogglePinCommand => new RelayCommand(p =>
+    {
+        if (p is not TabViewModel tab)
+            return;
+
+        // Pinned tabs live together at the start of the strip.
+        var pinned = Tabs.Count(t => t.IsPinned);
+        tab.IsPinned = !tab.IsPinned;
+        Tabs.Move(Tabs.IndexOf(tab), tab.IsPinned ? pinned : pinned - 1);
+        ScheduleSave();
+    });
+
+    public ICommand CloseOtherTabsCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel keep)
+            CloseTabs(Tabs.Where(t => !ReferenceEquals(t, keep) && !t.IsPinned).ToList(), keep);
+    });
+
+    public ICommand CloseTabsToRightCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel from)
+            CloseTabs(Tabs.Skip(Tabs.IndexOf(from) + 1).Where(t => !t.IsPinned).ToList(), from);
+    });
+
+    public ICommand NewPrivateTabCommand => new RelayCommand(NewPrivateTab);
+
+    private void CloseTabs(List<TabViewModel> tabs, TabViewModel survivor)
+    {
+        ActiveTab = survivor;
+        foreach (var tab in tabs)
+            CloseTab(tab);
+    }
+
+    /// <summary>Right click on a page: the view shows Claxe's own menu built from WebView2's items.</summary>
+    public event EventHandler<CoreWebView2ContextMenuRequestedEventArgs>? PageContextMenuRequested;
 
     /// <summary>
     /// Flushes everything and releases every WebView2. Async because the session cookies
@@ -280,7 +432,8 @@ public sealed class MainViewModel : ObservableObject
         while (_permissionQueue.TryDequeue(out var queued))
             queued.Decide(false, remember: false);
 
-        var core = HostedTabs.Select(t => t.Core).Concat(Panels.Select(p => p.Tab?.Core)).FirstOrDefault(c => c is not null);
+        var core = HostedTabs.Where(t => !t.IsPrivate).Select(t => t.Core)
+            .Concat(Panels.Select(p => p.Tab?.Core)).FirstOrDefault(c => c is not null);
         if (_settings.RestoreSession && core is not null)
         {
             try
@@ -335,7 +488,7 @@ public sealed class MainViewModel : ObservableObject
         if (index < 0)
             return;
 
-        if (tab.Url is { } url && !InternalPages.IsInternal(url))
+        if (tab.Url is { } url && !InternalPages.IsInternal(url) && !tab.IsPrivate)
         {
             _closedTabs.Add(url);
             if (_closedTabs.Count > MaxClosedTabs)
@@ -397,7 +550,9 @@ public sealed class MainViewModel : ObservableObject
     public void MoveTab(TabViewModel tab, int newIndex)
     {
         var oldIndex = Tabs.IndexOf(tab);
-        newIndex = Math.Clamp(newIndex, 0, Tabs.Count - 1);
+        // Pinned tabs move only among themselves, the others only after them.
+        var pinned = Tabs.Count(t => t.IsPinned);
+        newIndex = tab.IsPinned ? Math.Clamp(newIndex, 0, pinned - 1) : Math.Clamp(newIndex, pinned, Tabs.Count - 1);
         if (oldIndex < 0 || oldIndex == newIndex)
             return;
 
@@ -432,9 +587,12 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(PanelWidth));
     }
 
-    private TabViewModel CreateTab(string? url, int index, string? title = null)
+    private TabViewModel CreateTab(string? url, int index, string? title = null, bool isPrivate = false, bool isPinned = false)
     {
-        var tab = CreatePage(url, title);
+        var tab = CreatePage(url, title, isPrivate, isPinned);
+        // New tabs never land inside the pinned group.
+        if (!isPinned)
+            index = Math.Max(index, Tabs.Count(t => t.IsPinned));
         tab.NewWindowRequested += OnNewWindowRequested;
         tab.InternalPageMessage += OnInternalPageMessage;
         tab.NavigationFinished += OnNavigationFinished;
@@ -446,9 +604,10 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>Wiring shared by tabs and web panels.</summary>
-    private TabViewModel CreatePage(string? url, string? title = null)
+    private TabViewModel CreatePage(string? url, string? title = null, bool isPrivate = false, bool isPinned = false)
     {
-        var tab = new TabViewModel(url, title);
+        var tab = new TabViewModel(url, title, isPrivate, isPinned);
+        tab.PageContextMenuRequested += OnPageContextMenuRequested;
         tab.PropertyChanged += OnTabPropertyChanged;
         tab.CloseRequested += OnTabCloseRequested;
         tab.PermissionRequested += OnPermissionRequested;
@@ -456,8 +615,12 @@ public sealed class MainViewModel : ObservableObject
         return tab;
     }
 
+    private void OnPageContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs e)
+        => PageContextMenuRequested?.Invoke(sender, e);
+
     private void Detach(TabViewModel tab)
     {
+        tab.PageContextMenuRequested -= OnPageContextMenuRequested;
         tab.PropertyChanged -= OnTabPropertyChanged;
         tab.CloseRequested -= OnTabCloseRequested;
         tab.PermissionRequested -= OnPermissionRequested;
@@ -487,7 +650,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnNavigationFinished(object? sender, bool success)
     {
-        if (sender is TabViewModel { Url: { } url } tab && success && IsHistoryWorthy(url))
+        if (sender is TabViewModel { Url: { } url, IsPrivate: false } tab && success && IsHistoryWorthy(url))
             _history.AddVisit(url, tab.Title);
 
         if (!ReferenceEquals(sender, ActiveTab))
@@ -508,7 +671,7 @@ public sealed class MainViewModel : ObservableObject
         var tab = (TabViewModel)sender!;
         if (e.PropertyName is nameof(TabViewModel.Url) or nameof(TabViewModel.Title))
             ScheduleSave();
-        if (e.PropertyName == nameof(TabViewModel.Title) && tab.Url is { } url && IsHistoryWorthy(url) && Tabs.Contains(tab))
+        if (e.PropertyName == nameof(TabViewModel.Title) && !tab.IsPrivate && tab.Url is { } url && IsHistoryWorthy(url) && Tabs.Contains(tab))
             _history.UpdateTitle(url, tab.Title);
 
         if (!ReferenceEquals(tab, ActiveTab))
@@ -551,7 +714,8 @@ public sealed class MainViewModel : ObservableObject
         var deferral = e.GetDeferral();
         try
         {
-            var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1);
+            // Popups from an InPrivate tab stay InPrivate (and share its profile).
+            var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1, isPrivate: source.IsPrivate);
             ActiveTab = tab;
             SoundService.Play(UiSound.TabOpen);
             await tab.EnsureCoreAsync();
@@ -593,10 +757,17 @@ public sealed class MainViewModel : ObservableObject
 
     private void NavigateFromAddressBar()
     {
+        if (SelectedSuggestionIndex >= 0 && SelectedSuggestionIndex < Suggestions.Count)
+        {
+            OpenSuggestion(Suggestions[SelectedSuggestionIndex]);
+            return;
+        }
+
         if (ActiveTab is not { } tab || string.IsNullOrWhiteSpace(tab.AddressText))
             return;
 
         tab.Navigate(AddressResolver.Resolve(tab.AddressText, SearchEngine));
+        ClearSuggestions();
         FocusContentRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -831,6 +1002,25 @@ public sealed class MainViewModel : ObservableObject
 
             case "importData":
                 ImportFromBrowser(tab, Text("source"), Flag("bookmarks"), Flag("history"));
+                break;
+
+            case "registerDefaultBrowser":
+                try
+                {
+                    DefaultBrowser.Register();
+                    DefaultBrowser.OpenWindowsSettings();
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException
+                                               or InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    Log.Error("Varsayılan tarayıcı kaydı başarısız.", ex);
+                }
+                BroadcastToInternalPages(_settingsController.BuildState());
+                break;
+
+            case "unregisterDefaultBrowser":
+                DefaultBrowser.Unregister();
+                BroadcastToInternalPages(_settingsController.BuildState());
                 break;
 
             case "clearData":
@@ -1103,10 +1293,12 @@ public sealed class MainViewModel : ObservableObject
         if (!_settings.RestoreSession)
             return;
 
+        // InPrivate tabs are never written to disk.
+        var saved = Tabs.Where(t => !t.IsPrivate).ToList();
         var state = new SessionState
         {
-            Tabs = Tabs.Select(t => new SessionTab { Url = t.Url ?? InternalPages.NewTabUrl, Title = t.Title }).ToList(),
-            ActiveIndex = ActiveTab is null ? 0 : Math.Max(0, Tabs.IndexOf(ActiveTab)),
+            Tabs = saved.Select(t => new SessionTab { Url = t.Url ?? InternalPages.NewTabUrl, Title = t.Title, IsPinned = t.IsPinned }).ToList(),
+            ActiveIndex = ActiveTab is null ? 0 : Math.Max(0, saved.IndexOf(ActiveTab)),
         };
         SessionStore.Save(state);
     }
