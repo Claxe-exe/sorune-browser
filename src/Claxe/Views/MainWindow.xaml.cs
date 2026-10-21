@@ -281,7 +281,7 @@ public partial class MainWindow : Window
     {
         var maximized = WindowState == WindowState.Maximized;
         MaximizeButton.Content = maximized ? "" : "";
-        MaximizeButton.ToolTip = maximized ? "Önceki boyutuna getir" : "Ekranı kapla";
+        MaximizeButton.ToolTip = L.T(maximized ? "Önceki boyutuna getir" : "Ekranı kapla");
 
         // A maximized WindowChrome window hangs over the screen edge by its resize frame.
         RootBorder.Margin = maximized && !_isBrowserFullScreen ? GetMaximizedOverhang() : default;
@@ -417,8 +417,8 @@ public partial class MainWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Duvar kâğıdı seç",
-            Filter = "Görseller (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp",
+            Title = L.T("Duvar kâğıdı seç"),
+            Filter = L.T("Görseller") + " (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp",
             CheckFileExists = true,
         };
 
@@ -532,7 +532,7 @@ public partial class MainWindow : Window
         var tab = _findTab;
         FindCount.Text = tab is null || FindBox.Text.Length == 0
             ? ""
-            : tab.FindMatchCount == 0 ? "Bulunamadı" : $"{tab.FindActiveIndex + 1}/{tab.FindMatchCount}";
+            : tab.FindMatchCount == 0 ? L.T("Bulunamadı") : $"{tab.FindActiveIndex + 1}/{tab.FindMatchCount}";
     }
 
     private async void FindBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -645,9 +645,9 @@ public partial class MainWindow : Window
 
     private bool ConfirmOpenRiskyFile(string path)
         => MessageBox.Show(this,
-               $"\"{System.IO.Path.GetFileName(path)}\" bir program ya da betik ve bilgisayarında çalışacak.\n\n" +
-               "Yalnızca güvendiğin bir kaynaktan indirdiysen aç. Açılsın mı?",
-               "Claxe", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
+               L.T("\"{0}\" bir program ya da betik ve bilgisayarında çalışacak.\n\nYalnızca güvendiğin bir kaynaktan indirdiysen aç. Açılsın mı?",
+                   System.IO.Path.GetFileName(path)),
+               "Sorune", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
     // ------------------------------------------------------------- web panels
 

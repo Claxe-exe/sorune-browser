@@ -169,6 +169,19 @@
                 <h2>Arama ve başlangıç</h2>
                 <div class="row">
                     <div class="row-text">
+                        <span class="label">Dil / Language</span>
+                        <span class="hint">Arayüz dili. Değişiklik yeniden başlatınca uygulanır.</span>
+                    </div>
+                    <div class="slider-group">
+                        <button type="button" class="chip" id="language-restart" hidden>Şimdi yeniden başlat</button>
+                        <div class="segmented" id="language" role="radiogroup" aria-label="Dil">
+                            <button type="button" data-value="tr">Türkçe</button>
+                            <button type="button" data-value="en">English</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
                         <span class="label">Arama motoru</span>
                         <span class="hint">Adres çubuğuna ve yeni sekmeye yazılan aramalar.</span>
                     </div>
@@ -177,7 +190,7 @@
                 <div class="row">
                     <div class="row-text">
                         <span class="label">Açık sekmeleri yeniden aç</span>
-                        <span class="hint">Claxe kapanıp açılınca sekmeler geri gelir. Kapatınca kayıtlı oturum silinir.</span>
+                        <span class="hint">Sorune kapanıp açılınca sekmeler geri gelir. Kapatınca kayıtlı oturum silinir.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Açık sekmeleri yeniden aç"></button>
                 </div>
@@ -204,7 +217,7 @@
                         <label><input type="checkbox" id="import-history" checked> Geçmiş <span class="hint">(son 180 gün, en fazla 5.000 sayfa)</span></label>
                     </div>
                     <div class="clear-actions">
-                        <span class="hint">Çerezler ve şifreler aktarılamaz: Chrome onları yalnızca kendisinin çözebileceği şekilde şifreliyor. Sitelere Claxe'te bir kez giriş yapman yeterli.</span>
+                        <span class="hint">Çerezler ve şifreler aktarılamaz: Chrome onları yalnızca kendisinin çözebileceği şekilde şifreliyor. Sitelere Sorune'de bir kez giriş yapman yeterli.</span>
                         <button type="button" class="chip" id="import-button">İçe aktar</button>
                     </div>
                     <p class="hint" id="import-status" hidden></p>
@@ -213,7 +226,7 @@
 
             <section class="card" id="gizlilik">
                 <h2>Gizlilik ve veriler</h2>
-                <p class="hint">Geçmiş ve kayıtlı oturum çerezleri Windows hesabına özel şifrelenmiş olarak saklanır. Claxe hiçbir yere veri göndermez.</p>
+                <p class="hint">Geçmiş ve kayıtlı oturum çerezleri Windows hesabına özel şifrelenmiş olarak saklanır. Sorune hiçbir yere veri göndermez.</p>
 
                 <div class="clear-box">
                     <span class="label">Tarama verilerini temizle</span>
@@ -248,7 +261,7 @@
             <section class="card" id="hakkinda">
                 <h2>Hakkında</h2>
                 <dl class="about">
-                    <dt>Claxe</dt><dd id="about-version"></dd>
+                    <dt>Sorune</dt><dd id="about-version"></dd>
                     <dt>Güncelleme</dt>
                     <dd>
                         <span id="update-status"></span>
@@ -258,11 +271,12 @@
                     <dt>WebView2</dt><dd id="about-webview"></dd>
                     <dt>Profil klasörü</dt><dd id="about-profile" class="mono"></dd>
                 </dl>
-                <p class="hint">Claxe, Microsoft WebView2 (Chromium) üzerinde çalışır. Siteler tarayıcıyı Microsoft Edge olarak görür ve Chrome Web Mağazası eklentileri kurulamaz.</p>
+                <p class="hint">Sorune, Microsoft WebView2 (Chromium) üzerinde çalışır. Siteler tarayıcıyı Microsoft Edge olarak görür ve Chrome Web Mağazası eklentileri kurulamaz.</p>
             </section>
         </main>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="settings.js"></script>
 </body>
 </html>

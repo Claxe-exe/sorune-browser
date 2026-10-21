@@ -1,9 +1,9 @@
-﻿# Builds the Claxe installer (Setup.exe) and update packages with Velopack.
+﻿# Builds the Sorune installer (Setup.exe) and update packages with Velopack.
 #   Requires: .NET 10 SDK, vpk tool (dotnet tool install -g vpk)
-#   Usage:    ./build/pack.ps1 -Version 0.2.0
-#   Output:   artifacts/releases (Claxe-win-Setup.exe, portable zip, update packages)
-#   Publish:  vpk upload github --repoUrl https://github.com/Claxe-exe/claxe-browser --publish --releaseName "Claxe <version>" --tag v<version> -o artifacts/releases --token <token>
-param([string]$Version = "0.2.0")
+#   Usage:    ./build/pack.ps1 -Version 0.3.0
+#   Output:   artifacts/releases (SoruneBrowser-win-Setup.exe, portable zip, update packages)
+#   Publish:  vpk upload github --repoUrl https://github.com/Claxe-exe/sorune-browser --publish --releaseName "Sorune <version>" --tag v<version> -o artifacts/releases --token <token>
+param([string]$Version = "0.3.0")
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path $PSScriptRoot
@@ -15,10 +15,12 @@ if (Test-Path $publish) { Remove-Item -Recurse -Force $publish }
 dotnet publish "$root\src\Claxe\Claxe.csproj" -c Release -r win-x64 --self-contained true `
     -p:Version=$Version -p:DebugType=none -o $publish
 Remove-Item "$publish\*.xml" -ErrorAction SilentlyContinue
+# Preset wallpapers are local extras (not in the repo); a public installer ships only the theme wallpapers.
+Remove-Item "$publish\Assets\Wallpapers" -Recurse -ErrorAction SilentlyContinue
 
-# The pack id decides the install folder (%LOCALAPPDATA%\ClaxeBrowser). It must NOT be "Claxe":
+# The pack id decides the install folder (%LOCALAPPDATA%\SoruneBrowser). It must NOT be "Sorune":
 # that is the user data folder, and uninstalling removes the install folder.
-vpk pack --packId ClaxeBrowser --packVersion $Version --packDir $publish --mainExe Claxe.exe `
-    --packTitle Claxe --packAuthors Claxe --icon "$root\src\Claxe\Assets\claxe.ico" --outputDir $releases
+vpk pack --packId SoruneBrowser --packVersion $Version --packDir $publish --mainExe Sorune.exe `
+    --packTitle Sorune --packAuthors Claxe --icon "$root\src\Claxe\Assets\claxe.ico" --outputDir $releases
 
 Write-Host "Kurulum dosyası: $releases"

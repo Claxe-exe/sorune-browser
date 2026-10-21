@@ -2,6 +2,9 @@ namespace Claxe.Models;
 
 public sealed class AppSettings
 {
+    /// <summary>"tr" or "en"; applied at the next start.</summary>
+    public string Language { get; set; } = "tr";
+
     /// <summary>Id from <see cref="Services.SearchEngines"/>.</summary>
     public string SearchEngine { get; set; } = "google";
 

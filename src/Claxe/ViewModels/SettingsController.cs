@@ -38,6 +38,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "mascotEnabled" => SetBool(value, v => settings.MascotEnabled = v),
             "soundsEnabled" => SetBool(value, v => settings.SoundsEnabled = v),
             "restoreSession" => SetBool(value, v => settings.RestoreSession = v),
+            "language" => Set(StringOrNull(value), v => v is "tr" or "en", v => settings.Language = v!),
             "sidebarEnabled" => SetBool(value, v => settings.SidebarEnabled = v),
             "sidebarPosition" => Set(StringOrNull(value), v => v is "left" or "right", v => settings.SidebarPosition = v!),
             "performanceMode" => SetBool(value, v => settings.PerformanceMode = v),
@@ -61,14 +62,14 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
         var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
         if (!WallpaperExtensions.Contains(extension))
         {
-            error = "Desteklenen biçimler: JPG, PNG, WEBP, BMP.";
+            error = L.T("Desteklenen biçimler: JPG, PNG, WEBP, BMP.");
             return false;
         }
 
         var info = new FileInfo(sourcePath);
         if (!info.Exists || info.Length > MaxWallpaperBytes)
         {
-            error = "Görsel bulunamadı ya da 30 MB'tan büyük.";
+            error = L.T("Görsel bulunamadı ya da 30 MB'tan büyük.");
             return false;
         }
 
@@ -88,7 +89,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Error($"Duvar kâğıdı kopyalanamadı: {sourcePath}", ex);
-            error = "Görsel kopyalanamadı.";
+            error = L.T("Görsel kopyalanamadı.");
             return false;
         }
     }
@@ -135,6 +136,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
                 .Select(p => new { p.Origin, kind = p.Kind.ToString(), what = PermissionStore.Describe(p.Kind), p.Allowed }),
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
             maxPanels = PanelStore.MaxPanels,
+            activeLanguage = L.Language,
             defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
             update = new
             {

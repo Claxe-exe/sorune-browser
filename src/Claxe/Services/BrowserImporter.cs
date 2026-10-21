@@ -132,7 +132,7 @@ public static class BrowserImporter
             if (dir != "Default" && !dir.StartsWith("Profile ", StringComparison.Ordinal))
                 continue;
 
-            var source = Describe(key, name, folder, dir, names.GetValueOrDefault(dir, dir == "Default" ? "Varsayılan" : dir));
+            var source = Describe(key, name, folder, dir, names.GetValueOrDefault(dir, dir == "Default" ? L.T("Varsayılan") : dir));
             if (source is not null)
                 yield return source;
         }
@@ -143,7 +143,7 @@ public static class BrowserImporter
         // Older Opera versions keep the files in the root, newer ones in "Default".
         foreach (var (folder, dir) in new[] { (root, "root"), (Path.Combine(root, "Default"), "Default") })
         {
-            if (Directory.Exists(folder) && Describe(key, name, folder, dir, "Varsayılan") is { } source)
+            if (Directory.Exists(folder) && Describe(key, name, folder, dir, L.T("Varsayılan")) is { } source)
             {
                 yield return source;
                 yield break;
@@ -174,7 +174,7 @@ public static class BrowserImporter
             return result;
 
         // Bookmarks bar goes straight into "<Browser>", the other roots get a sub-folder.
-        foreach (var (rootKey, label) in new[] { ("bookmark_bar", ""), ("other", "Diğer"), ("synced", "Mobil") })
+        foreach (var (rootKey, label) in new[] { ("bookmark_bar", ""), ("other", L.T("Diğer")), ("synced", L.T("Mobil")) })
         {
             if (roots.TryGetProperty(rootKey, out var node))
                 WalkChromium(node, label.Length > 0 ? [label] : [], result, ShortName(source.Browser));

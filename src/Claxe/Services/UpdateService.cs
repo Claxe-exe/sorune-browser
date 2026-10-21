@@ -23,7 +23,7 @@ public enum UpdateState
 public static class UpdateService
 {
     /// <summary>Where releases are published (vpk upload github / gh release).</summary>
-    public const string ReleasesUrl = "https://github.com/Claxe-exe/claxe-browser";
+    public const string ReleasesUrl = "https://github.com/Claxe-exe/sorune-browser";
 
     private static readonly UpdateManager Manager = new(new GithubSource(ReleasesUrl, accessToken: null, prerelease: false));
     private static UpdateInfo? _pending;

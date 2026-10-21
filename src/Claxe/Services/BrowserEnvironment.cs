@@ -43,7 +43,8 @@ public static class BrowserEnvironment
             userDataFolder: AppPaths.WebViewData,
             options: new CoreWebView2EnvironmentOptions
             {
-                Language = "tr-TR",
+                // Built-in menus and sites' Accept-Language follow the interface language.
+                Language = L.Locale,
                 AreBrowserExtensionsEnabled = false,
             });
 }

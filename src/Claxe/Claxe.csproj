@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -6,10 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>Claxe</AssemblyName>
+    <AssemblyName>Sorune</AssemblyName>
     <RootNamespace>Claxe</RootNamespace>
-    <Product>Claxe Browser</Product>
-    <Version>0.2.0</Version>
+    <Product>Sorune</Product>
+    <Company>Claxe</Company>
+    <Authors>Claxe</Authors>
+    <Version>0.3.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\claxe.ico</ApplicationIcon>
     <!-- Program.Main (Velopack hooks first) instead of the WPF-generated entry point. -->

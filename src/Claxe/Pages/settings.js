@@ -4,7 +4,7 @@
 
 if (window.top !== window.self) {
     document.documentElement.replaceChildren();
-    throw new Error("Claxe sayfası çerçeve içinde açılamaz.");
+    throw new Error("Sorune sayfası çerçeve içinde açılamaz.");
 }
 
 const host = window.chrome && window.chrome.webview;
@@ -42,9 +42,9 @@ function el(tag, props = {}, children = []) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(props)) {
         if (key === "class") node.className = value;
-        else if (key === "text") node.textContent = value;
+        else if (key === "text") node.textContent = t(value);
         else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
-        else node.setAttribute(key, value);
+        else node.setAttribute(key, ["title", "aria-label", "placeholder"].includes(key) ? t(value) : value);
     }
     node.append(...children);
     return node;
@@ -62,7 +62,7 @@ function render() {
 
     const opacity = s.chromeOpacity ?? state.themeDefaults.chromeOpacity;
     if (dragging !== "glass") $("glass").value = Math.round((0.97 - opacity) * 100);
-    $("glass-value").textContent = `Saydamlık %${Math.round((1 - opacity) * 100)}`;
+    $("glass-value").textContent = t("Saydamlık %{0}", Math.round((1 - opacity) * 100));
     $("glass-reset").disabled = s.chromeOpacity == null;
 
     setSegmented("corner", s.cornerStyle);
@@ -83,28 +83,32 @@ function render() {
     renderPanels();
     renderPermissions();
 
+    setSegmented("language", s.language);
+    $("language-restart").hidden = s.language === state.activeLanguage;
+
     const db = state.defaultBrowser;
     const registered = Boolean(db.registeredExe);
     const moved = registered && db.registeredExe.toLowerCase() !== (db.currentExe || "").toLowerCase();
     $("default-browser-hint").textContent = !registered
-        ? "Linkler Claxe'te açılsın. Windows, seçimi Ayarlar › Varsayılan uygulamalar ekranında senin yapmanı ister."
+        ? t("Linkler Sorune'de açılsın. Windows, seçimi Ayarlar › Varsayılan uygulamalar ekranında senin yapmanı ister.")
         : moved
-            ? `Kayıtlı Claxe başka bir yerde: ${db.registeredExe}. Bu kopyayı kaydetmek için tekrar bas.`
-            : "Claxe tarayıcı olarak kayıtlı. Windows ayarlarında Claxe'i seçtiysen linkler burada açılır.";
-    $("default-browser-set").textContent = registered && !moved ? "Windows ayarlarını aç" : "Varsayılan yap";
+            ? t("Kayıtlı Sorune başka bir yerde: {0}. Bu kopyayı kaydetmek için tekrar bas.", db.registeredExe)
+            : t("Sorune tarayıcı olarak kayıtlı. Windows ayarlarında Sorune'yi seçtiysen linkler burada açılır.");
+    $("default-browser-set").textContent = t(registered && !moved ? "Windows ayarlarını aç" : "Varsayılan yap");
     $("default-browser-remove").hidden = !registered;
 
     $("about-version").textContent = state.update.current || state.about.version || "-";
     const update = state.update;
-    $("update-status").textContent = {
-        NotInstalled: "Kurulum dosyasıyla kurulduğunda otomatik güncellenir. ",
+    const updateText = {
+        NotInstalled: t("Kurulum dosyasıyla kurulduğunda otomatik güncellenir."),
         Idle: "",
-        Checking: "Denetleniyor… ",
-        UpToDate: "Claxe güncel. ",
-        Downloading: `${update.available} indiriliyor… `,
-        ReadyToRestart: `${update.available} hazır. `,
-        Failed: "Güncelleme sunucusuna ulaşılamadı. ",
+        Checking: t("Denetleniyor…"),
+        UpToDate: t("Sorune güncel."),
+        Downloading: t("{0} indiriliyor…", update.available),
+        ReadyToRestart: t("{0} hazır.", update.available),
+        Failed: t("Güncelleme sunucusuna ulaşılamadı."),
     }[update.state] ?? "";
+    $("update-status").textContent = updateText ? updateText + " " : "";
     $("update-check").hidden = !["Idle", "UpToDate", "Failed"].includes(update.state);
     $("update-apply").hidden = update.state !== "ReadyToRestart";
     $("about-webview").textContent = state.about.webView2 || "-";
@@ -165,7 +169,7 @@ function renderWallpapers(s) {
         type: "button",
         class: "wp upload",
         onclick: () => { $("wallpaper-error").hidden = true; send({ type: "pickWallpaper" }); },
-    }, [el("div", {}, [el("span", { text: "+" }), document.createTextNode(state.customWallpaper ? "Başka görsel" : "Görsel yükle")])]));
+    }, [el("div", {}, [el("span", { text: "+" }), document.createTextNode(t(state.customWallpaper ? "Başka görsel" : "Görsel yükle"))])]));
 
     $("wallpapers").replaceChildren(...tiles);
 }
@@ -193,7 +197,7 @@ function renderSwatches(s) {
             type: "button",
             class: "swatch" + (color === current ? " selected" : ""),
             title: isTheme ? "Temanın rengi" : color,
-            "aria-label": isTheme ? "Temanın rengi" : `Vurgu rengi ${color}`,
+            "aria-label": isTheme ? "Temanın rengi" : t("Vurgu rengi {0}", color),
             onclick: () => update("accentColor", isTheme ? null : color),
         });
         swatch.style.background = color;
@@ -237,8 +241,8 @@ function renderPanels() {
             input.select();
         };
         const move = (delta) => () => send({ type: "movePanel", id: panel.id, delta });
-        const up = el("button", { type: "button", class: "chip", text: "↑", title: "Yukarı taşı", "aria-label": `${panel.name} yukarı`, onclick: move(-1) });
-        const down = el("button", { type: "button", class: "chip", text: "↓", title: "Aşağı taşı", "aria-label": `${panel.name} aşağı`, onclick: move(1) });
+        const up = el("button", { type: "button", class: "chip", text: "↑", title: "Yukarı taşı", "aria-label": t("{0} yukarı", panel.name), onclick: move(-1) });
+        const down = el("button", { type: "button", class: "chip", text: "↓", title: "Aşağı taşı", "aria-label": t("{0} aşağı", panel.name), onclick: move(1) });
         up.disabled = index === 0;
         down.disabled = index === last;
 
@@ -246,9 +250,9 @@ function renderPanels() {
             el("span", { class: "grow" }, [name, el("span", { class: "sub", text: panel.url })]),
             up,
             down,
-            el("button", { type: "button", class: "chip", text: "✎", title: "Yeniden adlandır", "aria-label": `${panel.name} yeniden adlandır`, onclick: rename }),
+            el("button", { type: "button", class: "chip", text: "✎", title: "Yeniden adlandır", "aria-label": t("{0} yeniden adlandır", panel.name), onclick: rename }),
             el("button", {
-                type: "button", class: "chip danger", text: "Kaldır", "aria-label": `${panel.name} panelini kaldır`,
+                type: "button", class: "chip danger", text: "Kaldır", "aria-label": t("{0} panelini kaldır", panel.name),
                 onclick: () => send({ type: "removePanel", id: panel.id }),
             }),
         ]);
@@ -341,7 +345,7 @@ let importSources = [];
 function renderImportSources() {
     const select = $("import-source");
     const options = importSources.map((s) => {
-        const what = [s.hasBookmarks && "yer imleri", s.hasHistory && "geçmiş"].filter(Boolean).join(", ");
+        const what = [s.hasBookmarks && t("yer imleri"), s.hasHistory && t("geçmiş")].filter(Boolean).join(", ");
         return el("option", { value: s.id, text: `${s.browser} — ${s.profile} (${what})` });
     });
     if (options.length === 0) options.push(el("option", { value: "", text: "Bu bilgisayarda başka bir tarayıcı bulunamadı" }));
@@ -355,11 +359,16 @@ $("import-button").addEventListener("click", () => {
     const history = $("import-history").checked;
     if (!source || (!bookmarks && !history)) return;
     $("import-button").disabled = true;
-    $("import-button").textContent = "Aktarılıyor…";
+    $("import-button").textContent = t("Aktarılıyor…");
     $("import-status").hidden = true;
     send({ type: "importData", source, bookmarks, history });
 });
 
+$("language").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button && button.getAttribute("aria-checked") !== "true") update("language", button.dataset.value);
+});
+$("language-restart").addEventListener("click", () => send({ type: "restartApp" }));
 $("update-check").addEventListener("click", () => send({ type: "checkUpdates" }));
 $("update-apply").addEventListener("click", () => send({ type: "applyUpdate" }));
 $("default-browser-set").addEventListener("click", () => send({ type: "registerDefaultBrowser" }));
@@ -385,18 +394,18 @@ $("clear-button").addEventListener("click", () => {
     const kinds = ["history", "cookies", "cache", "downloads"].filter((k) => $(`clear-${k}`).checked);
     if (kinds.length === 0) return;
     if (!clearArmed) {
-        button.textContent = "Emin misin? Tekrar bas";
+        button.textContent = t("Emin misin? Tekrar bas");
         button.classList.add("confirm");
         clearArmed = setTimeout(() => {
             clearArmed = null;
-            button.textContent = "Verileri temizle";
+            button.textContent = t("Verileri temizle");
             button.classList.remove("confirm");
         }, 4000);
         return;
     }
     clearTimeout(clearArmed);
     clearArmed = null;
-    button.textContent = "Temizleniyor…";
+    button.textContent = t("Temizleniyor…");
     button.disabled = true;
     const message = { type: "clearData", range: clearRange };
     for (const kind of kinds) message[kind] = true;
@@ -433,7 +442,7 @@ if (host) {
                 const first = state === null;
                 state = message;
                 render();
-                // Opened as claxe://ayarlar#section: jump there once the content has its real height.
+                // Opened as sorune://ayarlar#section: jump there once the content has its real height.
                 if (first && location.hash) document.querySelector(location.hash)?.scrollIntoView();
                 break;
             }
@@ -444,10 +453,10 @@ if (host) {
             case "importResult": {
                 const button = $("import-button");
                 button.disabled = false;
-                button.textContent = "İçe aktar";
+                button.textContent = t("İçe aktar");
                 $("import-status").textContent = message.ok
-                    ? `Tamamlandı: ${message.bookmarks} yer imi, ${message.history} geçmiş kaydı eklendi (zaten olanlar atlandı).`
-                    : `İçe aktarılamadı: ${message.error}`;
+                    ? t("Tamamlandı: {0} yer imi, {1} geçmiş kaydı eklendi (zaten olanlar atlandı).", message.bookmarks, message.history)
+                    : t("İçe aktarılamadı: {0}", message.error);
                 $("import-status").hidden = false;
                 break;
             }
@@ -457,9 +466,9 @@ if (host) {
             case "dataCleared": {
                 const button = $("clear-button");
                 button.disabled = false;
-                button.textContent = "Verileri temizle";
+                button.textContent = t("Verileri temizle");
                 button.classList.remove("confirm");
-                $("clear-status").textContent = message.ok ? "Seçilen veriler temizlendi." : "Bazı veriler temizlenemedi, ayrıntılar günlükte.";
+                $("clear-status").textContent = message.ok ? t("Seçilen veriler temizlendi.") : t("Bazı veriler temizlenemedi, ayrıntılar günlükte.");
                 $("clear-status").hidden = false;
                 break;
             }
@@ -471,7 +480,7 @@ if (host) {
                 }
                 break;
             case "wallpaperError":
-                $("wallpaper-error").textContent = message.message || "Görsel eklenemedi.";
+                $("wallpaper-error").textContent = message.message || t("Görsel eklenemedi.");
                 $("wallpaper-error").hidden = false;
                 break;
         }

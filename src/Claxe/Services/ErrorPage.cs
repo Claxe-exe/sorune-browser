@@ -14,21 +14,21 @@ public static class ErrorPage
     public static (string Title, string Detail)? Describe(CoreWebView2WebErrorStatus status) => status switch
     {
         CoreWebView2WebErrorStatus.HostNameNotResolved =>
-            ("Bu siteye ulaşılamıyor", "Adres bulunamadı. Yazımı kontrol et ya da internet bağlantını dene."),
+            (L.T("Bu siteye ulaşılamıyor"), L.T("Adres bulunamadı. Yazımı kontrol et ya da internet bağlantını dene.")),
         CoreWebView2WebErrorStatus.Disconnected =>
-            ("İnternet bağlantısı yok", "Bilgisayarın internete bağlı görünmüyor. Bağlantını kontrol edip tekrar dene."),
+            (L.T("İnternet bağlantısı yok"), L.T("Bilgisayarın internete bağlı görünmüyor. Bağlantını kontrol edip tekrar dene.")),
         CoreWebView2WebErrorStatus.CannotConnect or CoreWebView2WebErrorStatus.ServerUnreachable =>
-            ("Bu siteye bağlanılamadı", "Sunucu yanıt vermiyor ya da bağlantıyı reddetti. Biraz sonra tekrar dene."),
+            (L.T("Bu siteye bağlanılamadı"), L.T("Sunucu yanıt vermiyor ya da bağlantıyı reddetti. Biraz sonra tekrar dene.")),
         CoreWebView2WebErrorStatus.Timeout =>
-            ("Site çok geç yanıt verdi", "Bağlantı zaman aşımına uğradı. Sunucu yoğun olabilir."),
+            (L.T("Site çok geç yanıt verdi"), L.T("Bağlantı zaman aşımına uğradı. Sunucu yoğun olabilir.")),
         CoreWebView2WebErrorStatus.ConnectionReset =>
-            ("Bağlantı kesildi", "Sayfa yüklenirken bağlantı sıfırlandı. Tekrar denemek genelde işe yarar."),
+            (L.T("Bağlantı kesildi"), L.T("Sayfa yüklenirken bağlantı sıfırlandı. Tekrar denemek genelde işe yarar.")),
         CoreWebView2WebErrorStatus.ErrorHttpInvalidServerResponse =>
-            ("Sunucu geçersiz yanıt gönderdi", "Site şu an düzgün çalışmıyor olabilir."),
+            (L.T("Sunucu geçersiz yanıt gönderdi"), L.T("Site şu an düzgün çalışmıyor olabilir.")),
         CoreWebView2WebErrorStatus.RedirectFailed =>
-            ("Yönlendirme başarısız", "Site seni çok fazla ya da hatalı yere yönlendiriyor."),
+            (L.T("Yönlendirme başarısız"), L.T("Site seni çok fazla ya da hatalı yere yönlendiriyor.")),
         CoreWebView2WebErrorStatus.UnexpectedError =>
-            ("Sayfa yüklenemedi", "Beklenmeyen bir hata oluştu. Tekrar dene."),
+            (L.T("Sayfa yüklenemedi"), L.T("Beklenmeyen bir hata oluştu. Tekrar dene.")),
         _ => null,
     };
 
@@ -48,7 +48,7 @@ public static class ErrorPage
             text = theme.TextPrimary,
             dim = theme.TextSecondary,
             mascot = InternalPages.AssetsOrigin + "Mascot/sleepy.png",
-            retry = "Tekrar dene",
+            retry = L.T("Tekrar dene"),
         });
 
         // Only touches Chromium's error document (never a real page). Styles are set through

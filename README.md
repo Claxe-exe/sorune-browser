@@ -1,10 +1,10 @@
-# Claxe Browser
+# Sorune
 
-> **EN:** Claxe is a personal, anime-styled web browser for Windows 11, built with C# / .NET 10 / WPF on top of
+> **EN:** Sorune is a personal, anime-styled web browser for Windows 11, built with C# / .NET 10 / WPF on top of
 > Microsoft WebView2 (Chromium). Glassy themed UI, a mascot that peeks over the toolbar, web panels, an InPrivate mode,
-> encrypted history and session cookies. The interface is in Turkish.
+> encrypted history and session cookies. Interface in Turkish and English. Made by Claxe.
 
-Anime estetiğini modern masaüstü tasarımıyla birleştiren, kişisel kullanım için geliştirilmiş Windows tarayıcısı.
+Anime estetiğini modern masaüstü tasarımıyla birleştiren, kişisel kullanım için geliştirilmiş Windows tarayıcısı. Geliştiren: Claxe.
 C# / .NET 10 / WPF + Microsoft WebView2 (Chromium).
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
@@ -25,12 +25,12 @@ C# / .NET 10 / WPF + Microsoft WebView2 (Chromium).
 - **Gizlilik:** Geçmiş ve oturum çerezleri Windows hesabına bağlı şifrelenir (DPAPI), site izinleri hatırlanır,
   tarama verileri zaman aralığıyla temizlenir, telemetri yok
 - **İçe aktarma:** Chrome, Opera GX, Edge, Brave, Opera, Vivaldi ve Firefox'tan yer imleri ve geçmiş
-- **Diğer:** Varsayılan tarayıcı olabilme, tek pencere, arayüz sesleri, performans modu, otomatik güncelleme
+- **Diğer:** Türkçe / İngilizce arayüz, varsayılan tarayıcı olabilme, tek pencere, arayüz sesleri, performans modu, otomatik güncelleme
 
 ## Kurulum
 
-Releases sayfasındaki `ClaxeBrowser-win-Setup.exe` dosyasını çalıştır. .NET kurulu olması gerekmez; WebView2 Runtime
-Windows 11'de hazır gelir. Claxe `%LOCALAPPDATA%\ClaxeBrowser` klasörüne kurulur ve yeni sürümleri kendisi indirir
+Releases sayfasındaki `SoruneBrowser-win-Setup.exe` dosyasını çalıştır. .NET kurulu olması gerekmez; WebView2 Runtime
+Windows 11'de hazır gelir. Sorune `%LOCALAPPDATA%\SoruneBrowser` klasörüne kurulur ve yeni sürümleri kendisi indirir
 (Ayarlar → Hakkında).
 
 ## Kaynaktan derleme
@@ -48,7 +48,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.2.0
+powershell -File build/pack.ps1 -Version 0.3.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır.
@@ -56,6 +56,8 @@ powershell -File build/pack.ps1 -Version 0.2.0
 > Hazır duvar kâğıtları depoda yoktur; yalnızca dört temanın görselleri ve maskot depodadır.
 > Kendi görsellerini `src/Claxe/Assets/Wallpapers` klasörüne `.jpg` olarak (ve `thumbs/` altına küçük önizlemesini)
 > koyabilir ya da uygulamadan "Görsel yükle" ile ekleyebilirsin.
+
+Arayüz metinleri `src/Claxe/Assets/i18n/en.json` dosyasındadır (Türkçe metin → İngilizce).
 
 ## Klavye kısayolları
 
@@ -92,7 +94,7 @@ build/pack.ps1 Kurulum dosyası
 
 ## Veriler ve gizlilik
 
-Kullanıcı verileri `%LOCALAPPDATA%\Claxe` altındadır (program ise `%LOCALAPPDATA%\ClaxeBrowser` altına kurulur;
+Kullanıcı verileri `%LOCALAPPDATA%\Sorune` altındadır (program ise `%LOCALAPPDATA%\SoruneBrowser` altına kurulur;
 kaldırmak verileri silmez).
 
 | Dosya | İçerik | Biçim |
@@ -103,15 +105,15 @@ kaldırmak verileri silmez).
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
 Şifre kaydetme kapalıdır. Başka tarayıcılardan çerez ve şifre aktarılmaz (Chromium bunları yalnızca kendisinin
-çözebileceği şekilde şifreler). Geliştirme ve test için `CLAXE_PROFILE_DIR` ortam değişkeni ayrı bir profil klasörü
+çözebileceği şekilde şifreler). Geliştirme ve test için `SORUNE_PROFILE_DIR` ortam değişkeni ayrı bir profil klasörü
 gösterebilir.
 
 ## WebView2'nin Chrome'dan farkları
 
 - Siteler tarayıcıyı Microsoft Edge olarak görür (motor Edge'in motorudur; uyumluluk açısından avantajlıdır).
 - Chrome Web Mağazası eklentileri kurulamaz.
-- Oturum çerezlerini WebView2 kendisi saklamaz; Claxe bunları kapanışta şifreleyip açılışta geri yükler.
-- Tarayıcı süreci çökerse Claxe yeni bir süreç başlatır ve sekmeleri yeniden yükler.
+- Oturum çerezlerini WebView2 kendisi saklamaz; Sorune bunları kapanışta şifreleyip açılışta geri yükler.
+- Tarayıcı süreci çökerse Sorune yeni bir süreç başlatır ve sekmeleri yeniden yükler.
 
 ## Lisans
 

@@ -5,7 +5,7 @@
 // Claxe pages are never meant to live inside another site's frame.
 if (window.top !== window.self) {
     document.documentElement.replaceChildren();
-    throw new Error("Claxe sayfası çerçeve içinde açılamaz.");
+    throw new Error("Sorune sayfası çerçeve içinde açılamaz.");
 }
 
 const host = window.chrome && window.chrome.webview;
@@ -24,14 +24,14 @@ function send(message) {
 
 // ---------------------------------------------------------------- clock
 
-const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
-const dateFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" });
+const timeFormat = new Intl.DateTimeFormat(i18n.locale, { hour: "2-digit", minute: "2-digit" });
+const dateFormat = new Intl.DateTimeFormat(i18n.locale, { day: "numeric", month: "long", weekday: "long" });
 
 function greetingFor(hour) {
-    if (hour >= 5 && hour < 12) return "Günaydın";
-    if (hour >= 12 && hour < 18) return "İyi günler";
-    if (hour >= 18 && hour < 23) return "İyi akşamlar";
-    return "İyi geceler";
+    if (hour >= 5 && hour < 12) return t("Günaydın");
+    if (hour >= 12 && hour < 18) return t("İyi günler");
+    if (hour >= 18 && hour < 23) return t("İyi akşamlar");
+    return t("İyi geceler");
 }
 
 function tick() {
@@ -86,8 +86,8 @@ function renderShortcuts() {
         remove.type = "button";
         remove.className = "tile-remove";
         remove.textContent = "×";
-        remove.title = "Kısayolu kaldır";
-        remove.setAttribute("aria-label", `${shortcut.title} kısayolunu kaldır`);
+        remove.title = t("Kısayolu kaldır");
+        remove.setAttribute("aria-label", t("{0} kısayolunu kaldır", shortcut.title));
         remove.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -107,7 +107,7 @@ function renderShortcuts() {
         icon.textContent = "+";
         const name = document.createElement("span");
         name.className = "tile-name";
-        name.textContent = "Kısayol ekle";
+        name.textContent = t("Kısayol ekle");
         add.append(icon, name);
         add.addEventListener("click", openDialog);
         root.append(add);
@@ -279,7 +279,7 @@ function applyConfig(config) {
         img.src = theme.wallpaper;
     }
 
-    $("query").placeholder = `${config.searchEngine || "Web"} ile ara veya adres yaz`;
+    $("query").placeholder = t("{0} ile ara veya adres yaz", config.searchEngine || "Web");
     state.maxShortcuts = config.maxShortcuts || state.maxShortcuts;
     state.shortcuts = config.shortcuts || [];
     renderShortcuts();

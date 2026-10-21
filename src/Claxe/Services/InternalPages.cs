@@ -29,18 +29,22 @@ public static class InternalPages
     public const string WallpapersOrigin = "https://" + WallpapersHost + "/";
 
     /// <summary>Friendly addresses shown in (and accepted by) the address bar.</summary>
-    private static readonly (string Friendly, string Url)[] FriendlyNames =
+    /// <summary>Scheme shown in the address bar; the old name keeps working as an alias.</summary>
+    public const string Scheme = "sorune://";
+    private const string LegacyScheme = "claxe://";
+
+    private static readonly (string Path, string Url)[] FriendlyNames =
     [
-        ("claxe://ayarlar", SettingsUrl),
-        ("claxe://settings", SettingsUrl),
-        ("claxe://yenisekme", NewTabUrl),
-        ("claxe://newtab", NewTabUrl),
-        ("claxe://gecmis", HistoryUrl),
-        ("claxe://history", HistoryUrl),
-        ("claxe://yer-imleri", BookmarksUrl),
-        ("claxe://bookmarks", BookmarksUrl),
-        ("claxe://indirmeler", DownloadsUrl),
-        ("claxe://downloads", DownloadsUrl),
+        ("ayarlar", SettingsUrl),
+        ("settings", SettingsUrl),
+        ("yenisekme", NewTabUrl),
+        ("newtab", NewTabUrl),
+        ("gecmis", HistoryUrl),
+        ("history", HistoryUrl),
+        ("yer-imleri", BookmarksUrl),
+        ("bookmarks", BookmarksUrl),
+        ("indirmeler", DownloadsUrl),
+        ("downloads", DownloadsUrl),
     ];
 
     public static bool IsInternal(string? url)
@@ -59,12 +63,12 @@ public static class InternalPages
             return "";
 
         if (IsSettings(url))
-            return "claxe://ayarlar";
+            return Scheme + "ayarlar";
 
         if (IsLibrary(url))
         {
             var hash = url.IndexOf('#') is var i and >= 0 ? url[(i + 1)..] : "gecmis";
-            return hash is "yer-imleri" or "indirmeler" ? "claxe://" + hash : "claxe://gecmis";
+            return Scheme + (hash is "yer-imleri" or "indirmeler" ? hash : "gecmis");
         }
 
         return url;
@@ -72,17 +76,44 @@ public static class InternalPages
 
     public static bool TryResolveFriendly(string input, out string url)
     {
-        foreach (var (friendly, target) in FriendlyNames)
+        input = input.Trim().TrimEnd('/');
+        foreach (var scheme in new[] { Scheme, LegacyScheme })
         {
-            if (string.Equals(input.TrimEnd('/'), friendly, StringComparison.OrdinalIgnoreCase))
+            if (!input.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var path = input[scheme.Length..];
+            foreach (var (name, target) in FriendlyNames)
             {
-                url = target;
-                return true;
+                if (string.Equals(path, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    url = target;
+                    return true;
+                }
             }
         }
 
         url = "";
         return false;
+    }
+
+    private static string? _languageScript;
+
+    /// <summary>
+    /// Gives Sorune's own pages the interface language and its dictionary before their scripts
+    /// run (no Turkish flash). Only set on the internal host; websites never see it.
+    /// </summary>
+    public static async Task InjectLanguageAsync(CoreWebView2 core)
+    {
+        if (L.Language == "tr")
+            return;
+
+        _languageScript ??= $$"""
+            if (location.hostname === '{{Host}}') {
+              window.__soruneI18n = {{System.Text.Json.JsonSerializer.Serialize(new { lang = L.Language, locale = L.Locale, strings = L.Strings })}};
+            }
+            """;
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(_languageScript);
     }
 
     public static void Register(CoreWebView2 core)

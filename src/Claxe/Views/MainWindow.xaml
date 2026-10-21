@@ -132,23 +132,23 @@
                                       MouseUp="Tab_MouseUp">
                                     <Grid.ContextMenu>
                                         <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                            <MenuItem Header="Yeni sekme" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
-                                            <MenuItem Header="Yeni gizli sekme" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
+                                            <MenuItem Header="{controls:T 'Yeni sekme'}" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
+                                            <MenuItem Header="{controls:T 'Yeni gizli sekme'}" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
                                             <Separator />
-                                            <MenuItem Header="Yeniden yükle" Command="{Binding ReloadTabCommand}"
+                                            <MenuItem Header="{controls:T 'Yeniden yükle'}" Command="{Binding ReloadTabCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Çoğalt" Command="{Binding DuplicateTabCommand}"
+                                            <MenuItem Header="{controls:T 'Çoğalt'}" Command="{Binding DuplicateTabCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Sabitle / sabitlemeyi kaldır" Command="{Binding TogglePinCommand}"
+                                            <MenuItem Header="{controls:T 'Sabitle / sabitlemeyi kaldır'}" Command="{Binding TogglePinCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Sesi kapat / aç" Command="{Binding ToggleMuteCommand}"
+                                            <MenuItem Header="{controls:T 'Sesi kapat / aç'}" Command="{Binding ToggleMuteCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <Separator />
-                                            <MenuItem Header="Diğer sekmeleri kapat" Command="{Binding CloseOtherTabsCommand}"
+                                            <MenuItem Header="{controls:T 'Diğer sekmeleri kapat'}" Command="{Binding CloseOtherTabsCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Sağdaki sekmeleri kapat" Command="{Binding CloseTabsToRightCommand}"
+                                            <MenuItem Header="{controls:T 'Sağdaki sekmeleri kapat'}" Command="{Binding CloseTabsToRightCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Kapat" InputGestureText="Ctrl+W" Command="{Binding CloseTabCommand}"
+                                            <MenuItem Header="{controls:T 'Kapat'}" InputGestureText="Ctrl+W" Command="{Binding CloseTabCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
                                     </Grid.ContextMenu>
@@ -218,7 +218,7 @@
                                                 FontSize="11"
                                                 VerticalAlignment="Center"
                                                 Content="&#xE767;"
-                                                ToolTip="Sekmenin sesini kapat"
+                                                ToolTip="{controls:T 'Sekmenin sesini kapat'}"
                                                 Visibility="Collapsed"
                                                 Command="{Binding DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}" />
@@ -253,7 +253,7 @@
                                             <Border x:Name="PrivateBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Padding="5,1"
                                                     CornerRadius="5" VerticalAlignment="Center"
                                                     Background="{DynamicResource AccentSoftBrush}" Visibility="Collapsed">
-                                                <TextBlock Text="Gizli" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                                                <TextBlock Text="{controls:T 'Gizli'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
                                             </Border>
                                             <TextBlock x:Name="TitleText"
                                                        VerticalAlignment="Center"
@@ -268,7 +268,7 @@
                                                 Style="{StaticResource TabCloseButtonStyle}"
                                                 VerticalAlignment="Center"
                                                 Content="&#xE711;"
-                                                ToolTip="Sekmeyi kapat (Ctrl+W)"
+                                                ToolTip="{controls:T 'Sekmeyi kapat (Ctrl+W)'}"
                                                 Visibility="Hidden"
                                                 Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}" />
@@ -303,7 +303,7 @@
                                     <DataTrigger Binding="{Binding IsSuspended}" Value="True">
                                         <Setter TargetName="TitleText" Property="Opacity" Value="0.5" />
                                         <Setter TargetName="FaviconImage" Property="Opacity" Value="0.5" />
-                                        <Setter TargetName="TabRoot" Property="ToolTip" Value="Uyutuldu: bellek ve işlemci tasarrufu için. Tıklayınca uyanır." />
+                                        <Setter TargetName="TabRoot" Property="ToolTip" Value="{controls:T 'Uyutuldu: bellek ve işlemci tasarrufu için. Tıklayınca uyanır.'}" />
                                     </DataTrigger>
 
                                     <Trigger SourceName="TabRoot" Property="IsMouseOver" Value="True">
@@ -331,7 +331,7 @@
                                     <DataTrigger Binding="{Binding IsMuted}" Value="True">
                                         <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="AudioButton" Property="Content" Value="&#xE74F;" />
-                                        <Setter TargetName="AudioButton" Property="ToolTip" Value="Sekmenin sesini aç" />
+                                        <Setter TargetName="AudioButton" Property="ToolTip" Value="{controls:T 'Sekmenin sesini aç'}" />
                                     </DataTrigger>
 
                                     <!-- Pinned: icon only (last, so it wins over hover/active) -->
@@ -352,7 +352,7 @@
                             Style="{StaticResource IconButtonStyle}"
                             Width="30" Height="30"
                             Content="&#xE710;"
-                            ToolTip="Yeni sekme (Ctrl+T)"
+                            ToolTip="{controls:T 'Yeni sekme (Ctrl+T)'}"
                             Command="{Binding NewTabCommand}"
                             WindowChrome.IsHitTestVisibleInChrome="True" />
                 </DockPanel>
@@ -363,11 +363,11 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top"
                             WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource CaptionButtonStyle}" Content="&#xE921;"
-                            ToolTip="Simge durumuna küçült" Click="Minimize_Click" />
+                            ToolTip="{controls:T 'Simge durumuna küçült'}" Click="Minimize_Click" />
                     <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButtonStyle}" Content="&#xE922;"
                             Click="Maximize_Click" />
                     <Button Style="{StaticResource CloseCaptionButtonStyle}" Content="&#xE8BB;"
-                            ToolTip="Kapat" Click="Close_Click" />
+                            ToolTip="{controls:T 'Kapat'}" Click="Close_Click" />
                 </StackPanel>
             </Grid>
 
@@ -418,7 +418,7 @@
                         <Button x:Name="DownloadsButton"
                                 Style="{StaticResource IconButtonStyle}"
                                 Margin="0,0,2,0"
-                                ToolTip="İndirmeler (Ctrl+J)"
+                                ToolTip="{controls:T 'İndirmeler (Ctrl+J)'}"
                                 Command="{Binding OpenDownloadsCommand}"
                                 Visibility="{Binding ShowDownloadsButton, Converter={StaticResource BoolToVisibility}}">
                             <Grid Width="22" Height="22">
@@ -454,22 +454,22 @@
                             </Grid>
                         </Button>
                         <Button Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
-                                ToolTip="Ayarlar (Ctrl+,)" Command="{Binding OpenSettingsCommand}" />
+                                ToolTip="{controls:T 'Ayarlar (Ctrl+,)'}" Command="{Binding OpenSettingsCommand}" />
                     </StackPanel>
 
                     <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Content="&#xE72B;"
-                            ToolTip="Geri (Alt+Sol ok)" Command="{Binding BackCommand}" />
+                            ToolTip="{controls:T 'Geri (Alt+Sol ok)'}" Command="{Binding BackCommand}" />
                     <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" Content="&#xE72A;"
-                            ToolTip="İleri (Alt+Sağ ok)" Command="{Binding ForwardCommand}" Margin="2,0" />
+                            ToolTip="{controls:T 'İleri (Alt+Sağ ok)'}" Command="{Binding ForwardCommand}" Margin="2,0" />
                     <Button Grid.Column="2" Command="{Binding ReloadOrStopCommand}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
                                 <Setter Property="Content" Value="&#xE72C;" />
-                                <Setter Property="ToolTip" Value="Yenile (F5)" />
+                                <Setter Property="ToolTip" Value="{controls:T 'Yenile (F5)'}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding ActiveTab.IsLoading}" Value="True">
                                         <Setter Property="Content" Value="&#xE711;" />
-                                        <Setter Property="ToolTip" Value="Yüklemeyi durdur" />
+                                        <Setter Property="ToolTip" Value="{controls:T 'Yüklemeyi durdur'}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -517,7 +517,7 @@
                             <Button Height="24" Margin="6,0,0,0" Padding="8,0"
                                     Style="{StaticResource GhostButtonStyle}" FontSize="11.5"
                                     Content="{Binding ActiveTab.ZoomPercent}"
-                                    ToolTip="Yakınlaştırmayı sıfırla (Ctrl+0)"
+                                    ToolTip="{controls:T 'Yakınlaştırmayı sıfırla (Ctrl+0)'}"
                                     Click="ResetZoom_Click"
                                     Visibility="{Binding ActiveTab.ZoomPercent, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
 
@@ -531,12 +531,12 @@
                                         <Setter Property="Content" Value="&#xE734;" />
                                         <Setter Property="FontSize" Value="13" />
                                         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-                                        <Setter Property="ToolTip" Value="Yer imlerine ekle (Ctrl+D)" />
+                                        <Setter Property="ToolTip" Value="{controls:T 'Yer imlerine ekle (Ctrl+D)'}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsActiveTabBookmarked}" Value="True">
                                                 <Setter Property="Content" Value="&#xE735;" />
                                                 <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                                <Setter Property="ToolTip" Value="Yer iminden kaldır (Ctrl+D)" />
+                                                <Setter Property="ToolTip" Value="{controls:T 'Yer iminden kaldır (Ctrl+D)'}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -554,25 +554,25 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="&#xE721;" />
                                         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-                                        <Setter Property="ToolTip" Value="Ara veya adres yaz" />
+                                        <Setter Property="ToolTip" Value="{controls:T 'Ara veya adres yaz'}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ActiveTab.Security}" Value="Secure">
                                                 <Setter Property="Text" Value="&#xE72E;" />
-                                                <Setter Property="ToolTip" Value="Bağlantı güvenli (HTTPS)" />
+                                                <Setter Property="ToolTip" Value="{controls:T 'Bağlantı güvenli (HTTPS)'}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding ActiveTab.Security}" Value="NotSecure">
                                                 <Setter Property="Text" Value="&#xE7BA;" />
                                                 <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
-                                                <Setter Property="ToolTip" Value="Güvenli değil: bağlantı şifrelenmemiş (HTTP)" />
+                                                <Setter Property="ToolTip" Value="{controls:T 'Güvenli değil: bağlantı şifrelenmemiş (HTTP)'}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding ActiveTab.Security}" Value="CertificateError">
                                                 <Setter Property="Text" Value="&#xE7BA;" />
                                                 <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
-                                                <Setter Property="ToolTip" Value="Güvenli değil: sertifika geçersiz" />
+                                                <Setter Property="ToolTip" Value="{controls:T 'Güvenli değil: sertifika geçersiz'}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding ActiveTab.Security}" Value="Local">
                                                 <Setter Property="Text" Value="&#xE946;" />
-                                                <Setter Property="ToolTip" Value="Yerel adres veya dosya" />
+                                                <Setter Property="ToolTip" Value="{controls:T 'Yerel adres veya dosya'}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -583,7 +583,7 @@
                                        VerticalAlignment="Center"
                                        FontSize="{StaticResource AddressFontSize}"
                                        IsHitTestVisible="False"
-                                       Text="Ara veya adres yaz"
+                                       Text="{controls:T 'Ara veya adres yaz'}"
                                        Foreground="{DynamicResource TextSecondaryBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -634,7 +634,7 @@
                         <Button DockPanel.Dock="Bottom"
                                 Style="{StaticResource IconButtonStyle}"
                                 Content="&#xE710;" FontSize="12"
-                                ToolTip="Panelleri düzenle"
+                                ToolTip="{controls:T 'Panelleri düzenle'}"
                                 Command="{Binding ManagePanelsCommand}" />
                         <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
                             <ItemsControl.ItemTemplate>
@@ -666,10 +666,10 @@
                                             </Grid>
                                             <Button.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                                    <MenuItem Header="Paneli kapat ve belleği boşalt"
+                                                    <MenuItem Header="{controls:T 'Paneli kapat ve belleği boşalt'}"
                                                               Command="{Binding UnloadPanelCommand}"
                                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                    <MenuItem Header="Kenar çubuğundan kaldır"
+                                                    <MenuItem Header="{controls:T 'Kenar çubuğundan kaldır'}"
                                                               Command="{Binding RemovePanelCommand}"
                                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 </ContextMenu>
@@ -705,11 +705,11 @@
                                        Text="{Binding ActivePanel.Name}" TextTrimming="CharacterEllipsis" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
                                 <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="12"
-                                        Content="&#xE72C;" ToolTip="Paneli yenile" Command="{Binding ReloadPanelCommand}" />
+                                        Content="&#xE72C;" ToolTip="{controls:T 'Paneli yenile'}" Command="{Binding ReloadPanelCommand}" />
                                 <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="12"
-                                        Content="&#xE8A7;" ToolTip="Sekmede aç" Command="{Binding PanelToTabCommand}" />
+                                        Content="&#xE8A7;" ToolTip="{controls:T 'Sekmede aç'}" Command="{Binding PanelToTabCommand}" />
                                 <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30" FontSize="10"
-                                        Content="&#xE711;" ToolTip="Paneli kapat" Command="{Binding ClosePanelCommand}" />
+                                        Content="&#xE711;" ToolTip="{controls:T 'Paneli kapat'}" Command="{Binding ClosePanelCommand}" />
                             </StackPanel>
                         </Grid>
                         <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
@@ -799,11 +799,11 @@
                     </Border.Effect>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="10"
-                                Content="&#xE711;" ToolTip="Kapat (Esc)" Click="FindClose_Click" />
+                                Content="&#xE711;" ToolTip="{controls:T 'Kapat (Esc)'}" Click="FindClose_Click" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="11"
-                                Content="&#xE70D;" ToolTip="Sonraki (Enter)" Click="FindNext_Click" />
+                                Content="&#xE70D;" ToolTip="{controls:T 'Sonraki (Enter)'}" Click="FindNext_Click" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="11"
-                                Content="&#xE70E;" ToolTip="Önceki (Shift+Enter)" Click="FindPrevious_Click" />
+                                Content="&#xE70E;" ToolTip="{controls:T 'Önceki (Shift+Enter)'}" Click="FindPrevious_Click" />
                         <TextBlock x:Name="FindCount" DockPanel.Dock="Right" Margin="8,0" VerticalAlignment="Center"
                                    FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBox x:Name="FindBox" Style="{StaticResource AddressTextBoxStyle}" FontSize="13"
@@ -852,16 +852,16 @@
                                 <TextBlock Text="{Binding Host}" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="270" />
                                 <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12.5">
-                                    <Run Text="Şu izni istiyor:" />
+                                    <Run Text="{controls:T 'Şu izni istiyor:'}" />
                                     <Run Text="{Binding What, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 </TextBlock>
                             </StackPanel>
                         </StackPanel>
-                        <CheckBox Margin="0,16,0,0" Content="Bu site için kararımı hatırla"
+                        <CheckBox Margin="0,16,0,0" Content="{controls:T 'Bu site için kararımı hatırla'}"
                                   IsChecked="{Binding Remember}" Style="{StaticResource ClaxeCheckBoxStyle}" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                            <Button Content="Engelle" Style="{StaticResource GhostButtonStyle}" Command="{Binding DenyCommand}" />
-                            <Button Content="İzin ver" Margin="8,0,0,0" Style="{StaticResource AccentButtonStyle}" Command="{Binding AllowCommand}" />
+                            <Button Content="{controls:T 'Engelle'}" Style="{StaticResource GhostButtonStyle}" Command="{Binding DenyCommand}" />
+                            <Button Content="{controls:T 'İzin ver'}" Margin="8,0,0,0" Style="{StaticResource AccentButtonStyle}" Command="{Binding AllowCommand}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -55,7 +55,7 @@ public static class ThemeService
             .OfType<ThemeDefinition>()
             .Where(t => !string.IsNullOrWhiteSpace(t.Id))
             .OrderBy(t => t.Id == DefaultThemeId ? 0 : 1).ThenBy(t => t.Name)
-            .Select(t => new ThemeInfo(t.Id, t.Name, t.Description, t.Colors.Accent,
+            .Select(t => new ThemeInfo(t.Id, t.Name, t.Description is null ? null : L.T(t.Description), t.Colors.Accent,
                 t.Wallpaper is null ? null : InternalPages.AssetsOrigin + "Themes/thumbs/" + Uri.EscapeDataString(t.Wallpaper)))
             .ToList();
     }

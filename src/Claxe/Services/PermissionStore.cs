@@ -49,19 +49,19 @@ public sealed class PermissionStore
 
     public static string Describe(CoreWebView2PermissionKind kind) => kind switch
     {
-        CoreWebView2PermissionKind.Camera => "Kamera",
-        CoreWebView2PermissionKind.Microphone => "Mikrofon",
-        CoreWebView2PermissionKind.Geolocation => "Konum",
-        CoreWebView2PermissionKind.Notifications => "Bildirimler",
-        CoreWebView2PermissionKind.ClipboardRead => "Panoyu okuma",
-        CoreWebView2PermissionKind.OtherSensors => "Hareket ve ışık sensörleri",
-        CoreWebView2PermissionKind.MultipleAutomaticDownloads => "Birden çok dosyayı otomatik indirme",
-        CoreWebView2PermissionKind.FileReadWrite => "Dosyaları okuma ve yazma",
-        CoreWebView2PermissionKind.Autoplay => "Otomatik oynatma",
-        CoreWebView2PermissionKind.LocalFonts => "Yerel yazı tipleri",
-        CoreWebView2PermissionKind.MidiSystemExclusiveMessages => "MIDI cihazları",
-        CoreWebView2PermissionKind.WindowManagement => "Pencere yönetimi",
-        _ => "Diğer bir izin",
+        CoreWebView2PermissionKind.Camera => L.T("Kamera"),
+        CoreWebView2PermissionKind.Microphone => L.T("Mikrofon"),
+        CoreWebView2PermissionKind.Geolocation => L.T("Konum"),
+        CoreWebView2PermissionKind.Notifications => L.T("Bildirimler"),
+        CoreWebView2PermissionKind.ClipboardRead => L.T("Panoyu okuma"),
+        CoreWebView2PermissionKind.OtherSensors => L.T("Hareket ve ışık sensörleri"),
+        CoreWebView2PermissionKind.MultipleAutomaticDownloads => L.T("Birden çok dosyayı otomatik indirme"),
+        CoreWebView2PermissionKind.FileReadWrite => L.T("Dosyaları okuma ve yazma"),
+        CoreWebView2PermissionKind.Autoplay => L.T("Otomatik oynatma"),
+        CoreWebView2PermissionKind.LocalFonts => L.T("Yerel yazı tipleri"),
+        CoreWebView2PermissionKind.MidiSystemExclusiveMessages => L.T("MIDI cihazları"),
+        CoreWebView2PermissionKind.WindowManagement => L.T("Pencere yönetimi"),
+        _ => L.T("Diğer bir izin"),
     };
 
     /// <summary>Segoe Fluent Icons glyph for the prompt.</summary>

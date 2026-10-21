@@ -27,7 +27,7 @@ public enum SecurityState
 /// </summary>
 public sealed class TabViewModel : ObservableObject, IDisposable
 {
-    private const string NewTabTitle = "Yeni Sekme";
+    private static string NewTabTitle => L.T("Yeni Sekme");
 
     // Enums go to pages as camelCase strings ("completed"), the same as in the JSON files.
     private static readonly JsonSerializerOptions PageJson = new(JsonSerializerDefaults.Web)
@@ -336,7 +336,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         catch (Exception ex) when (ex is COMException or InvalidOperationException or WebView2RuntimeNotFoundException)
         {
             Log.Error($"Sekme başlatılamadı: {Url}", ex);
-            Title = "Sekme başlatılamadı";
+            Title = L.T("Sekme başlatılamadı");
             IsLoading = false;
         }
     }
@@ -431,6 +431,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         var core = webView.CoreWebView2;
         ConfigureSettings(core.Settings);
         InternalPages.Register(core);
+        await InternalPages.InjectLanguageAsync(core);
+        if (_disposed)
+            return;
 
         core.SourceChanged += (_, _) => OnSourceChanged(core);
         core.NavigationStarting += (_, _) =>

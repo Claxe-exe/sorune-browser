@@ -160,6 +160,9 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>The settings page asked for a wallpaper file; the view shows the file picker.</summary>
     public event EventHandler? WallpaperPickRequested;
 
+    /// <summary>"Restart now" after changing the language.</summary>
+    public event EventHandler? RestartRequested;
+
     /// <summary>Asked before opening a downloaded program or script; the view shows the question.</summary>
     public Func<string, bool> ConfirmOpenRiskyFile { get; set; } = _ => false;
 
@@ -190,7 +193,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public string WindowTitle => ActiveTab is { } tab ? $"{tab.Title} - Claxe" : "Claxe";
+    public string WindowTitle => ActiveTab is { } tab ? $"{tab.Title} - Sorune" : "Sorune";
 
     public bool IsContentFullScreen => ActiveTab?.IsContentFullScreen == true;
 
@@ -322,8 +325,8 @@ public sealed class MainViewModel : ObservableObject
             var resolved = AddressResolver.Resolve(text, SearchEngine);
             var isSearch = resolved.StartsWith(SearchEngine.BuildUrl(""), StringComparison.Ordinal);
             Suggestions.Add(isSearch
-                ? new SuggestionViewModel(text, $"{SearchEngine.Name} ile ara", resolved, "")
-                : new SuggestionViewModel(resolved, "Siteye git", resolved, ""));
+                ? new SuggestionViewModel(text, L.T("{0} ile ara", SearchEngine.Name), resolved, "")
+                : new SuggestionViewModel(resolved, L.T("Siteye git"), resolved, ""));
 
             var seen = new HashSet<string> { resolved };
             var compare = System.Globalization.CultureInfo.GetCultureInfo("tr-TR").CompareInfo;
@@ -1021,6 +1024,10 @@ public sealed class MainViewModel : ObservableObject
                 BroadcastToInternalPages(_settingsController.BuildState());
                 break;
 
+            case "restartApp":
+                RestartRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
             case "checkUpdates":
                 _ = UpdateService.CheckAsync();
                 break;
@@ -1168,7 +1175,7 @@ public sealed class MainViewModel : ObservableObject
         const int historyLimit = 5000;
         try
         {
-            var source = BrowserImporter.Find(sourceId) ?? throw new InvalidOperationException("Tarayıcı profili bulunamadı.");
+            var source = BrowserImporter.Find(sourceId) ?? throw new InvalidOperationException(L.T("Tarayıcı profili bulunamadı."));
             var (readBookmarks, readHistory) = await Task.Run(() => (
                 bookmarks && source.HasBookmarks ? BrowserImporter.ReadBookmarks(source) : [],
                 history && source.HasHistory ? BrowserImporter.ReadHistory(source, historyLimit) : []));
@@ -1183,7 +1190,7 @@ public sealed class MainViewModel : ObservableObject
         {
             Log.Error($"İçe aktarma başarısız: {sourceId}", ex);
             var message = ex is IOException or Microsoft.Data.Sqlite.SqliteException
-                ? "Dosyalar okunamadı. O tarayıcıyı kapatıp tekrar dene."
+                ? L.T("Dosyalar okunamadı. O tarayıcıyı kapatıp tekrar dene.")
                 : ex.Message;
             requester.PostToInternalPage(new { type = "importResult", ok = false, error = message });
         }

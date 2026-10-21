@@ -18,7 +18,7 @@ public sealed class SingleInstance : IDisposable
     private SingleInstance(Mutex mutex) => _mutex = mutex;
 
     /// <summary>Per profile, so a test profile (CLAXE_PROFILE_DIR) runs next to the real one.</summary>
-    private static string Name { get; } = "Claxe-" + Convert.ToHexString(
+    private static string Name { get; } = "Sorune-" + Convert.ToHexString(
         SHA256.HashData(Encoding.UTF8.GetBytes(AppPaths.DataRoot.ToLowerInvariant())))[..16];
 
     /// <summary>Returns the lock when this is the first instance, otherwise null.</summary>
@@ -48,7 +48,7 @@ public sealed class SingleInstance : IDisposable
         }
         catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException)
         {
-            Log.Error("Açık olan Claxe'e ulaşılamadı.", ex);
+            Log.Error("Açık olan Sorune'ye ulaşılamadı.", ex);
             return false;
         }
     }

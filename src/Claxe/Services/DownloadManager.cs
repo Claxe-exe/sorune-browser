@@ -52,7 +52,7 @@ public sealed class DownloadManager
         foreach (var record in _records.Where(r => r.IsActive))
         {
             record.Status = DownloadStatus.Failed;
-            record.Error = "Claxe kapandığında yarım kaldı";
+            record.Error = L.T("Sorune kapandığında yarım kaldı");
         }
     }
 
@@ -217,19 +217,19 @@ public sealed class DownloadManager
 
     private static string Describe(CoreWebView2DownloadInterruptReason reason) => reason switch
     {
-        CoreWebView2DownloadInterruptReason.FileMalicious => "Zararlı olabileceği için engellendi",
-        CoreWebView2DownloadInterruptReason.FileSecurityCheckFailed => "Güvenlik denetimi başarısız oldu",
-        CoreWebView2DownloadInterruptReason.FileBlockedByPolicy => "İlke tarafından engellendi",
-        CoreWebView2DownloadInterruptReason.FileNoSpace => "Diskte yer yok",
-        CoreWebView2DownloadInterruptReason.FileAccessDenied => "Klasöre yazma izni yok",
+        CoreWebView2DownloadInterruptReason.FileMalicious => L.T("Zararlı olabileceği için engellendi"),
+        CoreWebView2DownloadInterruptReason.FileSecurityCheckFailed => L.T("Güvenlik denetimi başarısız oldu"),
+        CoreWebView2DownloadInterruptReason.FileBlockedByPolicy => L.T("İlke tarafından engellendi"),
+        CoreWebView2DownloadInterruptReason.FileNoSpace => L.T("Diskte yer yok"),
+        CoreWebView2DownloadInterruptReason.FileAccessDenied => L.T("Klasöre yazma izni yok"),
         CoreWebView2DownloadInterruptReason.FileNameTooLong or CoreWebView2DownloadInterruptReason.FileTooLarge
-            => "Dosya kaydedilemedi",
+            => L.T("Dosya kaydedilemedi"),
         CoreWebView2DownloadInterruptReason.NetworkFailed or CoreWebView2DownloadInterruptReason.NetworkTimeout
             or CoreWebView2DownloadInterruptReason.NetworkDisconnected or CoreWebView2DownloadInterruptReason.NetworkServerDown
-            => "Ağ bağlantısı kesildi",
-        CoreWebView2DownloadInterruptReason.UserShutdown => "Claxe kapandığında yarım kaldı",
-        _ when reason.ToString().StartsWith("Server", StringComparison.Ordinal) => "Sunucu hatası",
-        _ => "İndirme başarısız oldu",
+            => L.T("Ağ bağlantısı kesildi"),
+        CoreWebView2DownloadInterruptReason.UserShutdown => L.T("Sorune kapandığında yarım kaldı"),
+        _ when reason.ToString().StartsWith("Server", StringComparison.Ordinal) => L.T("Sunucu hatası"),
+        _ => L.T("İndirme başarısız oldu"),
     };
 
     private DownloadRecord? Find(string? id) => _records.FirstOrDefault(r => r.Id == id);

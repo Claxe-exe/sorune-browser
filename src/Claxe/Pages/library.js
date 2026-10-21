@@ -4,7 +4,7 @@
 
 if (window.top !== window.self) {
     document.documentElement.replaceChildren();
-    throw new Error("Claxe sayfası çerçeve içinde açılamaz.");
+    throw new Error("Sorune sayfası çerçeve içinde açılamaz.");
 }
 
 const host = window.chrome && window.chrome.webview;
@@ -23,9 +23,9 @@ function el(tag, props = {}, children = []) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(props)) {
         if (key === "class") node.className = value;
-        else if (key === "text") node.textContent = value;
+        else if (key === "text") node.textContent = t(value);
         else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
-        else node.setAttribute(key, value);
+        else node.setAttribute(key, ["title", "aria-label", "placeholder"].includes(key) ? t(value) : value);
     }
     node.append(...children);
     return node;
@@ -57,7 +57,7 @@ function showView() {
     for (const link of document.querySelectorAll(".nav a")) {
         link.classList.toggle("active", link.getAttribute("href") === `#${view}`);
     }
-    document.title = VIEWS[view];
+    document.title = t(VIEWS[view]);
 
     if (view === "gecmis") send({ type: "history", text: $("history-search").value });
     if (view === "yer-imleri") send({ type: "bookmarks" });
@@ -68,15 +68,15 @@ window.addEventListener("hashchange", showView);
 
 // ---------------------------------------------------------------- history
 
-const dayFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
-const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const dayFormat = new Intl.DateTimeFormat(i18n.locale, { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+const timeFormat = new Intl.DateTimeFormat(i18n.locale, { hour: "2-digit", minute: "2-digit" });
 
 function dayLabel(date) {
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return "Bugün";
-    if (date.toDateString() === yesterday.toDateString()) return "Dün";
+    if (date.toDateString() === today.toDateString()) return t("Bugün");
+    if (date.toDateString() === yesterday.toDateString()) return t("Dün");
     return dayFormat.format(date);
 }
 
@@ -100,7 +100,7 @@ function renderHistory(more) {
                 el("span", { class: "item-sub", text: hostOf(entry.url) }),
             ]),
             el("button", {
-                type: "button", class: "icon-btn danger", title: "Geçmişten kaldır", "aria-label": `${title} geçmişten kaldır`, text: "×",
+                type: "button", class: "icon-btn danger", title: "Geçmişten kaldır", "aria-label": t("{0} geçmişten kaldır", title), text: "×",
                 onclick: () => send({ type: "deleteHistory", ids: [entry.id] }),
             }),
         ]));
@@ -138,7 +138,7 @@ function renderBookmarks() {
 }
 
 function folderHeader(folder, count) {
-    const label = el("span", { text: folder ? `📁 ${folder} (${count})` : `Klasörsüz (${count})` });
+    const label = el("span", { text: folder ? `📁 ${folder} (${count})` : t("Klasörsüz ({0})", count) });
     const header = el("h3", { class: "day folder-head" }, [label]);
     if (folder) {
         header.append(el("button", {
@@ -208,7 +208,7 @@ function bookmarkRow(bookmark, folders) {
             el("button", { type: "button", class: "icon-btn", title: "Klasöre taşı (boş bırakırsan klasörden çıkar)", "aria-label": "Klasöre taşı", text: "📁", onclick: move }),
             el("button", { type: "button", class: "icon-btn", title: "Yeniden adlandır", "aria-label": "Yeniden adlandır", text: "✎", onclick: rename }),
             el("button", {
-                type: "button", class: "icon-btn danger", title: "Yer imini sil", "aria-label": `${bookmark.title} yer imini sil`, text: "×",
+                type: "button", class: "icon-btn danger", title: "Yer imini sil", "aria-label": t("{0} yer imini sil", bookmark.title), text: "×",
                 onclick: () => send({ type: "removeBookmark", id: bookmark.id }),
             }),
         ]);
@@ -219,7 +219,7 @@ $("bookmark-search").addEventListener("input", renderBookmarks);
 
 // ---------------------------------------------------------------- downloads
 
-const sizeFormat = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 });
+const sizeFormat = new Intl.NumberFormat(i18n.locale, { maximumFractionDigits: 1 });
 
 function formatSize(bytes) {
     if (bytes == null) return "?";
@@ -247,14 +247,14 @@ function renderDownloads() {
             children.push(bar);
             children.push(el("span", {
                 class: "item-sub status",
-                text: `${d.status === "paused" ? "Duraklatıldı · " : ""}${formatSize(d.receivedBytes)} / ${known ? formatSize(d.totalBytes) : "bilinmiyor"}`,
+                text: `${d.status === "paused" ? t("Duraklatıldı") + " · " : ""}${formatSize(d.receivedBytes)} / ${known ? formatSize(d.totalBytes) : t("bilinmiyor")}`,
             }));
         } else {
             let status = "";
             let cls = "item-sub status";
-            if (d.status === "completed") { status = missing ? "Dosya taşınmış ya da silinmiş" : `${formatSize(d.totalBytes)} · ${hostOf(d.url)}`; cls += " done"; }
-            if (d.status === "cancelled") { status = "İptal edildi"; cls += " done"; }
-            if (d.status === "failed") { status = d.error || "Başarısız"; cls += " failed"; }
+            if (d.status === "completed") { status = missing ? t("Dosya taşınmış ya da silinmiş") : `${formatSize(d.totalBytes)} · ${hostOf(d.url)}`; cls += " done"; }
+            if (d.status === "cancelled") { status = t("İptal edildi"); cls += " done"; }
+            if (d.status === "failed") { status = d.error || t("Başarısız"); cls += " failed"; }
             children.push(el("span", { class: cls, text: status }));
         }
 
