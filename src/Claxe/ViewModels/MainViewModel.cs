@@ -82,6 +82,9 @@ public sealed class MainViewModel : ObservableObject
         foreach (var panel in _panelStore.Items)
             Panels.Add(new PanelViewModel(panel));
 
+        UpdateService.StateChanged += (_, _) =>
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(() => BroadcastToInternalPages(_settingsController.BuildState()));
+
         NewTabCommand = new RelayCommand(NewTab);
         CloseTabCommand = new RelayCommand(p => CloseTab(p as TabViewModel ?? ActiveTab));
         ActivateTabCommand = new RelayCommand(p =>
@@ -1016,6 +1019,14 @@ public sealed class MainViewModel : ObservableObject
                     Log.Error("Varsayılan tarayıcı kaydı başarısız.", ex);
                 }
                 BroadcastToInternalPages(_settingsController.BuildState());
+                break;
+
+            case "checkUpdates":
+                _ = UpdateService.CheckAsync();
+                break;
+
+            case "applyUpdate":
+                UpdateService.RestartToApply();
                 break;
 
             case "unregisterDefaultBrowser":

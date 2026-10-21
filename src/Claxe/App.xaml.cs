@@ -54,6 +54,15 @@ public partial class App : Application
         window.Show();
         viewModel.Start(e.Args);
 
+        // Quiet update check once things have settled (only when installed via Setup.exe).
+        var updateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        updateTimer.Tick += async (_, _) =>
+        {
+            updateTimer.Stop();
+            await UpdateService.CheckAsync();
+        };
+        updateTimer.Start();
+
         _instance?.Listen(args => Dispatcher.BeginInvoke(() =>
         {
             if (viewModel.OpenExternal(args) == 0)

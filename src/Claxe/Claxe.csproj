@@ -9,9 +9,11 @@
     <AssemblyName>Claxe</AssemblyName>
     <RootNamespace>Claxe</RootNamespace>
     <Product>Claxe Browser</Product>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\claxe.ico</ApplicationIcon>
+    <!-- Program.Main (Velopack hooks first) instead of the WPF-generated entry point. -->
+    <StartupObject>Claxe.Program</StartupObject>
     <!-- Required by the LibraryImport source generator in Interop\NativeMethods.cs. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -19,6 +21,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
   <ItemGroup>

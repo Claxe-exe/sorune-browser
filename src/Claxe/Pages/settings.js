@@ -94,7 +94,19 @@ function render() {
     $("default-browser-set").textContent = registered && !moved ? "Windows ayarlarını aç" : "Varsayılan yap";
     $("default-browser-remove").hidden = !registered;
 
-    $("about-version").textContent = state.about.version || "-";
+    $("about-version").textContent = state.update.current || state.about.version || "-";
+    const update = state.update;
+    $("update-status").textContent = {
+        NotInstalled: "Kurulum dosyasıyla kurulduğunda otomatik güncellenir. ",
+        Idle: "",
+        Checking: "Denetleniyor… ",
+        UpToDate: "Claxe güncel. ",
+        Downloading: `${update.available} indiriliyor… `,
+        ReadyToRestart: `${update.available} hazır. `,
+        Failed: "Güncelleme sunucusuna ulaşılamadı. ",
+    }[update.state] ?? "";
+    $("update-check").hidden = !["Idle", "UpToDate", "Failed"].includes(update.state);
+    $("update-apply").hidden = update.state !== "ReadyToRestart";
     $("about-webview").textContent = state.about.webView2 || "-";
     $("about-profile").textContent = state.about.profile;
 
@@ -348,6 +360,8 @@ $("import-button").addEventListener("click", () => {
     send({ type: "importData", source, bookmarks, history });
 });
 
+$("update-check").addEventListener("click", () => send({ type: "checkUpdates" }));
+$("update-apply").addEventListener("click", () => send({ type: "applyUpdate" }));
 $("default-browser-set").addEventListener("click", () => send({ type: "registerDefaultBrowser" }));
 $("default-browser-remove").addEventListener("click", () => send({ type: "unregisterDefaultBrowser" }));
 

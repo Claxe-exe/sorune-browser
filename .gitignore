@@ -486,3 +486,9 @@ $RECYCLE.BIN/
 
 # Published build
 /dist/
+
+# Installer build output (build/pack.ps1)
+/artifacts/
+
+# Preset wallpapers stay local (only the four theme wallpapers ship in the repo)
+/src/Claxe/Assets/Wallpapers/

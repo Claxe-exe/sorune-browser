@@ -136,6 +136,12 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
             maxPanels = PanelStore.MaxPanels,
             defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
+            update = new
+            {
+                state = UpdateService.State.ToString(),
+                current = UpdateService.CurrentVersion,
+                available = UpdateService.AvailableVersion,
+            },
             about = new
             {
                 version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3),

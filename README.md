@@ -1,120 +1,119 @@
 # Claxe Browser
 
-Anime estetiğine sahip, kişisel kullanım için geliştirilen Windows tarayıcısı.
+> **EN:** Claxe is a personal, anime-styled web browser for Windows 11, built with C# / .NET 10 / WPF on top of
+> Microsoft WebView2 (Chromium). Glassy themed UI, a mascot that peeks over the toolbar, web panels, an InPrivate mode,
+> encrypted history and session cookies. The interface is in Turkish.
+
+Anime estetiğini modern masaüstü tasarımıyla birleştiren, kişisel kullanım için geliştirilmiş Windows tarayıcısı.
 C# / .NET 10 / WPF + Microsoft WebView2 (Chromium).
 
-## Çalıştırma
+![Yeni sekme](docs/screenshots/new-tab.png)
+![Temalar](docs/screenshots/themes.png)
+
+## Özellikler
+
+- **Görünüm:** 4 tema (Midnight Mei, Tempest Blue, Fate Saber, Crimson Kana), cam efektli sekme ve araç çubuğu,
+  kavisli neon aktif sekme, vurgu rengi, saydamlık, köşe stili ve yoğunluk ayarları, kendi duvar kâğıdını yükleme
+- **Maskot:** Araç çubuğunun arkasından bakar; sayfa yüklenince sevinir, uzun süre boşta kalınca uyur (kapatılabilir)
+- **Yeni sekme:** Saat, arama, eklenip silinebilen kısayollar, temaya göre yaprak / kıvılcım / kabarcık efektleri
+- **Gezinme:** Adres çubuğu önerileri (yerel), sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri,
+  özel hata sayfası
+- **Sekmeler:** Sürükle-sırala, sabitleme, ses göstergesi ve sessize alma, gizli (InPrivate) sekmeler, arka plan
+  sekmelerini uyutma, oturum geri yükleme
+- **Kitaplık:** Geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
+- **Web panelleri:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi panellerin; sol ya da sağ kenarda
+- **Gizlilik:** Geçmiş ve oturum çerezleri Windows hesabına bağlı şifrelenir (DPAPI), site izinleri hatırlanır,
+  tarama verileri zaman aralığıyla temizlenir, telemetri yok
+- **İçe aktarma:** Chrome, Opera GX, Edge, Brave, Opera, Vivaldi ve Firefox'tan yer imleri ve geçmiş
+- **Diğer:** Varsayılan tarayıcı olabilme, tek pencere, arayüz sesleri, performans modu, otomatik güncelleme
+
+## Kurulum
+
+Releases sayfasındaki `ClaxeBrowser-win-Setup.exe` dosyasını çalıştır. .NET kurulu olması gerekmez; WebView2 Runtime
+Windows 11'de hazır gelir. Claxe `%LOCALAPPDATA%\ClaxeBrowser` klasörüne kurulur ve yeni sürümleri kendisi indirir
+(Ayarlar → Hakkında).
+
+## Kaynaktan derleme
 
 ```bash
 dotnet run --project src/Claxe
 ```
 
-Gereksinimler: .NET 10 SDK, Microsoft Edge WebView2 Runtime (Windows 11'de hazır gelir).
+Gereksinimler: Windows 10/11, .NET 10 SDK.
 
-### Exe olarak derlemek
+Kurulum dosyası üretmek için ([Velopack](https://velopack.io)):
 
 ```bash
-dotnet publish src/Claxe/Claxe.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -o dist/Claxe
+dotnet tool install -g vpk
 ```
 
-`dist/Claxe/Claxe.exe` (~1,2 MB) yanındaki `Assets`, `Pages`, `runtimes` klasörleri ve `WebView2Loader.dll` ile birlikte taşınmalı.
-Çalıştığı bilgisayarda .NET 10 Desktop Runtime kurulu olmalı.
-
-## Yapı
-
-```
-src/Claxe/
-  Core/        MVVM temel sınıfları (ObservableObject, RelayCommand)
-  Models/      Ayar ve oturum veri modelleri
-  Services/    Yollar, JSON depolama, adres çözümleme, WebView2 ortamı
-  ViewModels/  MainViewModel (sekmeler, oturum), TabViewModel (tek sekme + WebView2)
-  Views/       Ana pencere
-  Controls/    Özel paneller (sekme şeridi)
-  Themes/      Renkler ve kontrol stilleri
-  Pages/       Uygulamanın kendi sayfaları (yeni sekme)
-  Interop/     Win32 / DWM çağrıları
+```bash
+powershell -File build/pack.ps1 -Version 0.2.0
 ```
 
-```
-  Assets/      Tema duvar kâğıtları + JSON'ları, maskot pozları (çıktıya kopyalanır)
-```
+Çıktı `artifacts/releases` klasörüne yazılır.
 
-Kullanıcı verileri `%LOCALAPPDATA%\Claxe` altında tutulur (ayarlar, oturum, kısayollar, WebView2 profili, log).
-Test için ayrı profil: `CLAXE_PROFILE_DIR` ortam değişkeni başka bir klasörü gösterirse gerçek profile dokunulmaz.
-
-Ham görseller (`/assets`) Git'e eklenmez; uygulamanın kullandığı kopyalar `src/Claxe/Assets` altındadır.
-
-## Ayarlar
-
-Ayarlar sayfası: sağ üstteki dişli, `Ctrl+,` ya da adres çubuğuna `claxe://ayarlar`.
-Değişiklikler anında uygulanır ve `%LOCALAPPDATA%\Claxe\settings.json` dosyasına kaydedilir.
-
-| Anahtar | Varsayılan | Açıklama |
-|---|---|---|
-| `theme` | `midnight-mei` | `midnight-mei`, `tempest-blue`, `fate-saber`, `arima-kana` |
-| `wallpaper` | `null` | `null` = temanınki, `preset:{dosya}`, `custom:{dosya}` |
-| `accentColor` | `null` | `#RRGGBB`; `null` = temanınki |
-| `chromeOpacity` | `null` | Cam tonunun opaklığı (0.40-0.97); `null` = temanınki |
-| `cornerStyle` | `soft` | `sharp`, `soft`, `round` |
-| `density` | `normal` | `compact`, `normal`, `comfortable` |
-| `animationsEnabled` | `true` | Arayüz animasyonları ve yeni sekme efektleri |
-| `mascotEnabled` | `true` | Araç çubuğunun arkasından bakan maskot |
-| `soundsEnabled` / `soundVolume` | `true` / `0.5` | Arayüz sesleri (uygulama içinde sentezlenir) |
-| `searchEngine` | `google` | `google`, `duckduckgo`, `bing`, `brave` |
-| `restoreSession` | `true` | Açık sekmeleri (ve oturum çerezlerini) yeniden açılışta geri getir |
-| `sidebarEnabled` / `panelWidth` | `true` / `420` | Sol web paneli şeridi ve açık panelin genişliği |
-| `performanceMode` | `false` | Animasyonları kapatır, arka plan sekmelerini 3 dk sonra uyutur (normalde 10 dk) |
-
-### Yeni tema eklemek
-
-`src/Claxe/Assets/Themes` içine `{id}.json` ve duvar kâğıdını (`thumbs/` altına 360 px önizlemesini) koymak yeterli;
-tema ayarlar sayfasında kendiliğinden listelenir. Parçacık efektleri: `petals`, `sparks`, `bubbles`, `none`.
+> Hazır duvar kâğıtları depoda yoktur; yalnızca dört temanın görselleri ve maskot depodadır.
+> Kendi görsellerini `src/Claxe/Assets/Wallpapers` klasörüne `.jpg` olarak (ve `thumbs/` altına küçük önizlemesini)
+> koyabilir ya da uygulamadan "Görsel yükle" ile ekleyebilirsin.
 
 ## Klavye kısayolları
 
 | Kısayol | İşlem |
 |---|---|
-| Ctrl+T | Yeni sekme |
-| Ctrl+Shift+T | Son kapatılan sekmeyi geri aç |
-| Ctrl+W / Ctrl+F4 | Sekmeyi kapat |
+| Ctrl+T / Ctrl+Shift+N | Yeni sekme / yeni gizli sekme |
+| Ctrl+W / Ctrl+Shift+T | Sekmeyi kapat / son kapatılanı geri aç |
 | Ctrl+Tab / Ctrl+Shift+Tab | Sonraki / önceki sekme |
 | Ctrl+1…8, Ctrl+9 | Sekmeye git, son sekme |
-| Ctrl+L / Alt+D / F6 | Adres çubuğu |
+| Ctrl+L / Alt+D / F6 | Adres çubuğu (↑ ↓ ile öneriler) |
+| Ctrl+F | Sayfada bul (Enter / Shift+Enter: sonraki / önceki) |
 | F5 / Ctrl+R | Yenile |
 | Alt+Sol / Alt+Sağ | Geri / ileri |
-| F11 | Tam ekran |
-| Ctrl+, | Ayarlar |
+| Ctrl+D | Yer imlerine ekle / çıkar |
 | Ctrl+H / Ctrl+J / Ctrl+Shift+O | Geçmiş / İndirmeler / Yer imleri |
-| Ctrl+D | Sayfayı yer imlerine ekle / çıkar |
-| Ctrl+F | Sayfada bul (Enter / Shift+Enter: sonraki / önceki) |
-| Ctrl+Shift+N | Yeni gizli sekme |
-| ↑ / ↓ (adres çubuğunda) | Öneriler arasında gezin |
-| Ctrl+Shift+Del | Tarama verilerini temizle |
+| Ctrl+, / Ctrl+Shift+Del | Ayarlar / Tarama verilerini temizle |
+| F11 | Tam ekran |
+
+## Proje yapısı
+
+```
+src/Claxe/
+  Core/        MVVM temel sınıfları
+  Models/      Ayar, oturum ve tema modelleri
+  Services/    Tema, geçmiş, yer imleri, indirmeler, izinler, içe aktarma, güncelleme, ...
+  ViewModels/  Ana pencere, sekme, panel, maskot, ayarlar
+  Views/       Ana pencere
+  Controls/    Sekme şeridi, sekme şekli, maskot
+  Themes/      Tasarım anahtarları ve kontrol stilleri (WPF)
+  Pages/       Uygulamanın kendi sayfaları: yeni sekme, ayarlar, kitaplık (HTML/CSS/JS)
+  Assets/      Tema görselleri ve JSON'ları, maskot, simge
+build/pack.ps1 Kurulum dosyası
+```
 
 ## Veriler ve gizlilik
 
-`%LOCALAPPDATA%\Claxe` altında:
+Kullanıcı verileri `%LOCALAPPDATA%\Claxe` altındadır (program ise `%LOCALAPPDATA%\ClaxeBrowser` altına kurulur;
+kaldırmak verileri silmez).
 
 | Dosya | İçerik | Biçim |
 |---|---|---|
 | `history.dat` | Tarama geçmişi (10.000 kayıt / 180 gün) | DPAPI ile şifreli |
 | `session-cookies.dat` | Kapanışta kaydedilen oturum çerezleri (tek kullanımlık, 14 gün) | DPAPI ile şifreli |
-| `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json` | Yer imleri, indirme listesi, site izinleri, web panelleri, kısayollar | JSON |
+| `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json` | Ayarlar ve listeler | JSON |
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
-Şifreleme Windows hesabına bağlıdır; dosyalar başka bir hesapta ya da bilgisayarda açılamaz.
-Şifre kaydetme kapalıdır. Telemetri yoktur.
-
-## Başka tarayıcıdan içe aktarma
-
-Ayarlar → İçe aktar: Chrome, Opera GX, Edge, Brave, Opera, Vivaldi (tüm profiller) ve Firefox otomatik bulunur.
-Yer imleri klasörleriyle ("Chrome / …"), geçmiş son 180 gün / en fazla 5.000 sayfa olarak aktarılır; tekrar aktarınca kopya oluşmaz.
-Çerezler ve şifreler aktarılmaz: Chromium bunları yalnızca kendisinin çözebileceği şekilde (App-Bound Encryption) şifreler.
+Şifre kaydetme kapalıdır. Başka tarayıcılardan çerez ve şifre aktarılmaz (Chromium bunları yalnızca kendisinin
+çözebileceği şekilde şifreler). Geliştirme ve test için `CLAXE_PROFILE_DIR` ortam değişkeni ayrı bir profil klasörü
+gösterebilir.
 
 ## WebView2'nin Chrome'dan farkları
 
-- Siteler tarayıcıyı Microsoft Edge olarak görür; Chrome Web Mağazası eklentileri kurulamaz.
-- Oturum çerezlerini WebView2 kendisi saklamaz; Claxe bunları kapanışta şifreleyip açılışta geri yükler
-  (Claxe çökerse o oturumun çerezleri kaybolur).
-- Bağlantı ve sertifika hata sayfaları WebView2'nin kendi sayfalarıdır.
+- Siteler tarayıcıyı Microsoft Edge olarak görür (motor Edge'in motorudur; uyumluluk açısından avantajlıdır).
+- Chrome Web Mağazası eklentileri kurulamaz.
+- Oturum çerezlerini WebView2 kendisi saklamaz; Claxe bunları kapanışta şifreleyip açılışta geri yükler.
 - Tarayıcı süreci çökerse Claxe yeni bir süreç başlatır ve sekmeleri yeniden yükler.
+
+## Lisans
+
+© 2026 Claxe. Tüm hakları saklıdır. Bu depo yalnızca incelenmek içindir; kod ve görseller izin alınmadan
+kopyalanamaz, dağıtılamaz veya başka projelerde kullanılamaz.
