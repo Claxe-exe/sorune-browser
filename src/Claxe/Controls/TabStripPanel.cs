@@ -19,6 +19,22 @@ public sealed class TabStripPanel : Panel
     public static bool GetIsCompact(DependencyObject d) => (bool)d.GetValue(IsCompactProperty);
     public static void SetIsCompact(DependencyObject d, bool value) => d.SetValue(IsCompactProperty, value);
 
+    /// <summary>Extra width in front of a tab (a tab group's label).</summary>
+    public static readonly DependencyProperty LeadingWidthProperty = DependencyProperty.RegisterAttached(
+        "LeadingWidth", typeof(double), typeof(TabStripPanel),
+        new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsParentMeasure));
+
+    public static double GetLeadingWidth(DependencyObject d) => (double)d.GetValue(LeadingWidthProperty);
+    public static void SetLeadingWidth(DependencyObject d, double value) => d.SetValue(LeadingWidthProperty, value);
+
+    /// <summary>The tab itself takes no room (its group is collapsed); only its leading part stays.</summary>
+    public static readonly DependencyProperty IsCollapsedProperty = DependencyProperty.RegisterAttached(
+        "IsCollapsed", typeof(bool), typeof(TabStripPanel),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsParentMeasure));
+
+    public static bool GetIsCollapsed(DependencyObject d) => (bool)d.GetValue(IsCollapsedProperty);
+    public static void SetIsCollapsed(DependencyObject d, bool value) => d.SetValue(IsCollapsedProperty, value);
+
     /// <summary>How far the active tab's feet and glow may reach outside the panel.</summary>
     private const double Bleed = 10;
     private const double FadeWidth = 28;
@@ -81,12 +97,14 @@ public sealed class TabStripPanel : Panel
             return default;
         }
 
-        var compact = children.Cast<UIElement>().Count(GetIsCompact);
-        var regular = count - compact;
+        var shown = children.Cast<UIElement>().Where(c => !GetIsCollapsed(c)).ToList();
+        var compact = shown.Count(GetIsCompact);
+        var regular = shown.Count - compact;
+        var leading = children.Cast<UIElement>().Sum(GetLeadingWidth);
         var usable = double.IsInfinity(availableSize.Width)
-            ? compact * CompactWidth + MaxTabWidth * Math.Max(regular, 1)
+            ? leading + compact * CompactWidth + MaxTabWidth * Math.Max(regular, 1)
             : Math.Max(MinTabWidth, availableSize.Width - ReservedWidth);
-        _tabWidth = regular == 0 ? 0 : Math.Clamp(Math.Floor((usable - compact * CompactWidth) / regular), MinTabWidth, MaxTabWidth);
+        _tabWidth = regular == 0 ? 0 : Math.Clamp(Math.Floor((usable - leading - compact * CompactWidth) / regular), MinTabWidth, MaxTabWidth);
 
         _offsets = new double[count];
         _widths = new double[count];
@@ -94,7 +112,7 @@ public sealed class TabStripPanel : Panel
         for (var i = 0; i < count; i++)
         {
             var child = children[i];
-            var width = GetIsCompact(child) ? CompactWidth : _tabWidth;
+            var width = GetLeadingWidth(child) + (GetIsCollapsed(child) ? 0 : GetIsCompact(child) ? CompactWidth : _tabWidth);
             _offsets[i] = x;
             _widths[i] = width;
             x += width;

@@ -13,10 +13,15 @@
     <div class="shade"></div>
     <canvas class="particles" id="particles" aria-hidden="true"></canvas>
 
-    <main class="content">
-        <p class="greeting" id="greeting"></p>
-        <h1 class="clock" id="clock">--:--</h1>
-        <p class="date" id="date"></p>
+    <main class="content" id="content">
+        <div class="hero" id="hero">
+            <p class="greeting" id="greeting"></p>
+            <h1 class="clock" id="clock">--:--</h1>
+            <p class="date" id="date"></p>
+            <button type="button" class="hero-edit" id="hero-edit" title="Saati düzenle" aria-label="Saati düzenle">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" /></svg>
+            </button>
+        </div>
 
         <form class="search" id="search" autocomplete="off">
             <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -28,8 +33,16 @@
         </form>
 
         <section class="shortcuts" id="shortcuts" aria-label="Kısayollar"></section>
+
+        <section class="widgets" id="widgets" aria-label="Widget'lar"></section>
     </main>
 
+    <button type="button" class="customize" id="customize">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+        <span id="customize-text">Özelleştir</span>
+    </button>
+
+    <!-- Add shortcut -->
     <div class="dialog-backdrop" id="dialog" hidden>
         <form class="dialog" id="dialog-form" autocomplete="off">
             <h2>Kısayol ekle</h2>
@@ -49,7 +62,26 @@
         </form>
     </div>
 
+    <!-- Clock settings -->
+    <div class="dialog-backdrop" id="clock-dialog" hidden>
+        <form class="dialog" id="clock-form" autocomplete="off">
+            <h2>Saat ve selamlama</h2>
+            <label>
+                <span>Adın (selamlamada görünür)</span>
+                <input id="clock-name" type="text" maxlength="40" placeholder="İsteğe bağlı">
+            </label>
+            <label class="toggle"><input type="checkbox" id="clock-seconds"> <span>Saniyeleri göster</span></label>
+            <label class="toggle"><input type="checkbox" id="clock-hour12"> <span>12 saat biçimi (ÖÖ/ÖS)</span></label>
+            <label class="toggle"><input type="checkbox" id="clock-hidden"> <span>Saati gizle</span></label>
+            <div class="dialog-actions">
+                <button type="button" class="btn ghost" id="clock-cancel">Vazgeç</button>
+                <button type="submit" class="btn primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+
     <script src="i18n.js"></script>
     <script src="newtab.js"></script>
+    <script src="widgets.js"></script>
 </body>
 </html>

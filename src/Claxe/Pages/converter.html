@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Dönüştürücü</title>
+    <link rel="stylesheet" href="converter.css">
+</head>
+<body>
+    <div class="glow" aria-hidden="true"></div>
+
+    <header class="hero">
+        <div class="hero-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 7h11l-3-3M17 17H6l3 3" /></svg>
+        </div>
+        <div>
+            <h1>Dönüştürücü</h1>
+            <p>Dosyaların bilgisayarından çıkmaz, her şey burada çevrilir.</p>
+        </div>
+    </header>
+
+    <section class="drop" id="drop" tabindex="0" aria-label="Dosya bırakma alanı">
+        <svg class="drop-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
+        <strong>Dosyaları buraya bırak</strong>
+        <span>ya da</span>
+        <button type="button" class="btn" id="pick">Dosya seç</button>
+    </section>
+
+    <section class="card" id="files-card" hidden>
+        <div class="card-head">
+            <h2>Dosyalar <span class="count" id="file-count"></span></h2>
+            <button type="button" class="link" id="clear">Temizle</button>
+        </div>
+        <ul class="files" id="files"></ul>
+
+        <h3>Hedef biçim</h3>
+        <div class="targets" id="targets"></div>
+        <p class="hint" id="no-targets" hidden>Bu dosyalar için ortak bir hedef biçim yok. Aynı türden dosyaları birlikte seç.</p>
+        <label class="check" id="merge-row" hidden>
+            <input type="checkbox" id="merge" checked>
+            <span>Resimleri tek PDF'de birleştir</span>
+        </label>
+        <p class="hint office-hint" id="office-hint" hidden>Kilitli biçimler için aşağıdan LibreOffice'i kur.</p>
+
+        <button type="button" class="btn primary wide" id="convert" disabled>Dönüştür</button>
+        <div class="progress" id="progress" hidden>
+            <div class="bar indeterminate"><span></span></div>
+            <span class="progress-text" id="progress-text"></span>
+        </div>
+    </section>
+
+    <section class="card" id="results-card" hidden>
+        <div class="card-head">
+            <h2>Sonuçlar</h2>
+            <button type="button" class="link" id="results-clear">Temizle</button>
+        </div>
+        <ul class="results" id="results"></ul>
+    </section>
+
+    <section class="card">
+        <h2>Hızlı işlem</h2>
+        <button type="button" class="action" id="page-pdf">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h4" /></svg>
+            <span class="action-text">
+                <strong>Açık sayfayı PDF olarak kaydet</strong>
+                <span>İndirilenler klasörüne kaydedilir.</span>
+            </span>
+        </button>
+    </section>
+
+    <section class="card office" id="office">
+        <div class="office-head">
+            <div class="lo-badge" aria-hidden="true">LO</div>
+            <div>
+                <h2>Office dosyaları</h2>
+                <p class="hint" id="lo-status">Kontrol ediliyor…</p>
+            </div>
+        </div>
+        <div id="lo-install" hidden>
+            <p class="hint">Word, PowerPoint ve Excel dosyaları ücretsiz ve açık kaynak LibreOffice ile çevrilir. Kur'a basınca Windows'un paket yöneticisi (winget) onu indirip kurar ve LibreOffice lisansını (MPL 2.0) kabul etmiş olursun. Windows izin isteyebilir; kurulum birkaç dakika sürer.</p>
+            <div class="buttons">
+                <button type="button" class="btn primary" id="lo-install-btn">LibreOffice'i kur</button>
+                <button type="button" class="btn ghost" id="lo-download">İndirme sayfası</button>
+            </div>
+        </div>
+        <div class="progress" id="lo-progress" hidden>
+            <div class="bar indeterminate" id="lo-bar"><span id="lo-bar-fill"></span></div>
+            <span class="progress-text" id="lo-progress-text">LibreOffice kuruluyor…</span>
+        </div>
+        <p class="error" id="lo-error" hidden></p>
+    </section>
+
+    <section class="card">
+        <details class="formats">
+            <summary>Desteklenen dönüşümler</summary>
+            <dl>
+                <dt>Resim</dt><dd>PNG, JPG, BMP, GIF, TIFF, WebP, ICO → PNG, JPG, BMP, GIF, TIFF, ICO, PDF</dd>
+                <dt>PDF</dt><dd>→ Word (yazı ve resimler), metin</dd>
+                <dt>Metin</dt><dd>TXT, Markdown, HTML → PDF, Word</dd>
+                <dt>Word</dt><dd>DOCX, DOC, ODT, RTF → PDF, DOCX, ODT <em>(LibreOffice)</em>, metin</dd>
+                <dt>Sunum</dt><dd>PPTX, PPT, ODP → PDF, PPTX, ODP <em>(LibreOffice)</em></dd>
+                <dt>Tablo</dt><dd>XLSX, XLS, ODS, CSV → PDF, XLSX, ODS, CSV <em>(LibreOffice)</em></dd>
+            </dl>
+            <p class="hint">PDF → Word, düzeni birebir kopyalamaz; yazıyı paragraflar ve başlıklar olarak, resimleri de sırasıyla aktarır.</p>
+        </details>
+    </section>
+
+    <script src="i18n.js"></script>
+    <script src="converter.js"></script>
+</body>
+</html>

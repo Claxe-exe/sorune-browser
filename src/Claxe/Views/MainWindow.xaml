@@ -112,6 +112,15 @@
                         <ItemsControl.ItemContainerStyle>
                             <Style TargetType="ContentPresenter">
                                 <Setter Property="controls:TabStripPanel.IsCompact" Value="{Binding IsPinned}" />
+                                <Setter Property="controls:TabStripPanel.IsCollapsed" Value="{Binding IsCollapsedInGroup}" />
+                                <Setter Property="controls:TabStripPanel.LeadingWidth">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{x:Static controls:GroupLabelWidthConverter.Instance}">
+                                            <Binding Path="IsGroupStart" />
+                                            <Binding Path="Group.Name" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsActive}" Value="True">
                                         <Setter Property="Panel.ZIndex" Value="1" />
@@ -122,7 +131,37 @@
 
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TabViewModel}">
+                                <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Tab group label, in front of the group's first tab: click collapses, right click edits -->
+                                <Border x:Name="GroupLabel"
+                                        Margin="4,3,4,4" Height="22" VerticalAlignment="Center"
+                                        CornerRadius="8" Cursor="Hand"
+                                        Background="{Binding Group.Brush}"
+                                        Visibility="Collapsed"
+                                        ToolTip="{controls:T 'Grubu daralt / genişlet (sağ tık: düzenle)'}"
+                                        MouseLeftButtonUp="GroupLabel_MouseLeftButtonUp"
+                                        MouseRightButtonUp="GroupLabel_MouseRightButtonUp">
+                                    <Border.Width>
+                                        <MultiBinding Converter="{x:Static controls:GroupLabelWidthConverter.Instance}" ConverterParameter="label">
+                                            <Binding Path="IsGroupStart" />
+                                            <Binding Path="Group.Name" />
+                                        </MultiBinding>
+                                    </Border.Width>
+                                    <Border.Effect>
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.45" Color="Black" />
+                                    </Border.Effect>
+                                    <TextBlock Text="{Binding Group.Name}" Margin="10,0" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="#140F1D" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Border>
+
                                 <Grid x:Name="TabRoot"
+                                      Grid.Column="1"
                                       Height="{DynamicResource TabHeight}"
                                       Background="Transparent"
                                       ToolTip="{Binding Title}"
@@ -143,6 +182,16 @@
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <MenuItem Header="{controls:T 'Sesi kapat / aç'}" Command="{Binding ToggleMuteCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator />
+                                            <MenuItem Header="{controls:T 'Yeni gruba ekle'}" Command="{Binding AddTabToNewGroupCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="{controls:T 'Gruba ekle'}" IsEnabled="{Binding HasGroups}"
+                                                      SubmenuOpened="GroupSubmenu_Opened">
+                                                <MenuItem Header="…" />
+                                            </MenuItem>
+                                            <MenuItem Header="{controls:T 'Gruptan çıkar'}" Command="{Binding RemoveTabFromGroupCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding PlacementTarget.DataContext.Group, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
                                             <Separator />
                                             <MenuItem Header="{controls:T 'Diğer sekmeleri kapat'}" Command="{Binding CloseOtherTabsCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -202,6 +251,10 @@
                                     </Rectangle>
 
 
+
+                                    <Rectangle x:Name="GroupLine" Height="2" Margin="6,0,6,1" VerticalAlignment="Bottom"
+                                               RadiusX="1" RadiusY="1" Fill="{Binding Group.Brush}" IsHitTestVisible="False"
+                                               Visibility="{Binding Group, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
 
                                     <Grid x:Name="TabContent" Margin="13,0,7,0">
                                         <Grid.ColumnDefinitions>
@@ -274,8 +327,15 @@
                                                 CommandParameter="{Binding}" />
                                     </Grid>
                                 </Grid>
+                                </Grid>
 
                                 <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsGroupStart}" Value="True">
+                                        <Setter TargetName="GroupLabel" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsCollapsedInGroup}" Value="True">
+                                        <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
                                         <Setter TargetName="DefaultIcon" Property="Visibility" Value="Visible" />
                                     </DataTrigger>
@@ -414,6 +474,23 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0,0,0">
+                        <!-- Update downloaded: one click saves everything, installs and restarts -->
+                        <Button x:Name="UpdateButton"
+                                Height="30" Margin="0,0,6,0" Padding="10,0"
+                                Style="{StaticResource AccentButtonStyle}"
+                                ToolTip="{controls:T 'Yeni sürüm hazır: kaydedip yeniden başlatır'}"
+                                Command="{Binding ApplyUpdateCommand}"
+                                Visibility="{Binding IsUpdateReady, Converter={StaticResource BoolToVisibility}}">
+                            <Button.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="14" Opacity="0.7"
+                                                  Color="{DynamicResource AccentColor}" />
+                            </Button.Effect>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE777;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                           VerticalAlignment="Center" Margin="0,0,7,0" />
+                                <TextBlock Text="{controls:T 'Güncelle'}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <!-- Downloads: appears after the first download of the run, with a progress line -->
                         <Button x:Name="DownloadsButton"
                                 Style="{StaticResource IconButtonStyle}"
@@ -636,6 +713,41 @@
                                 Content="&#xE710;" FontSize="12"
                                 ToolTip="{controls:T 'Panelleri düzenle'}"
                                 Command="{Binding ManagePanelsCommand}" />
+                        <!-- Built-in file converter -->
+                        <Grid DockPanel.Dock="Bottom" Margin="0,2,0,6">
+                            <Border Width="3" Height="18" CornerRadius="1.5" HorizontalAlignment="Left"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Visibility="{Binding ConverterPanel.IsOpen, Converter={StaticResource BoolToVisibility}}">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="8" Color="{DynamicResource AccentColor}" />
+                                </Border.Effect>
+                            </Border>
+                            <Button Width="38" Height="38"
+                                    ToolTip="{controls:T 'Dosya dönüştürücü'}"
+                                    Command="{Binding TogglePanelCommand}"
+                                    CommandParameter="{Binding ConverterPanel}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConverterPanel.IsOpen}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Border Width="24" Height="24" CornerRadius="7">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
+                                            <GradientStop Offset="1" Color="{DynamicResource AccentSecondaryColor}" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="&#xE8AB;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                               Foreground="#120E18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Button>
+                        </Grid>
+                        <Rectangle DockPanel.Dock="Bottom" Height="1" Margin="12,6" Fill="{DynamicResource GlassBorderBrush}" />
                         <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:PanelViewModel}">
@@ -712,7 +824,7 @@
                                         Content="&#xE711;" ToolTip="{controls:T 'Paneli kapat'}" Command="{Binding ClosePanelCommand}" />
                             </StackPanel>
                         </Grid>
-                        <ItemsControl ItemsSource="{Binding Panels}" Focusable="False">
+                        <ItemsControl ItemsSource="{Binding HostedPanels}" Focusable="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <Grid />

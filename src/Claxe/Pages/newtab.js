@@ -24,8 +24,12 @@ function send(message) {
 
 // ---------------------------------------------------------------- clock
 
-const timeFormat = new Intl.DateTimeFormat(i18n.locale, { hour: "2-digit", minute: "2-digit" });
 const dateFormat = new Intl.DateTimeFormat(i18n.locale, { day: "numeric", month: "long", weekday: "long" });
+
+// Clock options live in the "clock" widget (name for the greeting, seconds, 12-hour, hidden).
+let clockOptions = { name: "", seconds: false, hour12: false, hidden: false };
+let timeFormat = null;
+let tickTimer = 0;
 
 function greetingFor(hour) {
     if (hour >= 5 && hour < 12) return t("Günaydın");
@@ -34,14 +38,63 @@ function greetingFor(hour) {
     return t("İyi geceler");
 }
 
+function setClockOptions(options) {
+    clockOptions = Object.assign({ name: "", seconds: false, hour12: false, hidden: false }, options || {});
+    timeFormat = new Intl.DateTimeFormat(i18n.locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: clockOptions.seconds ? "2-digit" : undefined,
+        hour12: clockOptions.hour12,
+    });
+    $("hero").classList.toggle("clock-hidden", clockOptions.hidden);
+    $("clock").classList.toggle("with-seconds", clockOptions.seconds);
+    clearTimeout(tickTimer);
+    tick();
+}
+
 function tick() {
     const now = new Date();
+    if (!timeFormat) setClockOptions(clockOptions);
     $("clock").textContent = timeFormat.format(now);
     $("date").textContent = dateFormat.format(now);
-    $("greeting").textContent = greetingFor(now.getHours());
-    // Wake up exactly at the next minute instead of polling every second.
-    setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20);
+    const greeting = greetingFor(now.getHours());
+    const name = clockOptions.name.trim();
+    $("greeting").textContent = name ? `${greeting}, ${name}` : greeting;
+    // Wake up exactly at the next second/minute instead of polling.
+    const delay = clockOptions.seconds
+        ? 1000 - now.getMilliseconds() + 10
+        : 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20;
+    tickTimer = setTimeout(tick, delay);
 }
+
+// ---------------------------------------------------------------- clock dialog
+
+function openClockDialog() {
+    $("clock-name").value = clockOptions.name;
+    $("clock-seconds").checked = clockOptions.seconds;
+    $("clock-hour12").checked = clockOptions.hour12;
+    $("clock-hidden").checked = clockOptions.hidden;
+    $("clock-dialog").hidden = false;
+    $("clock-name").focus();
+}
+
+$("hero-edit").addEventListener("click", openClockDialog);
+$("clock-cancel").addEventListener("click", () => { $("clock-dialog").hidden = true; });
+$("clock-dialog").addEventListener("click", (event) => {
+    if (event.target === $("clock-dialog")) $("clock-dialog").hidden = true;
+});
+$("clock-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    $("clock-dialog").hidden = true;
+    const options = {
+        name: $("clock-name").value.trim(),
+        seconds: $("clock-seconds").checked,
+        hour12: $("clock-hour12").checked,
+        hidden: $("clock-hidden").checked,
+    };
+    setClockOptions(options);
+    if (window.Widgets) window.Widgets.updateClock(options);
+});
 
 // ---------------------------------------------------------------- search
 
@@ -133,7 +186,9 @@ $("dialog").addEventListener("click", (event) => {
     if (event.target === $("dialog")) closeDialog();
 });
 document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !$("dialog").hidden) closeDialog();
+    if (event.key !== "Escape") return;
+    if (!$("dialog").hidden) closeDialog();
+    $("clock-dialog").hidden = true;
 });
 $("dialog-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -283,6 +338,7 @@ function applyConfig(config) {
     state.maxShortcuts = config.maxShortcuts || state.maxShortcuts;
     state.shortcuts = config.shortcuts || [];
     renderShortcuts();
+    if (window.Widgets && config.widgets) window.Widgets.load(config.widgets, config.maxWidgets);
 
     // The config is re-sent whenever settings change, so restart rather than stack effects.
     if (stopParticles) {
@@ -308,6 +364,12 @@ if (host) {
                 break;
             case "shortcutRejected":
                 $("dialog-error").hidden = false;
+                break;
+            case "widgets":
+                if (window.Widgets) window.Widgets.load(message.widgets || []);
+                break;
+            case "weather":
+                if (window.Widgets) window.Widgets.weather(message);
                 break;
         }
     });

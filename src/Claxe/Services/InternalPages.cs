@@ -22,6 +22,12 @@ public static class InternalPages
     public const string BookmarksUrl = LibraryUrl + "#yer-imleri";
     public const string DownloadsUrl = LibraryUrl + "#indirmeler";
 
+    /// <summary>File converter, shown in its own sidebar panel.</summary>
+    public const string ConverterUrl = Origin + "converter.html";
+
+    /// <summary>"What's new" after an update.</summary>
+    public const string WhatsNewUrl = Origin + "whatsnew.html";
+
     public const string AssetsHost = "assets.claxe.internal";
     public const string AssetsOrigin = "https://" + AssetsHost + "/";
 
@@ -45,6 +51,10 @@ public static class InternalPages
         ("bookmarks", BookmarksUrl),
         ("indirmeler", DownloadsUrl),
         ("downloads", DownloadsUrl),
+        ("yenilikler", WhatsNewUrl),
+        ("whatsnew", WhatsNewUrl),
+        ("donusturucu", ConverterUrl),
+        ("converter", ConverterUrl),
     ];
 
     public static bool IsInternal(string? url)
@@ -64,6 +74,12 @@ public static class InternalPages
 
         if (IsSettings(url))
             return Scheme + "ayarlar";
+
+        if (IsPage(url, WhatsNewUrl))
+            return Scheme + "yenilikler";
+
+        if (IsPage(url, ConverterUrl))
+            return Scheme + "donusturucu";
 
         if (IsLibrary(url))
         {

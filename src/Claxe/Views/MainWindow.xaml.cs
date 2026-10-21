@@ -2,9 +2,11 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Claxe.Controls;
@@ -56,6 +58,7 @@ public partial class MainWindow : Window
         viewModel.WallpaperPickRequested += (_, _) => PickWallpaper();
         viewModel.ConfirmOpenRiskyFile = ConfirmOpenRiskyFile;
         viewModel.PageContextMenuRequested += (_, e) => ShowPageContextMenu(e);
+        viewModel.GroupEditRequested += (_, group) => OnGroupEditRequested(group);
 
         AddressBox.TextChanged += (_, _) =>
         {
@@ -258,6 +261,201 @@ public partial class MainWindow : Window
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
+
+    // ------------------------------------------------------------- tab groups
+
+    private Popup? _groupEditor;
+
+    private void GroupLabel_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TabViewModel { Group: { } group } })
+        {
+            _viewModel.ToggleGroupCollapsed(group);
+            e.Handled = true;
+        }
+    }
+
+    private void GroupLabel_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TabViewModel { Group: { } group } } label)
+        {
+            OpenGroupEditor(group, label);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>"Add to group" lists the other groups each time the submenu opens.</summary>
+    private void GroupSubmenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, sender) || sender is not MenuItem menu
+            || (menu.Parent as ContextMenu)?.PlacementTarget is not FrameworkElement { DataContext: TabViewModel tab })
+            return;
+
+        menu.Items.Clear();
+        foreach (var group in _viewModel.Groups.Where(g => g != tab.Group))
+        {
+            var item = new MenuItem
+            {
+                Header = group.HasName ? group.Name : L.T("Adsız grup"),
+                Icon = new System.Windows.Shapes.Ellipse { Width = 10, Height = 10, Fill = group.Brush },
+            };
+            item.Click += (_, _) => _viewModel.AddToGroup(tab, group);
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0)
+            menu.Items.Add(new MenuItem { Header = L.T("Başka grup yok"), IsEnabled = false });
+    }
+
+    /// <summary>A new group opens its editor right away, under its label (once the strip has laid it out).</summary>
+    private void OnGroupEditRequested(TabGroupViewModel group)
+        => Dispatcher.BeginInvoke(() =>
+        {
+            if (_viewModel.Tabs.FirstOrDefault(t => t.Group == group) is { } first
+                && TabStrip.ItemContainerGenerator.ContainerFromItem(first) is ContentPresenter container
+                && container.ContentTemplate?.FindName("GroupLabel", container) is FrameworkElement label)
+            {
+                OpenGroupEditor(group, label);
+            }
+        }, DispatcherPriority.Loaded);
+
+    /// <summary>Name, colour and actions of a group, in a themed bubble under its label.</summary>
+    private void OpenGroupEditor(TabGroupViewModel group, FrameworkElement anchor)
+    {
+        if (_groupEditor is not null)
+            _groupEditor.IsOpen = false;
+
+        var popup = new Popup
+        {
+            PlacementTarget = anchor,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            VerticalOffset = 2,
+            AllowsTransparency = true,
+            StaysOpen = false,
+            PopupAnimation = PopupAnimation.Fade,
+        };
+
+        var name = new TextBox
+        {
+            Text = group.Name,
+            Style = (Style)FindResource("AddressTextBoxStyle"),
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        name.TextChanged += (_, _) =>
+        {
+            group.Name = name.Text;
+            _viewModel.GroupChanged();
+        };
+        name.KeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                popup.IsOpen = false;
+                e.Handled = true;
+            }
+        };
+        var placeholder = new TextBlock
+        {
+            Text = L.T("Grup adı"),
+            Foreground = (Brush)FindResource("TextSecondaryBrush"),
+            FontSize = 13,
+            IsHitTestVisible = false,
+            VerticalAlignment = VerticalAlignment.Center,
+            Visibility = group.HasName ? Visibility.Collapsed : Visibility.Visible,
+        };
+        name.TextChanged += (_, _) => placeholder.Visibility = name.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var nameBox = new Border
+        {
+            Height = 34,
+            Padding = new Thickness(10, 0, 10, 0),
+            CornerRadius = new CornerRadius(10),
+            Background = (Brush)FindResource("InsetBrush"),
+            BorderBrush = (Brush)FindResource("AccentBrush"),
+            BorderThickness = new Thickness(1),
+            Child = new Grid { Children = { placeholder, name } },
+        };
+
+        // Colour dots; the current one gets a ring.
+        var colors = new WrapPanel { Margin = new Thickness(0, 12, 0, 6) };
+        var rings = new List<(Border Ring, string Key)>();
+        foreach (var (key, label, color) in TabGroupViewModel.Palette)
+        {
+            var ring = new Border
+            {
+                Width = 24,
+                Height = 24,
+                Margin = new Thickness(0, 0, 2, 2),
+                CornerRadius = new CornerRadius(12),
+                BorderThickness = new Thickness(2),
+                Cursor = Cursors.Hand,
+                ToolTip = L.T(label),
+                Background = Brushes.Transparent,
+                Child = new System.Windows.Shapes.Ellipse { Width = 14, Height = 14, Fill = TabGroupViewModel.BrushFor(key) },
+            };
+            ring.MouseLeftButtonUp += (_, _) =>
+            {
+                group.ColorKey = key;
+                _viewModel.GroupChanged();
+                foreach (var (r, k) in rings)
+                    r.BorderBrush = k == group.ColorKey ? (Brush)FindResource("TextPrimaryBrush") : Brushes.Transparent;
+            };
+            ring.BorderBrush = key == group.ColorKey ? (Brush)FindResource("TextPrimaryBrush") : Brushes.Transparent;
+            rings.Add((ring, key));
+            colors.Children.Add(ring);
+        }
+
+        Button Action(string text, Action act)
+        {
+            var button = new Button
+            {
+                Content = text,
+                Style = (Style)FindResource("GhostButtonStyle"),
+                BorderBrush = Brushes.Transparent,
+                Height = 32,
+                Margin = new Thickness(0, 2, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            button.Click += (_, _) =>
+            {
+                popup.IsOpen = false;
+                act();
+            };
+            return button;
+        }
+
+        var panel = new StackPanel { Width = 236 };
+        panel.Children.Add(nameBox);
+        panel.Children.Add(colors);
+        panel.Children.Add(new Rectangle { Height = 1, Margin = new Thickness(0, 2, 0, 4), Fill = (Brush)FindResource("GlassBorderBrush") });
+        panel.Children.Add(Action(L.T("Gruba yeni sekme ekle"), () => _viewModel.NewTabInGroup(group)));
+        panel.Children.Add(Action(group.IsCollapsed ? L.T("Grubu genişlet") : L.T("Grubu daralt"), () => _viewModel.ToggleGroupCollapsed(group)));
+        panel.Children.Add(Action(L.T("Grubu çöz"), () => _viewModel.Ungroup(group)));
+        panel.Children.Add(Action(L.T("Grubu kapat"), () => _viewModel.CloseGroup(group)));
+
+        popup.Child = new Border
+        {
+            Margin = new Thickness(12),
+            Padding = new Thickness(12),
+            CornerRadius = new CornerRadius(14),
+            Background = (Brush)FindResource("SurfaceBrush"),
+            BorderBrush = (Brush)FindResource("GlassBorderBrush"),
+            BorderThickness = new Thickness(1),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect { ShadowDepth = 4, BlurRadius = 20, Opacity = 0.45, Color = Colors.Black },
+            Child = panel,
+        };
+        popup.Opened += (_, _) =>
+        {
+            name.Focus();
+            name.SelectAll();
+        };
+        popup.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_groupEditor, popup))
+                _groupEditor = null;
+        };
+        _groupEditor = popup;
+        popup.IsOpen = true;
+    }
 
     private void TabStrip_LostMouseCapture(object sender, MouseEventArgs e)
     {

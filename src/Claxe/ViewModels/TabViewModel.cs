@@ -100,6 +100,31 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _isPinned, value);
     }
 
+    private TabGroupViewModel? _group;
+    private bool _isGroupStart;
+    private bool _isCollapsedInGroup;
+
+    /// <summary>The tab group this tab belongs to (members always sit next to each other).</summary>
+    public TabGroupViewModel? Group
+    {
+        get => _group;
+        set => SetProperty(ref _group, value);
+    }
+
+    /// <summary>First tab of its group: draws the group's label in front of itself.</summary>
+    public bool IsGroupStart
+    {
+        get => _isGroupStart;
+        set => SetProperty(ref _isGroupStart, value);
+    }
+
+    /// <summary>Its group is collapsed: only the label (on the first tab) stays visible.</summary>
+    public bool IsCollapsedInGroup
+    {
+        get => _isCollapsedInGroup;
+        set => SetProperty(ref _isCollapsedInGroup, value);
+    }
+
     public bool IsPlayingAudio
     {
         get => _isPlayingAudio;
@@ -586,9 +611,22 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         try
         {
-            using var document = JsonDocument.Parse(e.WebMessageAsJson);
-            if (document.RootElement.ValueKind == JsonValueKind.Object)
-                InternalPageMessage?.Invoke(this, document.RootElement.Clone());
+            var node = System.Text.Json.Nodes.JsonNode.Parse(e.WebMessageAsJson);
+            if (node is not System.Text.Json.Nodes.JsonObject message)
+                return;
+
+            // Files dropped on the page arrive as objects next to the message; their real paths
+            // are added here (never trusted from the page's own JSON).
+            message.Remove("droppedPaths");
+            if (e.AdditionalObjects is { Count: > 0 } objects)
+            {
+                var paths = new System.Text.Json.Nodes.JsonArray();
+                foreach (var file in objects.OfType<CoreWebView2File>())
+                    paths.Add(file.Path);
+                message["droppedPaths"] = paths;
+            }
+
+            InternalPageMessage?.Invoke(this, JsonSerializer.SerializeToElement(message));
         }
         catch (JsonException ex)
         {

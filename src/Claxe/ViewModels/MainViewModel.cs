@@ -30,6 +30,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly DownloadManager _downloads = new();
     private readonly PermissionStore _permissions = new();
     private readonly PanelStore _panelStore = new();
+    private readonly ConverterController _converter;
+    private readonly WidgetStore _widgets = new();
     private readonly Queue<PermissionRequestViewModel> _permissionQueue = new();
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _suspendTimer = new() { Interval = TimeSpan.FromSeconds(30) };
@@ -80,10 +82,25 @@ public sealed class MainViewModel : ObservableObject
         };
 
         foreach (var panel in _panelStore.Items)
-            Panels.Add(new PanelViewModel(panel));
+            AddPanel(new PanelViewModel(panel));
+
+        _converter = new ConverterController(() => ActiveTab, url =>
+        {
+            ActiveTab = CreateTab(url, Tabs.Count);
+            SoundService.Play(UiSound.TabOpen);
+        });
+        ConverterPanel = new PanelViewModel(new WebPanel { Id = "sorune-converter", Name = L.T("Dönüştürücü"), Url = InternalPages.ConverterUrl });
+        HostedPanels.Add(ConverterPanel);
 
         UpdateService.StateChanged += (_, _) =>
-            System.Windows.Application.Current.Dispatcher.BeginInvoke(() => BroadcastToInternalPages(_settingsController.BuildState()));
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                OnPropertyChanged(nameof(IsUpdateReady));
+                BroadcastToInternalPages(_settingsController.BuildState());
+            });
+        ApplyUpdateCommand = new RelayCommand(ApplyUpdate);
+
+        Tabs.CollectionChanged += (_, _) => RefreshGroups();
 
         NewTabCommand = new RelayCommand(NewTab);
         CloseTabCommand = new RelayCommand(p => CloseTab(p as TabViewModel ?? ActiveTab));
@@ -124,7 +141,14 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<TabViewModel> HostedTabs { get; } = [];
 
+    /// <summary>The user's web panels, in sidebar order.</summary>
     public ObservableCollection<PanelViewModel> Panels { get; } = [];
+
+    /// <summary>Every panel whose page may be alive: the web panels plus the built-in converter.</summary>
+    public ObservableCollection<PanelViewModel> HostedPanels { get; } = [];
+
+    /// <summary>Built-in file converter, pinned to the bottom of the sidebar.</summary>
+    public PanelViewModel ConverterPanel { get; }
 
     public MascotViewModel Mascot { get; }
 
@@ -149,6 +173,17 @@ public sealed class MainViewModel : ObservableObject
     public ICommand UnloadPanelCommand { get; }
     public ICommand RemovePanelCommand { get; }
     public ICommand ManagePanelsCommand { get; }
+    public ICommand ApplyUpdateCommand { get; }
+
+    /// <summary>A new version is downloaded; the toolbar shows the restart button.</summary>
+    public bool IsUpdateReady => UpdateService.State == UpdateState.ReadyToRestart;
+
+    /// <summary>Normal close (saves everything), then the updater installs and restarts Sorune.</summary>
+    private void ApplyUpdate()
+    {
+        if (UpdateService.PrepareApplyOnExit())
+            CloseWindowRequested?.Invoke(this, EventArgs.Empty);
+    }
 
     public event EventHandler? FocusAddressBarRequested;
     public event EventHandler? FocusContentRequested;
@@ -176,6 +211,13 @@ public sealed class MainViewModel : ObservableObject
 
             if (_activeTab is not null)
                 _activeTab.IsActive = false;
+
+            // Switching to a tab hidden in a collapsed group opens the group.
+            if (value.Group is { IsCollapsed: true } group)
+            {
+                group.IsCollapsed = false;
+                RefreshGroups();
+            }
 
             _activeTab = value;
             value.IsActive = true;
@@ -258,8 +300,21 @@ public sealed class MainViewModel : ObservableObject
     {
         if (_settings.RestoreSession && SessionStore.Load() is { Tabs.Count: > 0 } session)
         {
+            var groups = session.Groups
+                .Where(g => !string.IsNullOrEmpty(g.Id))
+                .GroupBy(g => g.Id).Select(g => g.First())
+                .ToDictionary(g => g.Id, g => new TabGroupViewModel(g.Id, g.Name, g.Color, g.IsCollapsed));
             foreach (var saved in session.Tabs.Where(t => AddressResolver.IsNavigable(t.Url)))
-                CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
+            {
+                var tab = CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
+                if (!saved.IsPinned && saved.GroupId is { } id && groups.TryGetValue(id, out var group))
+                {
+                    if (!Groups.Contains(group))
+                        Groups.Add(group);
+                    tab.Group = group;
+                }
+            }
+            RefreshGroups();
 
             if (Tabs.Count > 0)
             {
@@ -376,7 +431,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand DuplicateTabCommand => new RelayCommand(p =>
     {
         if (p is TabViewModel { Url: { } url } tab)
-            ActiveTab = CreateTab(url, Tabs.IndexOf(tab) + 1, tab.Title, tab.IsPrivate);
+            ActiveTab = CreateTab(url, Tabs.IndexOf(tab) + 1, tab.Title, tab.IsPrivate, group: tab.Group);
     });
 
     public ICommand ReloadTabCommand => new RelayCommand(p => (p as TabViewModel)?.Reload());
@@ -388,7 +443,9 @@ public sealed class MainViewModel : ObservableObject
         if (p is not TabViewModel tab)
             return;
 
-        // Pinned tabs live together at the start of the strip.
+        // Pinned tabs live together at the start of the strip, outside any group.
+        if (!tab.IsPinned)
+            LeaveGroup(tab);
         var pinned = Tabs.Count(t => t.IsPinned);
         tab.IsPinned = !tab.IsPinned;
         Tabs.Move(Tabs.IndexOf(tab), tab.IsPinned ? pinned : pinned - 1);
@@ -408,6 +465,158 @@ public sealed class MainViewModel : ObservableObject
     });
 
     public ICommand NewPrivateTabCommand => new RelayCommand(NewPrivateTab);
+
+    public ICommand AddTabToNewGroupCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel tab)
+            AddToNewGroup(tab);
+    });
+
+    public ICommand RemoveTabFromGroupCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel tab)
+        {
+            LeaveGroup(tab);
+            RefreshGroups();
+            ScheduleSave();
+        }
+    });
+
+    // ---------------------------------------------------------------- tab groups
+
+    public ObservableCollection<TabGroupViewModel> Groups { get; } = [];
+
+    public bool HasGroups => Groups.Count > 0;
+
+    /// <summary>A group was just created: the view opens its name/colour editor.</summary>
+    public event EventHandler<TabGroupViewModel>? GroupEditRequested;
+
+    public void AddToNewGroup(TabViewModel tab)
+    {
+        LeaveGroup(tab);
+        UnpinForGroup(tab);
+        // Each new group takes the next colour nobody uses yet.
+        var color = TabGroupViewModel.Palette.Select(p => p.Key).FirstOrDefault(k => Groups.All(g => g.ColorKey != k))
+                    ?? TabGroupViewModel.Palette[Groups.Count % TabGroupViewModel.Palette.Length].Key;
+        var group = new TabGroupViewModel(null, "", color);
+        Groups.Add(group);
+        tab.Group = group;
+        RefreshGroups();
+        ScheduleSave();
+        GroupEditRequested?.Invoke(this, group);
+    }
+
+    public void AddToGroup(TabViewModel tab, TabGroupViewModel group)
+    {
+        if (ReferenceEquals(tab.Group, group) || !Groups.Contains(group))
+            return;
+
+        LeaveGroup(tab);
+        UnpinForGroup(tab);
+        MoveAfter(tab, Tabs.Last(t => ReferenceEquals(t.Group, group)));
+        tab.Group = group;
+        group.IsCollapsed = false;
+        RefreshGroups();
+        ScheduleSave();
+    }
+
+    public void ToggleGroupCollapsed(TabGroupViewModel group)
+    {
+        if (!group.IsCollapsed && ActiveTab?.Group == group)
+        {
+            // The active tab can't hide: switch to the nearest tab outside the group (or a new one).
+            var index = Tabs.IndexOf(ActiveTab);
+            var outside = Tabs.Skip(index).FirstOrDefault(t => t.Group != group)
+                          ?? Tabs.Take(index).LastOrDefault(t => t.Group != group);
+            if (outside is null)
+                NewTab();
+            else
+                ActiveTab = outside;
+        }
+
+        group.IsCollapsed = !group.IsCollapsed;
+        SoundService.Play(UiSound.Toggle);
+        RefreshGroups();
+        ScheduleSave();
+    }
+
+    public void Ungroup(TabGroupViewModel group)
+    {
+        foreach (var tab in Tabs.Where(t => t.Group == group))
+            tab.Group = null;
+        RefreshGroups();
+        ScheduleSave();
+    }
+
+    public void CloseGroup(TabGroupViewModel group)
+    {
+        var members = Tabs.Where(t => t.Group == group).ToList();
+        if (members.Count == Tabs.Count)
+            NewTab(); // closing every tab would close the window
+        if (Tabs.FirstOrDefault(t => t.Group != group) is { } survivor)
+            CloseTabs(members, survivor);
+    }
+
+    public void NewTabInGroup(TabGroupViewModel group)
+    {
+        if (Tabs.LastOrDefault(t => t.Group == group) is not { } last)
+            return;
+
+        group.IsCollapsed = false;
+        ActiveTab = CreateTab(InternalPages.NewTabUrl, Tabs.IndexOf(last) + 1, group: group);
+        SoundService.Play(UiSound.TabOpen);
+        FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Saves the group's new name or colour (called by the editor).</summary>
+    public void GroupChanged() => ScheduleSave();
+
+    /// <summary>Takes a tab out of its group without splitting it: it moves just past the group first.</summary>
+    private void LeaveGroup(TabViewModel tab)
+    {
+        if (tab.Group is not { } group)
+            return;
+
+        MoveAfter(tab, Tabs.Last(t => t.Group == group));
+        tab.Group = null;
+    }
+
+    private void UnpinForGroup(TabViewModel tab)
+    {
+        if (!tab.IsPinned)
+            return;
+
+        tab.IsPinned = false;
+        Tabs.Move(Tabs.IndexOf(tab), Tabs.Count(t => t.IsPinned));
+    }
+
+    private void MoveAfter(TabViewModel tab, TabViewModel anchor)
+    {
+        if (ReferenceEquals(tab, anchor))
+            return;
+
+        var from = Tabs.IndexOf(tab);
+        var to = Tabs.IndexOf(anchor);
+        Tabs.Move(from, from > to ? to + 1 : to);
+    }
+
+    /// <summary>Recomputes which tab draws each group's label, hides collapsed members and drops empty groups.</summary>
+    private void RefreshGroups()
+    {
+        foreach (var empty in Groups.Where(g => Tabs.All(t => t.Group != g)).ToList())
+            Groups.Remove(empty);
+
+        for (var i = 0; i < Tabs.Count; i++)
+        {
+            var tab = Tabs[i];
+            if (tab.Group is { } group && !Groups.Contains(group))
+                tab.Group = null;
+            tab.IsGroupStart = tab.Group is not null && (i == 0 || Tabs[i - 1].Group != tab.Group);
+            tab.IsCollapsedInGroup = tab.Group?.IsCollapsed == true;
+        }
+
+        OnPropertyChanged(nameof(HasGroups));
+    }
 
     private void CloseTabs(List<TabViewModel> tabs, TabViewModel survivor)
     {
@@ -459,7 +668,7 @@ public sealed class MainViewModel : ObservableObject
             Detach(tab);
             tab.Dispose();
         }
-        foreach (var panel in Panels)
+        foreach (var panel in HostedPanels)
             panel.Dispose();
 
         HostedTabs.Clear();
@@ -563,6 +772,17 @@ public sealed class MainViewModel : ObservableObject
             return;
 
         Tabs.Move(oldIndex, newIndex);
+
+        // Dropped between two tabs of a group: joins it. Still touching its own group: stays.
+        // Anywhere else: leaves its group.
+        var left = newIndex > 0 ? Tabs[newIndex - 1] : null;
+        var right = newIndex < Tabs.Count - 1 ? Tabs[newIndex + 1] : null;
+        if (!tab.IsPinned && left?.Group is { } around && around == right?.Group)
+            tab.Group = around;
+        else if (tab.Group is not { } own || (left?.Group != own && right?.Group != own))
+            tab.Group = null;
+
+        RefreshGroups();
         ScheduleSave();
     }
 
@@ -593,7 +813,8 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(PanelWidth));
     }
 
-    private TabViewModel CreateTab(string? url, int index, string? title = null, bool isPrivate = false, bool isPinned = false)
+    private TabViewModel CreateTab(string? url, int index, string? title = null, bool isPrivate = false, bool isPinned = false,
+        TabGroupViewModel? group = null)
     {
         var tab = CreatePage(url, title, isPrivate, isPinned);
         // New tabs never land inside the pinned group.
@@ -603,7 +824,18 @@ public sealed class MainViewModel : ObservableObject
         tab.InternalPageMessage += OnInternalPageMessage;
         tab.NavigationFinished += OnNavigationFinished;
 
-        Tabs.Insert(Math.Clamp(index, 0, Tabs.Count), tab);
+        index = Math.Clamp(index, 0, Tabs.Count);
+        // Inserted in the middle of a group (or asked to): it belongs to that group.
+        if (!isPinned)
+        {
+            var left = index > 0 ? Tabs[index - 1] : null;
+            var right = index < Tabs.Count ? Tabs[index] : null;
+            tab.Group = group is not null && (left?.Group == group || right?.Group == group)
+                ? group
+                : left?.Group is { } around && around == right?.Group ? around : null;
+        }
+
+        Tabs.Insert(index, tab);
         HostedTabs.Add(tab);
         ScheduleSave();
         return tab;
@@ -721,7 +953,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             // Popups from an InPrivate tab stay InPrivate (and share its profile).
-            var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1, isPrivate: source.IsPrivate);
+            var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1, isPrivate: source.IsPrivate, group: source.Group);
             ActiveTab = tab;
             SoundService.Play(UiSound.TabOpen);
             await tab.EnsureCoreAsync();
@@ -800,6 +1032,8 @@ public sealed class MainViewModel : ObservableObject
             var tab = CreatePage(url);
             // Links that open a new window from a panel go to a normal tab.
             tab.NewWindowRequested += OnPanelNewWindowRequested;
+            if (ReferenceEquals(panel, ConverterPanel))
+                tab.InternalPageMessage += OnInternalPageMessage;
             return tab;
         });
         ActivePanel = panel;
@@ -848,7 +1082,14 @@ public sealed class MainViewModel : ObservableObject
 
         UnloadPanel(panel);
         Panels.Remove(panel);
+        HostedPanels.Remove(panel);
         BroadcastToInternalPages(_settingsController.BuildState());
+    }
+
+    private void AddPanel(PanelViewModel panel)
+    {
+        Panels.Add(panel);
+        HostedPanels.Add(panel);
     }
 
     // ---------------------------------------------------------------- permissions
@@ -905,7 +1146,7 @@ public sealed class MainViewModel : ObservableObject
     // ---------------------------------------------------------------- internal pages
 
     /// <summary>Requests from Claxe's own pages. The tab already verified the sender is internal.</summary>
-    private void OnInternalPageMessage(object? sender, JsonElement message)
+    private async void OnInternalPageMessage(object? sender, JsonElement message)
     {
         if (sender is not TabViewModel tab)
             return;
@@ -918,6 +1159,11 @@ public sealed class MainViewModel : ObservableObject
 
         switch (Text("type"))
         {
+            // ----- converter panel
+            case { } converterMessage when converterMessage.StartsWith("converter:", StringComparison.Ordinal):
+                _converter.Handle(tab, converterMessage, message);
+                break;
+
             // ----- new tab page
             case "ready":
                 tab.PostToInternalPage(BuildNewTabConfig());
@@ -937,6 +1183,18 @@ public sealed class MainViewModel : ObservableObject
             case "removeShortcut":
                 _shortcuts.Remove(Text("url"));
                 BroadcastShortcuts();
+                break;
+
+            case "saveWidgets" when message.TryGetProperty("widgets", out var widgets):
+                var saved = _widgets.Save(widgets);
+                // Other open new tabs follow; the sender keeps its own state (and its text cursor).
+                foreach (var other in HostedTabs.Where(t => !ReferenceEquals(t, tab)))
+                    other.PostToInternalPage(new { type = "widgets", widgets = saved });
+                break;
+
+            case "weather" when !string.IsNullOrWhiteSpace(Text("city")):
+                var weather = await WeatherService.GetAsync(Text("city")!, L.Language);
+                tab.PostToInternalPage(weather);
                 break;
 
             // ----- settings page
@@ -971,7 +1229,7 @@ public sealed class MainViewModel : ObservableObject
             case "addPanel":
                 if (_panelStore.Add(Text("name"), Text("url")) is { } added)
                 {
-                    Panels.Add(new PanelViewModel(added));
+                    AddPanel(new PanelViewModel(added));
                     BroadcastToInternalPages(_settingsController.BuildState());
                 }
                 else
@@ -1033,7 +1291,7 @@ public sealed class MainViewModel : ObservableObject
                 break;
 
             case "applyUpdate":
-                UpdateService.RestartToApply();
+                ApplyUpdate();
                 break;
 
             case "unregisterDefaultBrowser":
@@ -1292,6 +1550,8 @@ public sealed class MainViewModel : ObservableObject
             searchEngine = SearchEngine.Name,
             shortcuts = _shortcuts.Items,
             maxShortcuts = ShortcutStore.MaxShortcuts,
+            widgets = _widgets.Items,
+            maxWidgets = WidgetStore.MaxWidgets,
         };
     }
 
@@ -1315,8 +1575,15 @@ public sealed class MainViewModel : ObservableObject
         var saved = Tabs.Where(t => !t.IsPrivate).ToList();
         var state = new SessionState
         {
-            Tabs = saved.Select(t => new SessionTab { Url = t.Url ?? InternalPages.NewTabUrl, Title = t.Title, IsPinned = t.IsPinned }).ToList(),
+            Tabs = saved.Select(t => new SessionTab
+            {
+                Url = t.Url ?? InternalPages.NewTabUrl,
+                Title = t.Title,
+                IsPinned = t.IsPinned,
+                GroupId = t.Group?.Id,
+            }).ToList(),
             ActiveIndex = ActiveTab is null ? 0 : Math.Max(0, saved.IndexOf(ActiveTab)),
+            Groups = Groups.Select(g => new SessionGroup { Id = g.Id, Name = g.Name, Color = g.ColorKey, IsCollapsed = g.IsCollapsed }).ToList(),
         };
         SessionStore.Save(state);
     }

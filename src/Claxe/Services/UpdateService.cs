@@ -70,11 +70,19 @@ public static class UpdateService
         }
     }
 
-    /// <summary>Closes Claxe, installs the downloaded version and starts it again.</summary>
-    public static void RestartToApply()
+    /// <summary>
+    /// Arms the updater to install the downloaded version as soon as Sorune has exited, then
+    /// start it again. The caller closes the window normally afterwards, so the session,
+    /// cookies and history are saved first. Returns false when nothing is ready.
+    /// </summary>
+    public static bool PrepareApplyOnExit()
     {
-        if (_pending is not null)
-            Manager.ApplyUpdatesAndRestart(_pending.TargetFullRelease);
+        if (_pending is null)
+            return false;
+
+        Manager.WaitExitThenApplyUpdates(_pending.TargetFullRelease, silent: false, restart: true);
+        Log.Info($"Güncelleme kapanışta uygulanacak: {AvailableVersion}");
+        return true;
     }
 
     private static void Set(UpdateState state)
