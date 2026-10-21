@@ -16,6 +16,9 @@ public static class AddressResolver
     {
         var text = input.Trim();
 
+        if (InternalPages.TryResolveFriendly(text, out var internalUrl))
+            return internalUrl;
+
         // "example.com:8080" parses as an absolute URI with scheme "example.com",
         // so only accept schemes we actually know.
         if (Uri.TryCreate(text, UriKind.Absolute, out var absolute) && NavigableSchemes.Contains(absolute.Scheme))

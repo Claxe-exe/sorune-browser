@@ -28,8 +28,7 @@ public sealed class MascotView : Grid
         [MascotMood.Sleepy] = ("sleepy.png", 300, 55, 262),
     };
 
-    /// <summary>Visible head height (hair top to eye bottom) in DIPs.</summary>
-    private const double HeadHeight = 34;
+    private double _headHeight = 34;
 
     private readonly Dictionary<MascotMood, Image> _images = [];
     private readonly TranslateTransform _peek = new();
@@ -67,7 +66,29 @@ public sealed class MascotView : Grid
     }
 
     /// <summary>Y coordinate (in this control) that the eyes should sit just above.</summary>
-    public double EyeLine { get; set; } = 38;
+    public double EyeLine { get; private set; } = 38;
+
+    /// <summary>
+    /// Fits the mascot to a title bar height: eyes just above the toolbar edge and the
+    /// visible head (hair top to eye bottom) filling most of the bar.
+    /// </summary>
+    public void FitToTitleBar(double titleBarHeight)
+    {
+        var eyeLine = titleBarHeight - 6;
+        var headHeight = titleBarHeight - 10;
+        if (eyeLine == EyeLine && headHeight == _headHeight)
+            return;
+
+        EyeLine = eyeLine;
+        _headHeight = headHeight;
+
+        // Pose images are sized from the head height, so rebuild them.
+        foreach (var image in _images.Values)
+            Children.Remove(image);
+        _images.Clear();
+        _current = null;
+        ShowMood(animate: false);
+    }
 
     private static readonly DependencyProperty GlowColorProperty = DependencyProperty.Register(
         "GlowColor", typeof(Color), typeof(MascotView),
@@ -84,7 +105,7 @@ public sealed class MascotView : Grid
 
         var pose = Poses[mood];
         var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Mascot", pose.File);
-        var scale = HeadHeight / (pose.EyeBottom - pose.HairTop);
+        var scale = _headHeight / (pose.EyeBottom - pose.HairTop);
 
         var bitmap = new BitmapImage();
         bitmap.BeginInit();
@@ -201,6 +222,15 @@ public sealed class MascotView : Grid
         };
         Timeline.SetDesiredFrameRate(bob, 24);
         _bob.BeginAnimation(TranslateTransform.YProperty, bob);
+    }
+
+    /// <summary>Re-evaluates idle motion after the animation setting changes.</summary>
+    public void RefreshMotion()
+    {
+        if (Motion.Enabled)
+            StartBob();
+        else
+            StopMotion();
     }
 
     private void StopMotion()

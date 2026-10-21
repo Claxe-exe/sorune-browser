@@ -13,6 +13,9 @@
     <!-- ===== Theme colours (overridden by ThemeService) ===== -->
     <Color x:Key="AccentColor">#B583FF</Color>
     <Color x:Key="AccentSecondaryColor">#DD7FD0</Color>
+    <!-- Accent at low alpha: inner glow of the active tab / fading part of its outline. -->
+    <Color x:Key="AccentWashColor">#30B583FF</Color>
+    <Color x:Key="AccentFadeColor">#50B583FF</Color>
 
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0910" />
     <SolidColorBrush x:Key="ChromeTintBrush" Color="#100C17" Opacity="0.8" />
@@ -38,15 +41,19 @@
     <SolidColorBrush x:Key="InsetBrush" Color="#000000" Opacity="0.28" />
     <SolidColorBrush x:Key="InsetHoverBrush" Color="#000000" Opacity="0.36" />
 
-    <!-- ===== Shape & spacing ===== -->
+    <!-- ===== Shape & density (overridden by ThemeService from CornerStyle / Density) ===== -->
+    <sys:Double x:Key="TabCornerRadiusValue">10</sys:Double>
     <CornerRadius x:Key="TabCornerRadius">10,10,0,0</CornerRadius>
-    <CornerRadius x:Key="ControlCornerRadius">10</CornerRadius>
+    <CornerRadius x:Key="ControlCornerRadius">9</CornerRadius>
     <CornerRadius x:Key="PillCornerRadius">18</CornerRadius>
     <sys:Double x:Key="TitleBarHeight">44</sys:Double>
     <sys:Double x:Key="ToolbarHeight">48</sys:Double>
     <!-- Same values for Grid rows, which take GridLength. -->
     <GridLength x:Key="TitleBarRowHeight">44</GridLength>
     <GridLength x:Key="ToolbarRowHeight">48</GridLength>
+    <sys:Double x:Key="TabHeight">36</sys:Double>
+    <sys:Double x:Key="PillHeight">36</sys:Double>
+    <sys:Double x:Key="IconButtonSize">36</sys:Double>
 
     <!-- ===== Typography ===== -->
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>

@@ -37,15 +37,27 @@ Ham görseller (`/assets`) Git'e eklenmez; uygulamanın kullandığı kopyalar `
 
 ## Ayarlar
 
-Ayarlar ekranı gelene kadar `%LOCALAPPDATA%\Claxe\settings.json` elle düzenlenebilir:
+Ayarlar sayfası: sağ üstteki dişli, `Ctrl+,` ya da adres çubuğuna `claxe://ayarlar`.
+Değişiklikler anında uygulanır ve `%LOCALAPPDATA%\Claxe\settings.json` dosyasına kaydedilir.
 
 | Anahtar | Varsayılan | Açıklama |
 |---|---|---|
-| `searchEngine` | `google` | `google`, `duckduckgo`, `bing`, `brave` |
-| `restoreSession` | `true` | Açık sekmeleri yeniden açılışta geri getir |
-| `theme` | `midnight-mei` | `Assets/Themes` altındaki tema |
+| `theme` | `midnight-mei` | `midnight-mei`, `tempest-blue`, `fate-saber`, `arima-kana` |
+| `wallpaper` | `null` | `null` = temanınki, `preset:{dosya}`, `custom:{dosya}` |
+| `accentColor` | `null` | `#RRGGBB`; `null` = temanınki |
+| `chromeOpacity` | `null` | Cam tonunun opaklığı (0.40-0.97); `null` = temanınki |
+| `cornerStyle` | `soft` | `sharp`, `soft`, `round` |
+| `density` | `normal` | `compact`, `normal`, `comfortable` |
 | `animationsEnabled` | `true` | Arayüz animasyonları ve yeni sekme efektleri |
 | `mascotEnabled` | `true` | Araç çubuğunun arkasından bakan maskot |
+| `soundsEnabled` / `soundVolume` | `true` / `0.5` | Arayüz sesleri (uygulama içinde sentezlenir) |
+| `searchEngine` | `google` | `google`, `duckduckgo`, `bing`, `brave` |
+| `restoreSession` | `true` | Açık sekmeleri yeniden açılışta geri getir |
+
+### Yeni tema eklemek
+
+`src/Claxe/Assets/Themes` içine `{id}.json` ve duvar kâğıdını (`thumbs/` altına 360 px önizlemesini) koymak yeterli;
+tema ayarlar sayfasında kendiliğinden listelenir. Parçacık efektleri: `petals`, `sparks`, `bubbles`, `none`.
 
 ## Klavye kısayolları
 
@@ -60,3 +72,4 @@ Ayarlar ekranı gelene kadar `%LOCALAPPDATA%\Claxe\settings.json` elle düzenlen
 | F5 / Ctrl+R | Yenile |
 | Alt+Sol / Alt+Sağ | Geri / ileri |
 | F11 | Tam ekran |
+| Ctrl+, | Ayarlar |

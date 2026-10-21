@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 using Claxe.Services;
 using Claxe.ViewModels;
@@ -28,7 +29,13 @@ public partial class App : Application
 
         var settings = SettingsStore.Load();
         Motion.Enabled = settings.AnimationsEnabled;
-        ThemeService.Apply(settings.Theme);
+        SoundService.Enabled = settings.SoundsEnabled;
+        SoundService.Volume = settings.SoundVolume;
+        ThemeService.Apply(settings);
+
+        // One click sound for every button in the app (toolbar, tabs, caption buttons).
+        EventManager.RegisterClassHandler(typeof(ButtonBase), ButtonBase.ClickEvent,
+            new RoutedEventHandler((_, _) => SoundService.Play(UiSound.Click)));
 
         var viewModel = new MainViewModel(settings);
         var window = new MainWindow(viewModel);

@@ -2,6 +2,12 @@
 // accepts messages from this internal origin and sends back the theme + shortcuts.
 "use strict";
 
+// Claxe pages are never meant to live inside another site's frame.
+if (window.top !== window.self) {
+    document.documentElement.replaceChildren();
+    throw new Error("Claxe sayfası çerçeve içinde açılamaz.");
+}
+
 const host = window.chrome && window.chrome.webview;
 const $ = (id) => document.getElementById(id);
 
@@ -9,6 +15,7 @@ const state = {
     shortcuts: [],
     maxShortcuts: 12,
     animations: true,
+    wallpaper: null,
 };
 
 function send(message) {
@@ -139,12 +146,17 @@ $("dialog-form").addEventListener("submit", (event) => {
 
 // ---------------------------------------------------------------- particles
 
+// "petals" drift down and to the left (like the wallpapers' falling petals),
+// "sparks" are small glowing embers rising, "bubbles" are thin rings floating up.
+// Returns a function that stops the effect.
 function startParticles(kind, colors) {
     const canvas = $("particles");
     const ctx = canvas.getContext("2d");
+    const rising = kind === "sparks" || kind === "bubbles";
     let width = 0;
     let height = 0;
-    let petals = [];
+    let items = [];
+    let frame = 0;
 
     function resize() {
         const ratio = window.devicePixelRatio || 1;
@@ -153,56 +165,89 @@ function startParticles(kind, colors) {
         canvas.width = Math.round(width * ratio);
         canvas.height = Math.round(height * ratio);
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        const count = Math.min(26, Math.round(width / 70));
-        petals = Array.from({ length: count }, () => spawn(true));
+        const density = kind === "bubbles" ? 110 : 70;
+        items = Array.from({ length: Math.min(26, Math.round(width / density)) }, () => spawn(true));
     }
 
     function spawn(anywhere) {
-        return {
-            x: anywhere ? Math.random() * width : width + 20 + Math.random() * 60,
-            y: anywhere ? Math.random() * height : -20 - Math.random() * height * 0.5,
-            size: 4 + Math.random() * 6,
-            vx: -(0.25 + Math.random() * 0.45),
-            vy: 0.35 + Math.random() * 0.55,
+        const p = {
+            size: kind === "bubbles" ? 5 + Math.random() * 12 : 4 + Math.random() * 6,
             angle: Math.random() * Math.PI * 2,
             spin: (Math.random() - 0.5) * 0.03,
             sway: Math.random() * Math.PI * 2,
             color: colors[Math.floor(Math.random() * colors.length)],
-            alpha: 0.35 + Math.random() * 0.4,
+            alpha: 0.3 + Math.random() * 0.45,
         };
+        if (rising) {
+            p.x = Math.random() * width;
+            p.y = anywhere ? Math.random() * height : height + 20;
+            p.vx = (Math.random() - 0.5) * 0.2;
+            p.vy = -(0.25 + Math.random() * (kind === "sparks" ? 0.7 : 0.4));
+        } else {
+            p.x = anywhere ? Math.random() * width : width + 20 + Math.random() * 60;
+            p.y = anywhere ? Math.random() * height : -20 - Math.random() * height * 0.5;
+            p.vx = -(0.25 + Math.random() * 0.45);
+            p.vy = 0.35 + Math.random() * 0.55;
+        }
+        return p;
     }
 
     function draw() {
         ctx.clearRect(0, 0, width, height);
-        for (const p of petals) {
+        for (const p of items) {
             p.sway += 0.015;
-            p.x += p.vx + Math.sin(p.sway) * 0.35;
+            p.x += p.vx + Math.sin(p.sway) * (rising ? 0.25 : 0.35);
             p.y += p.vy;
             p.angle += p.spin;
-            if (p.y > height + 20 || p.x < -30) Object.assign(p, spawn(false));
+            const gone = rising ? p.y < -30 : (p.y > height + 20 || p.x < -30);
+            if (gone) Object.assign(p, spawn(false));
 
             ctx.save();
             ctx.translate(p.x, p.y);
-            ctx.rotate(p.angle);
             ctx.globalAlpha = p.alpha;
-            ctx.fillStyle = p.color;
             ctx.beginPath();
             if (kind === "sparks") {
-                ctx.arc(0, 0, p.size * 0.25, 0, Math.PI * 2);
+                // Fades out as it rises; shadowBlur gives the ember glow.
+                ctx.globalAlpha = p.alpha * Math.max(0, Math.min(1, p.y / (height * 0.6)));
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = p.color;
+                ctx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (kind === "bubbles") {
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 1.2;
+                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = p.alpha * 0.6;
+                ctx.beginPath();
+                ctx.fillStyle = "#ffffff";
+                ctx.arc(-p.size * 0.35, -p.size * 0.35, p.size * 0.18, 0, Math.PI * 2);
+                ctx.fill();
             } else {
+                ctx.rotate(p.angle);
+                ctx.fillStyle = p.color;
                 ctx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+                ctx.fill();
             }
-            ctx.fill();
             ctx.restore();
         }
         // requestAnimationFrame pauses by itself while the tab is hidden.
-        requestAnimationFrame(draw);
+        frame = requestAnimationFrame(draw);
     }
 
     window.addEventListener("resize", resize);
     resize();
-    requestAnimationFrame(draw);
+    frame = requestAnimationFrame(draw);
+
+    return () => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener("resize", resize);
+        ctx.clearRect(0, 0, width, height);
+    };
 }
+
+let stopParticles = null;
 
 // ---------------------------------------------------------------- config from the app
 
@@ -223,9 +268,11 @@ function applyConfig(config) {
     state.animations = config.animations !== false && !reducedMotion;
     document.body.classList.toggle("motion", state.animations);
 
-    if (theme.wallpaper) {
+    if (theme.wallpaper && theme.wallpaper !== state.wallpaper) {
+        state.wallpaper = theme.wallpaper;
         const img = new Image();
         img.onload = () => {
+            if (state.wallpaper !== theme.wallpaper) return; // a newer config won the race
             root.setProperty("--wallpaper", `url("${theme.wallpaper}")`);
             $("wall").classList.add("ready");
         };
@@ -237,8 +284,13 @@ function applyConfig(config) {
     state.shortcuts = config.shortcuts || [];
     renderShortcuts();
 
+    // The config is re-sent whenever settings change, so restart rather than stack effects.
+    if (stopParticles) {
+        stopParticles();
+        stopParticles = null;
+    }
     if (state.animations && theme.particles && theme.particles !== "none") {
-        startParticles(theme.particles, [theme.accent || "#b583ff", theme.accentSecondary || "#dd7fd0"]);
+        stopParticles = startParticles(theme.particles, [theme.accent || "#b583ff", theme.accentSecondary || "#dd7fd0"]);
     }
 }
 

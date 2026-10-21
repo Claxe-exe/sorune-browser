@@ -200,6 +200,16 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             core.PostWebMessageAsJson(JsonSerializer.Serialize(payload, PageJson));
     }
 
+    /// <summary>Follows a theme change, so blank/loading pages match the new background.</summary>
+    public void UpdateBackgroundColor()
+    {
+        if (_webView is null)
+            return;
+
+        var background = ThemeService.BaseColor;
+        _webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, background.R, background.G, background.B);
+    }
+
     /// <summary>Puts the address bar back to the current page URL (Escape).</summary>
     public void RevertAddress()
     {

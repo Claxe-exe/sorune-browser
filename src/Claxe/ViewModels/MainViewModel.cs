@@ -16,7 +16,11 @@ public sealed class MainViewModel : ObservableObject
 {
     private const int MaxClosedTabs = 25;
 
+    private static readonly HashSet<string> AppearanceKeys =
+        ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled"];
+
     private readonly AppSettings _settings;
+    private readonly SettingsController _settingsController;
     private readonly ShortcutStore _shortcuts = new();
     private readonly DispatcherTimer _saveTimer;
     private readonly List<string> _closedTabs = [];
@@ -26,6 +30,8 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(AppSettings settings)
     {
         _settings = settings;
+        _settingsController = new SettingsController(settings);
+        _settingsController.Changed += OnSettingChanged;
         Mascot = new MascotViewModel(settings.MascotEnabled);
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _saveTimer.Tick += (_, _) =>
@@ -45,6 +51,7 @@ public sealed class MainViewModel : ObservableObject
         ForwardCommand = new RelayCommand(() => ActiveTab?.GoForward(), () => ActiveTab?.CanGoForward == true);
         ReloadOrStopCommand = new RelayCommand(ReloadOrStop, () => ActiveTab?.Core is not null);
         NavigateCommand = new RelayCommand(NavigateFromAddressBar);
+        OpenSettingsCommand = new RelayCommand(OpenSettings);
         RevertAddressCommand = new RelayCommand(() =>
         {
             ActiveTab?.RevertAddress();
@@ -75,10 +82,17 @@ public sealed class MainViewModel : ObservableObject
     public ICommand ReloadOrStopCommand { get; }
     public ICommand NavigateCommand { get; }
     public ICommand RevertAddressCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
 
     public event EventHandler? FocusAddressBarRequested;
     public event EventHandler? FocusContentRequested;
     public event EventHandler? CloseWindowRequested;
+
+    /// <summary>Layout or motion settings changed; the view re-fits sizes that aren't resource-bound.</summary>
+    public event EventHandler? AppearanceChanged;
+
+    /// <summary>The settings page asked for a wallpaper file; the view shows the file picker.</summary>
+    public event EventHandler? WallpaperPickRequested;
 
     public TabViewModel? ActiveTab
     {
@@ -135,7 +149,28 @@ public sealed class MainViewModel : ObservableObject
     public void NewTab()
     {
         ActiveTab = CreateTab(InternalPages.NewTabUrl, Tabs.Count);
+        SoundService.Play(UiSound.TabOpen);
         FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Switches to the settings tab, opening one if needed.</summary>
+    public void OpenSettings()
+    {
+        if (Tabs.FirstOrDefault(t => InternalPages.IsSettings(t.Url)) is { } existing)
+        {
+            ActiveTab = existing;
+            return;
+        }
+
+        ActiveTab = CreateTab(InternalPages.SettingsUrl, Tabs.Count);
+        SoundService.Play(UiSound.TabOpen);
+    }
+
+    /// <summary>Called by the view after the user picked a file for the wallpaper.</summary>
+    public void ImportWallpaper(string path)
+    {
+        if (!_settingsController.TryImportWallpaper(path, out var error))
+            BroadcastToInternalPages(new { type = "wallpaperError", message = error });
     }
 
     public void CloseTab(TabViewModel? tab)
@@ -162,6 +197,7 @@ public sealed class MainViewModel : ObservableObject
         HostedTabs.Remove(tab);
         Detach(tab);
         tab.Dispose();
+        SoundService.Play(UiSound.TabClose);
 
         if (Tabs.Count == 0)
         {
@@ -181,6 +217,7 @@ public sealed class MainViewModel : ObservableObject
         var url = _closedTabs[^1];
         _closedTabs.RemoveAt(_closedTabs.Count - 1);
         ActiveTab = CreateTab(url, Tabs.Count);
+        SoundService.Play(UiSound.TabOpen);
     }
 
     public void SelectRelative(int delta)
@@ -274,7 +311,7 @@ public sealed class MainViewModel : ObservableObject
             Mascot.OnPageLoaded(success);
     }
 
-    /// <summary>Requests from the new tab page. The tab already verified the sender is internal.</summary>
+    /// <summary>Requests from Claxe's own pages. The tab already verified the sender is internal.</summary>
     private void OnInternalPageMessage(object? sender, JsonElement message)
     {
         if (sender is not TabViewModel tab)
@@ -287,6 +324,23 @@ public sealed class MainViewModel : ObservableObject
         {
             case "ready":
                 tab.PostToInternalPage(BuildNewTabConfig());
+                break;
+
+            case "getSettings":
+                tab.PostToInternalPage(_settingsController.BuildState());
+                break;
+
+            case "updateSetting" when message.TryGetProperty("value", out var value):
+                if (!_settingsController.TryUpdate(Text("key"), value))
+                    tab.PostToInternalPage(_settingsController.BuildState()); // put the page back in sync
+                break;
+
+            case "pickWallpaper":
+                WallpaperPickRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "removeCustomWallpaper":
+                _settingsController.RemoveCustomWallpaper();
                 break;
 
             case "navigate" when !string.IsNullOrWhiteSpace(Text("text")):
@@ -308,11 +362,56 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private void BroadcastShortcuts()
+    private void BroadcastShortcuts() => BroadcastToInternalPages(new { type = "shortcuts", shortcuts = _shortcuts.Items });
+
+    /// <summary>Only reaches tabs currently showing one of Claxe's own pages; each page ignores types it doesn't use.</summary>
+    private void BroadcastToInternalPages(object payload)
     {
-        var payload = new { type = "shortcuts", shortcuts = _shortcuts.Items };
         foreach (var tab in HostedTabs)
             tab.PostToInternalPage(payload);
+    }
+
+    private void OnSettingChanged(object? sender, string key)
+    {
+        if (AppearanceKeys.Contains(key))
+        {
+            Motion.Enabled = _settings.AnimationsEnabled;
+            ThemeService.Apply(_settings);
+            OnPropertyChanged(nameof(Backdrop));
+            foreach (var tab in HostedTabs)
+                tab.UpdateBackgroundColor();
+            AppearanceChanged?.Invoke(this, EventArgs.Empty);
+            BroadcastToInternalPages(BuildNewTabConfig());
+        }
+
+        switch (key)
+        {
+            case "mascotEnabled":
+                Mascot.IsEnabled = _settings.MascotEnabled;
+                break;
+            case "soundsEnabled":
+            case "soundVolume":
+                SoundService.Enabled = _settings.SoundsEnabled;
+                SoundService.Volume = _settings.SoundVolume;
+                break;
+            case "searchEngine":
+                BroadcastToInternalPages(BuildNewTabConfig());
+                break;
+            case "restoreSession":
+                if (_settings.RestoreSession)
+                    ScheduleSave();
+                else
+                    SessionStore.Delete();
+                break;
+        }
+
+        // Feedback: a toggle sound for switches, a sample click at the new volume for the slider.
+        if (key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession")
+            SoundService.Play(UiSound.Toggle);
+        else if (key == "soundVolume")
+            SoundService.Play(UiSound.Click);
+
+        BroadcastToInternalPages(_settingsController.BuildState());
     }
 
     private object BuildNewTabConfig()
@@ -326,7 +425,7 @@ public sealed class MainViewModel : ObservableObject
                 id = theme.Id,
                 name = theme.Name,
                 wallpaper = ThemeService.WallpaperUrl,
-                accent = theme.Colors.Accent,
+                accent = ThemeService.Accent,
                 accentSecondary = theme.Colors.AccentSecondary,
                 overlay = theme.NewTab.Overlay,
                 particles = theme.NewTab.Particles,
@@ -381,6 +480,7 @@ public sealed class MainViewModel : ObservableObject
         {
             var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1);
             ActiveTab = tab;
+            SoundService.Play(UiSound.TabOpen);
             await tab.EnsureCoreAsync();
             if (tab.Core is { } core)
             {

@@ -1,12 +1,13 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace Claxe.Controls;
 
 /// <summary>
 /// Lays tabs out in one row with equal widths: each tab gets MaxTabWidth until the
 /// strip fills up, then they shrink evenly down to MinTabWidth. Past that the strip
-/// scrolls horizontally (mouse wheel / EnsureVisible).
+/// scrolls horizontally (mouse wheel / EnsureVisible) with faded edges.
 /// </summary>
 public sealed class TabStripPanel : Panel
 {
@@ -14,7 +15,9 @@ public sealed class TabStripPanel : Panel
     private double _viewport;
     private double _extent;
 
-    public TabStripPanel() => ClipToBounds = true;
+    /// <summary>How far the active tab's feet and glow may reach outside the panel.</summary>
+    private const double Bleed = 10;
+    private const double FadeWidth = 28;
 
     public double MaxTabWidth { get; set; } = 240;
     public double MinTabWidth { get; set; } = 96;
@@ -79,7 +82,33 @@ public sealed class TabStripPanel : Panel
             x += _tabWidth;
         }
 
+        UpdateEdgeFade(finalSize.Width);
         return finalSize;
+    }
+
+    /// <summary>Clips scrolled-away tabs but lets the active tab's feet and glow spill over the edges.</summary>
+    protected override Geometry GetLayoutClip(Size layoutSlotSize)
+        => new RectangleGeometry(new Rect(-Bleed, -Bleed, RenderSize.Width + 2 * Bleed, RenderSize.Height + Bleed));
+
+    /// <summary>Fades the strip's edges while tabs are hidden on that side, so overflow is visible.</summary>
+    private void UpdateEdgeFade(double width)
+    {
+        var fadeLeft = HorizontalOffset > 0.5;
+        var fadeRight = HorizontalOffset < _extent - _viewport - 0.5;
+        if (!fadeLeft && !fadeRight || width <= 2 * FadeWidth)
+        {
+            OpacityMask = null;
+            return;
+        }
+
+        var edge = FadeWidth / width;
+        var mask = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
+        mask.GradientStops.Add(new GradientStop(fadeLeft ? Colors.Transparent : Colors.Black, 0));
+        mask.GradientStops.Add(new GradientStop(Colors.Black, edge));
+        mask.GradientStops.Add(new GradientStop(Colors.Black, 1 - edge));
+        mask.GradientStops.Add(new GradientStop(fadeRight ? Colors.Transparent : Colors.Black, 1));
+        mask.Freeze();
+        OpacityMask = mask;
     }
 
     private void SetOffset(double offset)

@@ -47,6 +47,9 @@ public partial class MainWindow : Window
                 UpdateMascotVisibility();
         };
         viewModel.Tabs.CollectionChanged += (_, _) => EnsureActiveTabVisible();
+        viewModel.AppearanceChanged += (_, _) => ApplyAppearance();
+        viewModel.WallpaperPickRequested += (_, _) => PickWallpaper();
+        ApplyAppearance();
 
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseDown += (_, _) => _viewModel.Mascot.NoteActivity();
@@ -107,6 +110,7 @@ public partial class MainWindow : Window
             case Key.Left when alt: Execute(_viewModel.BackCommand); break;
             case Key.Right when alt: Execute(_viewModel.ForwardCommand); break;
             case Key.F11 when none: ToggleBrowserFullScreen(); break;
+            case Key.OemComma when ctrl: _viewModel.OpenSettings(); break;
             default: handled = false; break;
         }
 
@@ -370,6 +374,29 @@ public partial class MainWindow : Window
         LoadingBar.BeginAnimation(OpacityProperty, fade);
     }
 
+    /// <summary>Sizes that can't be bound to resources: the caption hit area and the mascot fit.</summary>
+    private void ApplyAppearance()
+    {
+        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+            chrome.CaptionHeight = ThemeService.TitleBarHeight;
+
+        Mascot.FitToTitleBar(ThemeService.TitleBarHeight);
+        Mascot.RefreshMotion();
+    }
+
+    private void PickWallpaper()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Duvar kâğıdı seç",
+            Filter = "Görseller (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp",
+            CheckFileExists = true,
+        };
+
+        if (dialog.ShowDialog(this) == true)
+            _viewModel.ImportWallpaper(dialog.FileName);
+    }
+
     private void UpdateMascotVisibility()
     {
         var visible = _viewModel.Mascot.IsEnabled && ActualWidth >= MascotMinWindowWidth && !_isBrowserFullScreen;
@@ -400,8 +427,9 @@ public partial class MainWindow : Window
         }
         else
         {
-            TitleRow.Height = (GridLength)FindResource("TitleBarRowHeight");
-            ToolbarRow.Height = (GridLength)FindResource("ToolbarRowHeight");
+            // Back to the resource references (not fixed values), so density changes keep working.
+            TitleRow.SetResourceReference(RowDefinition.HeightProperty, "TitleBarRowHeight");
+            ToolbarRow.SetResourceReference(RowDefinition.HeightProperty, "ToolbarRowHeight");
             WindowStyle = WindowStyle.SingleBorderWindow;
             ResizeMode = ResizeMode.CanResize;
             WindowState = _stateBeforeFullScreen;

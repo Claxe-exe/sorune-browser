@@ -39,8 +39,8 @@
     <Border x:Name="RootBorder">
         <Grid x:Name="RootGrid" ClipToBounds="True">
             <Grid.RowDefinitions>
-                <RowDefinition x:Name="TitleRow" Height="{StaticResource TitleBarRowHeight}" />
-                <RowDefinition x:Name="ToolbarRow" Height="{StaticResource ToolbarRowHeight}" />
+                <RowDefinition x:Name="TitleRow" Height="{DynamicResource TitleBarRowHeight}" />
+                <RowDefinition x:Name="ToolbarRow" Height="{DynamicResource ToolbarRowHeight}" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -57,7 +57,6 @@
                                  Width="84"
                                  Margin="0,0,138,0"
                                  HorizontalAlignment="Right"
-                                 EyeLine="38"
                                  Mood="{Binding Mascot.Mood}" />
 
             <!-- ============ Layer 2: title bar (tabs + caption buttons) ============ -->
@@ -68,7 +67,30 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <DockPanel Margin="8,0,0,0" LastChildFill="False">
+                <DockPanel Margin="10,0,0,0" LastChildFill="False">
+                    <!-- Claxe mark (decorative, part of the draggable title area) -->
+                    <Canvas DockPanel.Dock="Left"
+                            Width="22" Height="22"
+                            Margin="2,0,10,0"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False">
+                        <Canvas.Effect>
+                            <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.8" Color="{DynamicResource AccentColor}" />
+                        </Canvas.Effect>
+                        <Path Width="18" Height="18" Canvas.Left="0" Canvas.Top="3" Stretch="Uniform"
+                              Data="M 12,0 C 12.8,6.5 17.5,11.2 24,12 C 17.5,12.8 12.8,17.5 12,24 C 11.2,17.5 6.5,12.8 0,12 C 6.5,11.2 11.2,6.5 12,0 Z">
+                            <Path.Fill>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
+                                    <GradientStop Offset="1" Color="{DynamicResource AccentSecondaryColor}" />
+                                </LinearGradientBrush>
+                            </Path.Fill>
+                        </Path>
+                        <Path Width="7" Height="7" Canvas.Left="15" Canvas.Top="0" Stretch="Uniform"
+                              Fill="{DynamicResource AccentSecondaryBrush}"
+                              Data="M 12,0 C 12.8,6.5 17.5,11.2 24,12 C 17.5,12.8 12.8,17.5 12,24 C 11.2,17.5 6.5,12.8 0,12 C 6.5,11.2 11.2,6.5 12,0 Z" />
+                    </Canvas>
+
                     <ItemsControl x:Name="TabStrip"
                                   DockPanel.Dock="Left"
                                   VerticalAlignment="Bottom"
@@ -86,48 +108,76 @@
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
 
+                        <!-- The active tab draws on top so its "feet" overlap the neighbours. -->
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <Setter Property="Panel.ZIndex" Value="1" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TabViewModel}">
                                 <Grid x:Name="TabRoot"
-                                      Height="36"
-                                      Margin="0,0,2,0"
+                                      Height="{DynamicResource TabHeight}"
                                       Background="Transparent"
                                       ToolTip="{Binding Title}"
                                       Loaded="Tab_Loaded"
                                       PreviewMouseLeftButtonDown="Tab_PreviewMouseLeftButtonDown"
                                       MouseUp="Tab_MouseUp">
 
-                                    <Border x:Name="TabBackground"
-                                            CornerRadius="{StaticResource TabCornerRadius}"
+                                    <!-- Inactive hover: a rounded glass chip inside the tab -->
+                                    <Border x:Name="HoverChip"
+                                            Margin="3,4,3,5"
+                                            CornerRadius="{DynamicResource ControlCornerRadius}"
                                             Background="Transparent" />
 
-                                    <!-- Neon accent on the active tab -->
-                                    <Border x:Name="AccentBar"
-                                            Height="2"
-                                            Margin="16,0"
-                                            VerticalAlignment="Top"
-                                            CornerRadius="1"
-                                            Opacity="0">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
-                                                <GradientStop Offset="1" Color="{DynamicResource AccentSecondaryColor}" />
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                        <Border.Effect>
-                                            <DropShadowEffect ShadowDepth="0" BlurRadius="8" Opacity="0.9"
-                                                              Color="{DynamicResource AccentColor}" />
-                                        </Border.Effect>
-                                    </Border>
+                                    <!-- Active: silhouette flowing into the toolbar, neon outline fading downwards -->
+                                    <Grid x:Name="ActiveShape" Margin="-8,0,-8,0" Visibility="Collapsed" IsHitTestVisible="False">
+                                        <controls:TabShape Fill="{DynamicResource GlassBrush}"
+                                                           CornerRadius="{DynamicResource TabCornerRadiusValue}"
+                                                           FootRadius="8" />
+                                        <controls:TabShape CornerRadius="{DynamicResource TabCornerRadiusValue}"
+                                                           FootRadius="8"
+                                                           StrokeThickness="1.3">
+                                            <controls:TabShape.Fill>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Offset="0" Color="{DynamicResource AccentWashColor}" />
+                                                    <GradientStop Offset="0.8" Color="Transparent" />
+                                                </LinearGradientBrush>
+                                            </controls:TabShape.Fill>
+                                            <controls:TabShape.Stroke>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
+                                                    <GradientStop Offset="0.5" Color="{DynamicResource AccentFadeColor}" />
+                                                    <GradientStop Offset="1" Color="Transparent" />
+                                                </LinearGradientBrush>
+                                            </controls:TabShape.Stroke>
+                                            <controls:TabShape.Effect>
+                                                <DropShadowEffect ShadowDepth="0" BlurRadius="12" Opacity="0.6"
+                                                                  Color="{DynamicResource AccentColor}" />
+                                            </controls:TabShape.Effect>
+                                        </controls:TabShape>
+                                    </Grid>
 
-                                    <!-- Divider between inactive tabs -->
+                                    <!-- Divider between inactive tabs, fading at both ends -->
                                     <Rectangle x:Name="Divider"
-                                               Width="1" Height="16"
-                                               Margin="0,0,-1.5,0"
-                                               HorizontalAlignment="Right"
-                                               Fill="{DynamicResource GlassBorderBrush}" />
+                                               Width="1"
+                                               Margin="0,9,-0.5,10"
+                                               HorizontalAlignment="Right">
+                                        <Rectangle.Fill>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Offset="0" Color="#00FFFFFF" />
+                                                <GradientStop Offset="0.5" Color="#2EFFFFFF" />
+                                                <GradientStop Offset="1" Color="#00FFFFFF" />
+                                            </LinearGradientBrush>
+                                        </Rectangle.Fill>
+                                    </Rectangle>
 
-                                    <Grid Margin="12,0,6,0">
+                                    <Grid Margin="13,0,7,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -206,15 +256,17 @@
                                     </DataTrigger>
 
                                     <Trigger SourceName="TabRoot" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBackground" Property="Background" Value="{DynamicResource GlassHoverBrush}" />
+                                        <Setter TargetName="HoverChip" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                        <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                                         <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="Divider" Property="Visibility" Value="Hidden" />
                                     </Trigger>
 
                                     <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                        <Setter TargetName="TabBackground" Property="Background" Value="{DynamicResource GlassBrush}" />
-                                        <Setter TargetName="AccentBar" Property="Opacity" Value="1" />
+                                        <Setter TargetName="HoverChip" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="ActiveShape" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        <Setter TargetName="TitleText" Property="FontWeight" Value="Medium" />
                                         <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="Divider" Property="Visibility" Value="Hidden" />
                                     </DataTrigger>
@@ -224,10 +276,10 @@
                     </ItemsControl>
 
                     <Button DockPanel.Dock="Left"
-                            Margin="6,4,0,0"
+                            Margin="10,2,0,0"
                             VerticalAlignment="Center"
                             Style="{StaticResource IconButtonStyle}"
-                            Width="32" Height="32"
+                            Width="30" Height="30"
                             Content="&#xE710;"
                             ToolTip="Yeni sekme (Ctrl+T)"
                             Command="{Binding NewTabCommand}"
@@ -287,7 +339,12 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
+                            Margin="8,0,0,0"
+                            ToolTip="Ayarlar (Ctrl+,)" Command="{Binding OpenSettingsCommand}" />
 
                     <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Content="&#xE72B;"
                             ToolTip="Geri (Alt+Sol ok)" Command="{Binding BackCommand}" />
@@ -311,9 +368,9 @@
                     <!-- Address pill -->
                     <Border x:Name="AddressPill"
                             Grid.Column="3"
-                            Height="36"
+                            Height="{DynamicResource PillHeight}"
                             Margin="10,0,0,0"
-                            CornerRadius="{StaticResource PillCornerRadius}"
+                            CornerRadius="{DynamicResource PillCornerRadius}"
                             BorderThickness="1">
                         <Border.Style>
                             <Style TargetType="Border">

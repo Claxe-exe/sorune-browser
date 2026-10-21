@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Ayarlar</title>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <div class="layout">
+        <nav class="nav" aria-label="Ayar bölümleri">
+            <h1 class="brand">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.8 6.5 5.5 11.2 12 12-6.5.8-11.2 5.5-12 12-.8-6.5-5.5-11.2-12-12C6.5 11.2 11.2 6.5 12 0z" /></svg>
+                Ayarlar
+            </h1>
+            <a href="#gorunum" class="active">Görünüm</a>
+            <a href="#duvar">Duvar kâğıdı</a>
+            <a href="#renk">Renk ve cam</a>
+            <a href="#duzen">Düzen</a>
+            <a href="#hareket">Hareket ve maskot</a>
+            <a href="#ses">Sesler</a>
+            <a href="#arama">Arama ve başlangıç</a>
+            <a href="#hakkinda">Hakkında</a>
+        </nav>
+
+        <main class="content" id="content">
+            <section class="card" id="gorunum">
+                <h2>Tema</h2>
+                <p class="hint">Tema değişince duvar kâğıdı, vurgu rengi ve cam ayarı o temanınkine döner.</p>
+                <div class="theme-grid" id="themes"></div>
+            </section>
+
+            <section class="card" id="duvar">
+                <h2>Duvar kâğıdı</h2>
+                <p class="hint">Yeni sekme sayfasında ve sekme çubuğunun arkasında görünür.</p>
+                <div class="wall-grid" id="wallpapers"></div>
+                <p class="error" id="wallpaper-error" hidden></p>
+            </section>
+
+            <section class="card" id="renk">
+                <h2>Renk ve cam</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Vurgu rengi</span>
+                        <span class="hint">Neon çizgiler, odak halkaları ve seçili öğeler.</span>
+                    </div>
+                    <div class="swatches" id="swatches"></div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Cam saydamlığı</span>
+                        <span class="hint" id="glass-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="glass" min="0" max="57" step="1" aria-label="Cam saydamlığı">
+                        <button type="button" class="chip" id="glass-reset">Temanınki</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="duzen">
+                <h2>Düzen</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Köşeler</span>
+                        <span class="hint">Sekmeler, düğmeler ve adres çubuğu.</span>
+                    </div>
+                    <div class="segmented" id="corner" role="radiogroup" aria-label="Köşeler">
+                        <button type="button" data-value="sharp">Keskin</button>
+                        <button type="button" data-value="soft">Yumuşak</button>
+                        <button type="button" data-value="round">Yuvarlak</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Arayüz yoğunluğu</span>
+                        <span class="hint">Sekme ve araç çubuğu yüksekliği.</span>
+                    </div>
+                    <div class="segmented" id="density" role="radiogroup" aria-label="Arayüz yoğunluğu">
+                        <button type="button" data-value="compact">Sıkı</button>
+                        <button type="button" data-value="normal">Normal</button>
+                        <button type="button" data-value="comfortable">Ferah</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="hareket">
+                <h2>Hareket ve maskot</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Animasyonlar</span>
+                        <span class="hint">Sekme geçişleri, yükleme ışığı ve yeni sekme efektleri. Kapatmak işlemciyi rahatlatır.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="animationsEnabled" aria-label="Animasyonlar"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Maskot</span>
+                        <span class="hint">Araç çubuğunun arkasından bakan karakter.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="mascotEnabled" aria-label="Maskot"></button>
+                </div>
+            </section>
+
+            <section class="card" id="ses">
+                <h2>Sesler</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Arayüz sesleri</span>
+                        <span class="hint">Tıklama, sekme açma ve kapatma.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="soundsEnabled" aria-label="Arayüz sesleri"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Ses düzeyi</span>
+                        <span class="hint" id="volume-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="volume" min="0" max="100" step="5" aria-label="Ses düzeyi">
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="arama">
+                <h2>Arama ve başlangıç</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Arama motoru</span>
+                        <span class="hint">Adres çubuğuna ve yeni sekmeye yazılan aramalar.</span>
+                    </div>
+                    <div class="segmented" id="engine" role="radiogroup" aria-label="Arama motoru"></div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Açık sekmeleri yeniden aç</span>
+                        <span class="hint">Claxe kapanıp açılınca sekmeler geri gelir. Kapatınca kayıtlı oturum silinir.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Açık sekmeleri yeniden aç"></button>
+                </div>
+            </section>
+
+            <section class="card" id="hakkinda">
+                <h2>Hakkında</h2>
+                <dl class="about">
+                    <dt>Claxe</dt><dd id="about-version"></dd>
+                    <dt>WebView2</dt><dd id="about-webview"></dd>
+                    <dt>Profil klasörü</dt><dd id="about-profile" class="mono"></dd>
+                </dl>
+                <p class="hint">Claxe, Microsoft WebView2 (Chromium) üzerinde çalışır. Siteler tarayıcıyı Microsoft Edge olarak görür ve Chrome Web Mağazası eklentileri kurulamaz.</p>
+            </section>
+        </main>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>
