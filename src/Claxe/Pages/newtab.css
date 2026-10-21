@@ -438,7 +438,8 @@ body.editing .widget { border-style: dashed; border-color: color-mix(in srgb, va
 
 .widget-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .widget-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--text-dim); }
-.widget-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
+.widget-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: auto; padding-top: 8px; }
+.widget-actions > * { margin: 0; white-space: nowrap; }
 
 .link-btn {
     padding: 0;

@@ -114,6 +114,11 @@ function render() {
     $("about-webview").textContent = state.about.webView2 || "-";
     $("about-profile").textContent = state.about.profile;
 
+    const theme = state.themes.find((x) => x.id === s.theme);
+    $("hero-theme").textContent = theme ? theme.name : "";
+    $("hero-version").textContent = state.update.current || state.about.version || "";
+    $("hero-update").hidden = update.state !== "ReadyToRestart";
+
     document.body.classList.toggle("no-motion", !s.animationsEnabled);
     applyLook(state.current.accent, state.current.wallpaperUrl);
 }
@@ -371,6 +376,7 @@ $("language").addEventListener("click", (event) => {
 $("language-restart").addEventListener("click", () => send({ type: "restartApp" }));
 $("update-check").addEventListener("click", () => send({ type: "checkUpdates" }));
 $("update-apply").addEventListener("click", () => send({ type: "applyUpdate" }));
+$("hero-update").addEventListener("click", () => send({ type: "applyUpdate" }));
 $("default-browser-set").addEventListener("click", () => send({ type: "registerDefaultBrowser" }));
 $("default-browser-remove").addEventListener("click", () => send({ type: "unregisterDefaultBrowser" }));
 

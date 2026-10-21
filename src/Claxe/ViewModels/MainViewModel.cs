@@ -325,6 +325,17 @@ public sealed class MainViewModel : ObservableObject
 
         if (OpenExternal(args) == 0 && Tabs.Count == 0)
             NewTab();
+
+        // First start of a new version (not the very first start): show what changed, once.
+        var version = UpdateService.CurrentVersion;
+        if (_settings.LastSeenVersion != version)
+        {
+            var updated = !SettingsStore.IsFirstRun;
+            _settings.LastSeenVersion = version;
+            SettingsStore.Save(_settings);
+            if (updated)
+                OpenInternal(InternalPages.WhatsNewUrl);
+        }
     }
 
     /// <summary>Opens links or files handed over by Windows or a second Claxe launch. Returns how many opened.</summary>
@@ -1169,6 +1180,25 @@ public sealed class MainViewModel : ObservableObject
                 tab.PostToInternalPage(BuildNewTabConfig());
                 break;
 
+            case "whatsnew:open":
+                switch (Text("target"))
+                {
+                    case "converter" when !ConverterPanel.IsOpen:
+                        TogglePanel(ConverterPanel);
+                        break;
+                    case "newtab":
+                        NewTab();
+                        break;
+                    case "settings":
+                        OpenSettings();
+                        break;
+                    case "close":
+                        // Becomes a new tab rather than closing (it may be the only tab).
+                        tab.Navigate(InternalPages.NewTabUrl);
+                        break;
+                }
+                break;
+
             case "navigate" when !string.IsNullOrWhiteSpace(Text("text")):
                 tab.Navigate(AddressResolver.Resolve(Text("text")!, SearchEngine));
                 FocusContentRequested?.Invoke(this, EventArgs.Empty);
@@ -1552,6 +1582,7 @@ public sealed class MainViewModel : ObservableObject
             maxShortcuts = ShortcutStore.MaxShortcuts,
             widgets = _widgets.Items,
             maxWidgets = WidgetStore.MaxWidgets,
+            version = UpdateService.CurrentVersion,
         };
     }
 

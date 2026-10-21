@@ -36,7 +36,12 @@ function hostOf(url) {
 }
 
 function monogram(text) {
-    return el("span", { class: "mono-icon", text: (text.trim()[0] || "?").toLocaleUpperCase("tr-TR") });
+    const icon = el("span", { class: "mono-icon", text: (text.trim()[0] || "?").toLocaleUpperCase("tr-TR") });
+    // Each site gets its own steady hue, so a long list is easier to scan.
+    let hash = 0;
+    for (const ch of text) hash = (hash * 31 + ch.codePointAt(0)) | 0;
+    icon.style.setProperty("--hue", String(Math.abs(hash) % 360));
+    return icon;
 }
 
 function debounce(fn, ms) {

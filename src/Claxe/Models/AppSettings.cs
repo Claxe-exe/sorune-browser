@@ -54,4 +54,7 @@ public sealed class AppSettings
 
     /// <summary>Turns off decorative motion and puts background tabs to sleep sooner.</summary>
     public bool PerformanceMode { get; set; }
+
+    /// <summary>Version of the last run; a different one means "just updated" (shows what's new).</summary>
+    public string? LastSeenVersion { get; set; }
 }

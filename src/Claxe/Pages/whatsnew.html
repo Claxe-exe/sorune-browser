@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Yenilikler</title>
+    <link rel="stylesheet" href="whatsnew.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <main class="page">
+        <header class="hero">
+            <p class="eyebrow">Yenilikler</p>
+            <h1>Sorune <span class="version" id="version"></span></h1>
+            <p class="lead">Güncelleme tamamlandı. Bu sürümde gelenler:</p>
+        </header>
+
+        <section class="features" id="features"></section>
+
+        <footer class="footer">
+            <button type="button" class="btn primary" id="done">Hadi başlayalım</button>
+            <p class="sign">Keyifli gezinmeler! — Claxe</p>
+        </footer>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="whatsnew.js"></script>
+</body>
+</html>
