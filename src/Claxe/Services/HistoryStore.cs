@@ -56,6 +56,36 @@ public sealed class HistoryStore
         ScheduleSave();
     }
 
+    /// <summary>
+    /// Merges visits from another browser, oldest first, within the usual age and size limits.
+    /// A URL already visited at the same minute isn't added twice. Returns how many were added.
+    /// </summary>
+    public int Import(IEnumerable<ImportedVisit> visits)
+    {
+        static string Key(string url, DateTime time) => url + "|" + time.ToString("yyyyMMddHHmm");
+        var known = _entries.Select(e => Key(e.Url, e.VisitedAt)).ToHashSet();
+        var cutoff = DateTime.UtcNow - MaxAge;
+        var added = 0;
+        foreach (var visit in visits)
+        {
+            if (visit.VisitedAt < cutoff || !known.Add(Key(visit.Url, visit.VisitedAt)))
+                continue;
+
+            _entries.Add(new HistoryEntry { Id = _nextId++, Url = visit.Url, Title = visit.Title, VisitedAt = visit.VisitedAt });
+            added++;
+        }
+
+        if (added == 0)
+            return 0;
+
+        // Keep the list in time order (paging and "newest first" rely on it), then apply the size cap.
+        _entries.Sort((a, b) => a.VisitedAt.CompareTo(b.VisitedAt));
+        if (_entries.Count > MaxEntries)
+            _entries.RemoveRange(0, _entries.Count - MaxEntries);
+        Flush();
+        return added;
+    }
+
     /// <summary>Titles often arrive after the navigation finished; update the latest visit of that URL.</summary>
     public void UpdateTitle(string url, string title)
     {
@@ -76,9 +106,15 @@ public sealed class HistoryStore
     /// <summary>Newest first. <paramref name="beforeId"/> pages through older results.</summary>
     public IReadOnlyList<HistoryEntry> Query(string? text, long? beforeId, int limit)
     {
-        IEnumerable<HistoryEntry> items = Enumerable.Reverse(_entries);
+        // Paged by position, not by id: imported visits get new ids but older timestamps.
+        IEnumerable<HistoryEntry> source = _entries;
         if (beforeId is { } before)
-            items = items.Where(e => e.Id < before);
+        {
+            var index = _entries.FindIndex(e => e.Id == before);
+            source = index < 0 ? [] : _entries.Take(index);
+        }
+
+        var items = source.Reverse();
         if (!string.IsNullOrWhiteSpace(text))
         {
             var needle = text.Trim();

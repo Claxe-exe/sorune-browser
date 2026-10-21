@@ -68,6 +68,32 @@ public sealed class BookmarkStore
         Save();
     }
 
+    /// <summary>Adds imported bookmarks, skipping addresses that are already bookmarked. Returns how many were added.</summary>
+    public int Import(IEnumerable<ImportedBookmark> bookmarks)
+    {
+        var known = _items.Select(b => b.Url).ToHashSet();
+        var added = 0;
+        foreach (var bookmark in bookmarks.OrderBy(b => b.AddedAt))
+        {
+            if (!known.Add(bookmark.Url) || !AddressResolver.IsNavigable(bookmark.Url))
+                continue;
+
+            var folder = bookmark.Folder.Trim();
+            _items.Add(new Bookmark
+            {
+                Url = bookmark.Url,
+                Title = Trim(bookmark.Title, bookmark.Url),
+                Folder = folder.Length > MaxFolderLength ? folder[..MaxFolderLength] : folder,
+                AddedAt = bookmark.AddedAt,
+            });
+            added++;
+        }
+
+        if (added > 0)
+            Save();
+        return added;
+    }
+
     /// <summary>Moves a bookmark into a folder (created on the fly); empty or null takes it out.</summary>
     public void SetFolder(string? id, string? folder)
     {

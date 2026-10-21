@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows.Input;
@@ -820,6 +821,18 @@ public sealed class MainViewModel : ObservableObject
                 BroadcastToInternalPages(_settingsController.BuildState());
                 break;
 
+            case "importSources":
+                tab.PostToInternalPage(new
+                {
+                    type = "importSources",
+                    items = BrowserImporter.Detect().Select(s => new { s.Id, s.Browser, s.Profile, s.HasBookmarks, s.HasHistory }),
+                });
+                break;
+
+            case "importData":
+                ImportFromBrowser(tab, Text("source"), Flag("bookmarks"), Flag("history"));
+                break;
+
             case "clearData":
                 ClearBrowsingData(tab, Text("range"), Flag("history"), Flag("cookies"), Flag("cache"), Flag("downloads"));
                 break;
@@ -946,6 +959,33 @@ public sealed class MainViewModel : ObservableObject
 
         Log.Info($"Veriler temizlendi: aralık={range ?? "all"} geçmiş={history} çerez={cookies} önbellek={cache} indirme={downloads}");
         requester.PostToInternalPage(new { type = "dataCleared", ok });
+    }
+
+    /// <summary>Reads the other browser's files off the UI thread, then merges on it.</summary>
+    private async void ImportFromBrowser(TabViewModel requester, string? sourceId, bool bookmarks, bool history)
+    {
+        const int historyLimit = 5000;
+        try
+        {
+            var source = BrowserImporter.Find(sourceId) ?? throw new InvalidOperationException("Tarayıcı profili bulunamadı.");
+            var (readBookmarks, readHistory) = await Task.Run(() => (
+                bookmarks && source.HasBookmarks ? BrowserImporter.ReadBookmarks(source) : [],
+                history && source.HasHistory ? BrowserImporter.ReadHistory(source, historyLimit) : []));
+
+            var addedBookmarks = _bookmarks.Import(readBookmarks);
+            var addedHistory = _history.Import(readHistory);
+            Log.Info($"İçe aktarıldı ({source.Browser} / {source.Profile}): {addedBookmarks} yer imi, {addedHistory} geçmiş kaydı");
+            requester.PostToInternalPage(new { type = "importResult", ok = true, bookmarks = addedBookmarks, history = addedHistory });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException
+                                       or Microsoft.Data.Sqlite.SqliteException or InvalidOperationException)
+        {
+            Log.Error($"İçe aktarma başarısız: {sourceId}", ex);
+            var message = ex is IOException or Microsoft.Data.Sqlite.SqliteException
+                ? "Dosyalar okunamadı. O tarayıcıyı kapatıp tekrar dene."
+                : ex.Message;
+            requester.PostToInternalPage(new { type = "importResult", ok = false, error = message });
+        }
     }
 
     private object BuildDownloadState() => new { type = "downloads", items = _downloads.Items };

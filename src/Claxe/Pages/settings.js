@@ -311,6 +311,32 @@ $("panel-form").addEventListener("submit", (event) => {
     $("panel-url").value = "";
 });
 
+// ---------------------------------------------------------------- import
+
+let importSources = [];
+
+function renderImportSources() {
+    const select = $("import-source");
+    const options = importSources.map((s) => {
+        const what = [s.hasBookmarks && "yer imleri", s.hasHistory && "geçmiş"].filter(Boolean).join(", ");
+        return el("option", { value: s.id, text: `${s.browser} — ${s.profile} (${what})` });
+    });
+    if (options.length === 0) options.push(el("option", { value: "", text: "Bu bilgisayarda başka bir tarayıcı bulunamadı" }));
+    select.replaceChildren(...options);
+    $("import-button").disabled = importSources.length === 0;
+}
+
+$("import-button").addEventListener("click", () => {
+    const source = $("import-source").value;
+    const bookmarks = $("import-bookmarks").checked;
+    const history = $("import-history").checked;
+    if (!source || (!bookmarks && !history)) return;
+    $("import-button").disabled = true;
+    $("import-button").textContent = "Aktarılıyor…";
+    $("import-status").hidden = true;
+    send({ type: "importData", source, bookmarks, history });
+});
+
 $("sidebar-position").addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (button && button.getAttribute("aria-checked") !== "true") update("sidebarPosition", button.dataset.value);
@@ -383,6 +409,20 @@ if (host) {
                 if (first && location.hash) document.querySelector(location.hash)?.scrollIntoView();
                 break;
             }
+            case "importSources":
+                importSources = message.items || [];
+                renderImportSources();
+                break;
+            case "importResult": {
+                const button = $("import-button");
+                button.disabled = false;
+                button.textContent = "İçe aktar";
+                $("import-status").textContent = message.ok
+                    ? `Tamamlandı: ${message.bookmarks} yer imi, ${message.history} geçmiş kaydı eklendi (zaten olanlar atlandı).`
+                    : `İçe aktarılamadı: ${message.error}`;
+                $("import-status").hidden = false;
+                break;
+            }
             case "panelRejected":
                 $("panel-error").hidden = false;
                 break;
@@ -412,3 +452,4 @@ if (host) {
 
 send({ type: "ready" });
 send({ type: "getSettings" });
+send({ type: "importSources" });

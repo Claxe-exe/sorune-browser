@@ -102,6 +102,12 @@ tema ayarlar sayfasında kendiliğinden listelenir. Parçacık efektleri: `petal
 Şifreleme Windows hesabına bağlıdır; dosyalar başka bir hesapta ya da bilgisayarda açılamaz.
 Şifre kaydetme kapalıdır. Telemetri yoktur.
 
+## Başka tarayıcıdan içe aktarma
+
+Ayarlar → İçe aktar: Chrome, Opera GX, Edge, Brave, Opera, Vivaldi (tüm profiller) ve Firefox otomatik bulunur.
+Yer imleri klasörleriyle ("Chrome / …"), geçmiş son 180 gün / en fazla 5.000 sayfa olarak aktarılır; tekrar aktarınca kopya oluşmaz.
+Çerezler ve şifreler aktarılmaz: Chromium bunları yalnızca kendisinin çözebileceği şekilde (App-Bound Encryption) şifreler.
+
 ## WebView2'nin Chrome'dan farkları
 
 - Siteler tarayıcıyı Microsoft Edge olarak görür; Chrome Web Mağazası eklentileri kurulamaz.

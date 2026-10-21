@@ -26,6 +26,7 @@
             <a href="#ses">Sesler</a>
             <a href="#kenar">Kenar çubuğu</a>
             <a href="#arama">Arama ve başlangıç</a>
+            <a href="#ice-aktar">İçe aktar</a>
             <a href="#gizlilik">Gizlilik ve veriler</a>
             <a href="#hakkinda">Hakkında</a>
         </nav>
@@ -179,6 +180,24 @@
                         <span class="hint">Claxe kapanıp açılınca sekmeler geri gelir. Kapatınca kayıtlı oturum silinir.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Açık sekmeleri yeniden aç"></button>
+                </div>
+            </section>
+
+            <section class="card" id="ice-aktar">
+                <h2>Başka tarayıcıdan içe aktar</h2>
+                <p class="hint">Yer imleri ve geçmiş, bilgisayardaki diğer tarayıcıların profil klasörlerinden okunur. Tarayıcı açıksa da çalışır; hata alırsan o tarayıcıyı kapatıp tekrar dene.</p>
+                <div class="clear-box">
+                    <span class="label">Kaynak</span>
+                    <select class="import-select" id="import-source" aria-label="İçe aktarılacak tarayıcı profili"></select>
+                    <div class="checks">
+                        <label><input type="checkbox" id="import-bookmarks" checked> Yer imleri <span class="hint">(klasörleriyle, "Chrome / …" gibi bir klasöre)</span></label>
+                        <label><input type="checkbox" id="import-history" checked> Geçmiş <span class="hint">(son 180 gün, en fazla 5.000 sayfa)</span></label>
+                    </div>
+                    <div class="clear-actions">
+                        <span class="hint">Çerezler ve şifreler aktarılamaz: Chrome onları yalnızca kendisinin çözebileceği şekilde şifreliyor. Sitelere Claxe'te bir kez giriş yapman yeterli.</span>
+                        <button type="button" class="chip" id="import-button">İçe aktar</button>
+                    </div>
+                    <p class="hint" id="import-status" hidden></p>
                 </div>
             </section>
 
