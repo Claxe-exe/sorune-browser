@@ -1,0 +1,38 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Phase 1 base palette (dark, Midnight Mei leaning). Brushes are consumed with
+        DynamicResource so the Phase 3 theme system can swap them at runtime.
+    -->
+    <Color x:Key="WindowBackgroundColor">#0E0C13</Color>
+    <Color x:Key="ToolbarColor">#17141F</Color>
+    <Color x:Key="SurfaceColor">#211C2D</Color>
+    <Color x:Key="SurfaceHoverColor">#2B2539</Color>
+    <Color x:Key="SurfacePressedColor">#352D46</Color>
+    <Color x:Key="TabHoverColor">#1B1724</Color>
+    <Color x:Key="BorderColor">#2A2437</Color>
+    <Color x:Key="TextPrimaryColor">#ECE8F5</Color>
+    <Color x:Key="TextSecondaryColor">#9A92B0</Color>
+    <Color x:Key="AccentColor">#A77BFF</Color>
+    <Color x:Key="DangerColor">#E5484D</Color>
+    <Color x:Key="WarningColor">#F2B24C</Color>
+
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource WindowBackgroundColor}" />
+    <SolidColorBrush x:Key="ToolbarBrush" Color="{StaticResource ToolbarColor}" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="{StaticResource SurfaceHoverColor}" />
+    <SolidColorBrush x:Key="SurfacePressedBrush" Color="{StaticResource SurfacePressedColor}" />
+    <SolidColorBrush x:Key="TabHoverBrush" Color="{StaticResource TabHoverColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource AccentColor}" Opacity="0.45" />
+
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+</ResourceDictionary>
