@@ -20,6 +20,15 @@
 
 </div>
 
+> [!TIP]
+> ### 📥 Nasıl kurulur? (30 saniye)
+> 1. **[SoruneBrowser-win-Setup.exe'yi indir](https://github.com/Claxe-exe/sorune-browser/releases/latest/download/SoruneBrowser-win-Setup.exe)** (~85 MB, her zaman en son sürüm)
+> 2. İndirdiğin dosyayı çalıştır. Windows *"bilgisayarınızı korudu"* derse **Ek bilgi → Yine de çalıştır**'a bas (dosya imzasız olduğu için çıkar).
+> 3. Bu kadar! Sorune masaüstüne ve Başlat menüsüne eklenir, yeni sürümleri kendisi indirir.
+>
+> Kurulum istemiyorsan: **[taşınabilir sürüm (ZIP)](https://github.com/Claxe-exe/sorune-browser/releases/latest/download/SoruneBrowser-win-Portable.zip)** indir, bir klasöre çıkar, içindeki `Sorune.exe`'yi aç.
+>
+> ⚠️ Yeşil **Code → Download ZIP** düğmesi uygulamayı değil **kaynak kodunu** indirir; içinde çalıştırılacak bir program yoktur.
 > **EN:** Sorune is a personal, anime-styled web browser for Windows, built with C# / .NET 10 / WPF on top of
 > Microsoft WebView2 (Chromium). Glassy themed UI, a mascot peeking over the toolbar, tab groups, new tab widgets,
 > a built-in file converter, web panels, InPrivate mode and encrypted history. Interface in Turkish and English.
