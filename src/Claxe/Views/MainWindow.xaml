@@ -467,6 +467,8 @@
                 </Canvas>
                 <Rectangle Fill="{DynamicResource ChromeTintBrush}" IsHitTestVisible="False" />
                 <Rectangle Fill="{DynamicResource GlassBrush}" IsHitTestVisible="False" />
+                <!-- Fades toward the open site's top colour (brush and animation set in code) -->
+                <Rectangle x:Name="SiteTintRect" IsHitTestVisible="False" />
 
                 <!-- Neon edge; turns into a moving highlight while the page loads. -->
                 <Rectangle Height="1" VerticalAlignment="Bottom" Opacity="0.55"
@@ -912,6 +914,15 @@
                               ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
                               Background="Transparent" Visibility="Collapsed"
                               DragCompleted="PanelSplitter_DragCompleted" />
+
+                <!-- Framed page: a thin glowing edge just outside the inset page (shown only when enabled) -->
+                <Border x:Name="PageFrame" Grid.Column="3" Visibility="Collapsed" IsHitTestVisible="False"
+                        CornerRadius="2" BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                        Background="{DynamicResource WindowBackgroundBrush}">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="0" BlurRadius="18" Opacity="0.5" Color="{DynamicResource AccentColor}" />
+                    </Border.Effect>
+                </Border>
 
                 <!-- Pages: [left pane][divider][right pane]; without a split the shown page spans all three. -->
                 <ItemsControl x:Name="ContentHost" Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False"

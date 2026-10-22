@@ -55,6 +55,12 @@ public sealed class AppSettings
     /// <summary>Turns off decorative motion and puts background tabs to sleep sooner.</summary>
     public bool PerformanceMode { get; set; }
 
+    /// <summary>The toolbar fades into the colour at the top of the open site.</summary>
+    public bool SiteTintEnabled { get; set; } = true;
+
+    /// <summary>Pages sit inset as a framed card with the wallpaper around them.</summary>
+    public bool PageFrameEnabled { get; set; }
+
     /// <summary>Background tabs untouched this long go to sleep; 0 = never.</summary>
     public int SleepAfterMinutes { get; set; } = 10;
 

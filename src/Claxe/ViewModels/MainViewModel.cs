@@ -18,7 +18,8 @@ public sealed class MainViewModel : ObservableObject
     private const int MaxClosedTabs = 25;
 
     private static readonly HashSet<string> AppearanceKeys =
-        ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled", "performanceMode"];
+        ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled", "performanceMode",
+         "siteTintEnabled", "pageFrameEnabled"];
 
     private readonly AppSettings _settings;
     private readonly SettingsController _settingsController;
@@ -59,7 +60,12 @@ public sealed class MainViewModel : ObservableObject
         _suspendTimer.Tick += (_, _) => SuspendIdleTabs();
         _suspendTimer.Start();
         // Only the active tab is asked whether it has a video for picture-in-picture.
-        _pipTimer.Tick += (_, _) => _ = ActiveTab?.RefreshPictureInPictureAsync();
+        _pipTimer.Tick += (_, _) =>
+        {
+            _ = ActiveTab?.RefreshPictureInPictureAsync();
+            if (_settings.SiteTintEnabled)
+                _ = ActiveTab?.RefreshSiteColorAsync();
+        };
         _pipTimer.Start();
 
         // Progress fires many times a second; the toolbar and pages refresh at most 4x per second.
@@ -238,6 +244,8 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged();
             RaiseSplitLayout();
             _ = value.RefreshPictureInPictureAsync();
+            _ = value.RefreshSiteColorAsync();
+            OnPropertyChanged(nameof(ToolbarSiteColor));
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(IsContentFullScreen));
             OnPropertyChanged(nameof(IsActiveTabLoading));
@@ -247,6 +255,12 @@ public sealed class MainViewModel : ObservableObject
             ScheduleSave();
         }
     }
+
+    /// <summary>"#rrggbb" the toolbar fades into (the active site's top colour); null keeps the theme look.</summary>
+    public string? ToolbarSiteColor => _settings.SiteTintEnabled ? ActiveTab?.SiteColor : null;
+
+    /// <summary>Pages are shown inset as a framed card (off in fullscreen, handled by the view).</summary>
+    public bool IsPageFramed => _settings.PageFrameEnabled;
 
     public string WindowTitle => ActiveTab is { } tab ? $"{tab.Title} - Sorune" : "Sorune";
 
@@ -1318,6 +1332,9 @@ public sealed class MainViewModel : ObservableObject
             case nameof(TabViewModel.IsContentFullScreen):
                 OnPropertyChanged(nameof(IsContentFullScreen));
                 break;
+            case nameof(TabViewModel.SiteColor):
+                OnPropertyChanged(nameof(ToolbarSiteColor));
+                break;
             case nameof(TabViewModel.IsLoading):
                 OnPropertyChanged(nameof(IsActiveTabLoading));
                 CommandManager.InvalidateRequerySuggested();
@@ -1947,6 +1964,8 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(Backdrop));
             foreach (var tab in HostedTabs)
                 tab.UpdateBackgroundColor();
+            OnPropertyChanged(nameof(ToolbarSiteColor));
+            OnPropertyChanged(nameof(IsPageFramed));
             AppearanceChanged?.Invoke(this, EventArgs.Empty);
             BroadcastToInternalPages(BuildNewTabConfig());
         }
@@ -1985,7 +2004,8 @@ public sealed class MainViewModel : ObservableObject
         }
 
         // Feedback: a toggle sound for switches, a sample click at the new volume for the slider.
-        if (key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession" or "sidebarEnabled" or "performanceMode")
+        if (key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession" or "sidebarEnabled" or "performanceMode"
+            or "siteTintEnabled" or "pageFrameEnabled" or "sleepPinnedTabs")
             SoundService.Play(UiSound.Toggle);
         else if (key == "soundVolume")
             SoundService.Play(UiSound.Click);

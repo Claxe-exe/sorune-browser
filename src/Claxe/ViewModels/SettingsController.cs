@@ -47,6 +47,8 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "performanceMode" => SetBool(value, v => settings.PerformanceMode = v),
             "sleepAfterMinutes" => Set(NumberOrNull(value), v => v is 0 or 5 or 10 or 15 or 30 or 60, v => settings.SleepAfterMinutes = (int)v!.Value),
             "sleepPinnedTabs" => SetBool(value, v => settings.SleepPinnedTabs = v),
+            "siteTintEnabled" => SetBool(value, v => settings.SiteTintEnabled = v),
+            "pageFrameEnabled" => SetBool(value, v => settings.PageFrameEnabled = v),
             _ => false,
         };
 

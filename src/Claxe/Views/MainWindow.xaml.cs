@@ -74,6 +74,7 @@ public partial class MainWindow : Window
         // Deferred, so a click on a suggestion is handled before the list closes.
         AddressBox.LostKeyboardFocus += (_, _) =>
             Dispatcher.BeginInvoke(() => _viewModel.ClearSuggestions(), DispatcherPriority.Input);
+        SiteTintRect.Fill = new LinearGradientBrush(new GradientStopCollection { _tintTop, _tintBottom }, 90);
         ApplyAppearance();
         UpdatePanelColumn();
 
@@ -295,7 +296,8 @@ public partial class MainWindow : Window
     private void UpdateSplitDivider()
     {
         var usable = Math.Max(0, ContentHost.ActualWidth - SplitDivider.Width);
-        SplitDivider.Margin = new Thickness(usable * _viewModel.SplitRatio, 0, 0, 0);
+        var inset = ContentHost.Margin;
+        SplitDivider.Margin = new Thickness(inset.Left + usable * _viewModel.SplitRatio, inset.Top, 0, inset.Bottom);
     }
 
     private void SplitDivider_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -855,6 +857,12 @@ public partial class MainWindow : Window
             case nameof(MainViewModel.IsSplitVisible):
                 UpdateSplitDivider();
                 break;
+            case nameof(MainViewModel.ToolbarSiteColor):
+                ApplySiteTint();
+                break;
+            case nameof(MainViewModel.IsPageFramed):
+                ApplyPageFrame();
+                break;
         }
     }
 
@@ -902,6 +910,50 @@ public partial class MainWindow : Window
 
         Mascot.FitToTitleBar(ThemeService.TitleBarHeight);
         Mascot.RefreshMotion();
+        ApplyPageFrame();
+        ApplySiteTint();
+    }
+
+    // ------------------------------------------------------- site colour + page frame
+
+    private readonly GradientStop _tintTop = new(Colors.Transparent, 0);
+    private readonly GradientStop _tintBottom = new(Colors.Transparent, 1);
+
+    /// <summary>
+    /// The toolbar fades from the theme (top, next to the tabs) into the site's colour (bottom,
+    /// next to the page). Light sites get only a hint of it, so the light toolbar text stays readable.
+    /// </summary>
+    private void ApplySiteTint()
+    {
+        Color top, bottom;
+        if (_viewModel.ToolbarSiteColor is { } hex && ColorConverter.ConvertFromString(hex) is Color site)
+        {
+            var luminance = (0.2126 * site.R + 0.7152 * site.G + 0.0722 * site.B) / 255;
+            var light = luminance > 0.55;
+            top = Color.FromArgb((byte)(light ? 20 : 90), site.R, site.G, site.B);
+            bottom = Color.FromArgb((byte)(light ? 80 : 240), site.R, site.G, site.B);
+        }
+        else
+        {
+            // Fade out in the current hue instead of through grey.
+            top = Color.FromArgb(0, _tintTop.Color.R, _tintTop.Color.G, _tintTop.Color.B);
+            bottom = Color.FromArgb(0, _tintBottom.Color.R, _tintBottom.Color.G, _tintBottom.Color.B);
+        }
+
+        var duration = TimeSpan.FromMilliseconds(Motion.Enabled ? 350 : 0);
+        _tintTop.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(top, duration));
+        _tintBottom.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(bottom, duration));
+    }
+
+    /// <summary>Insets the page as a framed card (wallpaper around it); never in fullscreen.</summary>
+    private void ApplyPageFrame()
+    {
+        const double inset = 10;
+        var framed = _viewModel.IsPageFramed && !_isBrowserFullScreen;
+        ContentHost.Margin = framed ? new Thickness(inset) : default;
+        PageFrame.Margin = new Thickness(inset - 1);
+        PageFrame.Visibility = framed ? Visibility.Visible : Visibility.Collapsed;
+        UpdateSplitDivider();
     }
 
     private void PickWallpaper()
@@ -1197,6 +1249,7 @@ public partial class MainWindow : Window
         _isBrowserFullScreen = fullScreen;
         UpdateMascotVisibility();
         UpdatePanelColumn();
+        ApplyPageFrame();
         if (fullScreen)
         {
             _stateBeforeFullScreen = WindowState;

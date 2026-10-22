@@ -172,6 +172,46 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     public int ContentColumnSpan => _splitSide == SplitSide.None ? 3 : 1;
 
+    private string? _siteColor;
+
+    /// <summary>"#rrggbb" right under the toolbar on this site; null on Sorune's own pages or before it is known.</summary>
+    public string? SiteColor
+    {
+        get => _siteColor;
+        private set => SetProperty(ref _siteColor, value);
+    }
+
+    /// <summary>Reads the site's top colour (cheap; called after loads and every few seconds for the active tab).</summary>
+    public async Task RefreshSiteColorAsync()
+    {
+        if (InternalPages.IsInternal(Url) || Url is null || !Url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            SiteColor = null;
+            return;
+        }
+        if (Core is not { } core || IsSuspended)
+            return;
+
+        try
+        {
+            var json = await core.ExecuteScriptAsync(Services.SiteColor.Script);
+            if (JsonSerializer.Deserialize<string>(json) is { Length: 7 } color && color[0] == '#')
+                SiteColor = color;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or JsonException)
+        {
+            // Keeps the last colour; the next check tries again.
+        }
+    }
+
+    /// <summary>Single-page sites change content without a load: look again shortly after.</summary>
+    private async void RefreshSiteColorSoon(int delayMs)
+    {
+        await Task.Delay(delayMs);
+        if (!_disposed)
+            await RefreshSiteColorAsync();
+    }
+
     /// <summary>The page has a video that the browser can show in picture-in-picture.</summary>
     public bool HasPictureInPictureVideo
     {
@@ -640,8 +680,10 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             _certificateError = true;
             UpdateSecurity();
         };
+        core.DOMContentLoaded += (_, _) => _ = RefreshSiteColorAsync();
         core.NavigationCompleted += (_, e) =>
         {
+            RefreshSiteColorSoon(300);
             IsLoading = false;
             NavigationFinished?.Invoke(this, e.IsSuccess);
             if (!e.IsSuccess)
@@ -703,6 +745,10 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     private void OnSourceChanged(CoreWebView2 core)
     {
         Url = core.Source;
+        if (InternalPages.IsInternal(Url))
+            SiteColor = null;
+        else
+            RefreshSiteColorSoon(800);
         if (!_addressDirty)
             SetAddressFromPage(core.Source);
         OnPropertyChanged(nameof(IsNewTabPage));
