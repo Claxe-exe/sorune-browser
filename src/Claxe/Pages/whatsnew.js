@@ -16,6 +16,17 @@ function send(message) {
 // Newest release first; "open" asks the app to show the feature.
 const FEATURES = [
     {
+        icon: "🎨",
+        title: "Siteye uyan araç çubuğu",
+        text: "Araç çubuğu artık açık sitenin üst rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.",
+        action: "Ayarlara göz at",
+        open: "settings",
+    },
+    {
+        icon: "🖼️",
+        title: "Çerçeveli sayfa",
+        text: "İstersen sayfa kenarlardan biraz içeride, ince çerçeveli bir kart olarak durur ve etrafında duvar kâğıdın görünür. Ayarlar → Düzen'den aç.",
+    },    {
         icon: "⌨️",
         title: "Komut paleti",
         text: "Ctrl+K'ye bas ve yaz: komutlar, açık sekmeler, yer imleri ve geçmiş tek kutuda. Ok tuşlarıyla seç, Enter ile çalıştır.",
