@@ -530,10 +530,12 @@ public sealed class MainViewModel : ObservableObject
         if (_settings.LastSeenVersion != version)
         {
             var updated = !SettingsStore.IsFirstRun;
+            var previous = _settings.LastSeenVersion;
             _settings.LastSeenVersion = version;
             SettingsStore.Save(_settings);
+            // The page lists only what came after the version that was installed before.
             if (updated)
-                OpenInternal(InternalPages.WhatsNewUrl);
+                OpenInternal(InternalPages.WhatsNewUrl + (previous is null ? "" : "?from=" + Uri.EscapeDataString(previous)));
         }
     }
 
@@ -1104,6 +1106,10 @@ public sealed class MainViewModel : ObservableObject
             yield return Cmd("", "Ekran görüntüsü: tam sayfa", "", () => ScreenshotRequested?.Invoke(this, "full"), "screenshot ekran full");
             yield return Cmd("", "Ekran görüntüsü: bölge seç", "", () => ScreenshotRequested?.Invoke(this, "region"), "screenshot ekran region");
         }
+        if (tab is { Core: not null } && !InternalPages.IsInternal(tab.Url))
+            yield return tab.IsTranslated
+                ? Cmd("\uE8C1", "Orijinali göster", "", () => ShowOriginal(tab), "translate çevir original orijinal")
+                : Cmd("\uE8C1", TranslateMenuTitle, "", () => _ = TranslateTabAsync(tab), "translate çevir google çeviri");
         if (tab?.IsReadable == true)
             yield return Cmd("", "Okuma modu", "", () => _ = OpenReaderAsync(), "reader read okuma");
         yield return Cmd("", "Karşılama turunu aç", "", () => OpenInternal(InternalPages.WelcomeUrl), "welcome tour karşılama");
@@ -2704,6 +2710,23 @@ public sealed class MainViewModel : ObservableObject
     /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
     /// </summary>
     private void SaveSession() => SessionStore.Save(BuildSessionState());
+
+    // ---------------------------------------------------------------- page translation
+
+    /// <summary>The interface language is the target ("Translate page to English" in the English UI).</summary>
+    public static string TranslateMenuTitle => L.T("Sayfayı Türkçeye çevir");
+
+    public async Task TranslateTabAsync(TabViewModel? tab)
+    {
+        if (tab is null)
+            return;
+        if (await tab.TranslateAsync(L.Language) is { } note)
+            Mascot.Say(note);
+    }
+
+    public void ShowOriginal(TabViewModel? tab) => _ = tab?.ShowOriginalAsync();
+
+    public ICommand ShowOriginalCommand => new RelayCommand(() => ShowOriginal(ActiveTab));
 
     // ---------------------------------------------------------------- page videos (mini tools)
 

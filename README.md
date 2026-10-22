@@ -35,7 +35,14 @@
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
 
-## ✨ 0.8'de yeni
+## ✨ 0.9'da yeni
+
+| | |
+|---|---|
+| 🌐 **Sayfa çevirisi** | Sağ tık › "Sayfayı Türkçeye çevir": Google Çeviri sayfayı yerinde çevirir, giriş ve düzen bozulmaz. Adres çubuğundaki "İngilizce → Türkçe" düğmesi orijinale döndürür. |
+| 📜 **Doğru yenilikler** | Güncellemeden sonra açılan sayfa yalnızca senin sürümünden bu yana gelenleri gösteriyor. |
+
+## 0.8'de yeni
 
 | | |
 |---|---|
@@ -148,7 +155,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.8.0
+powershell -File build/pack.ps1 -Version 0.9.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
@@ -222,7 +229,8 @@ kaldırmak verileri silmez).
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
 Microsoft Defender SmartScreen (tehlikeli site ve indirme uyarıları) varsayılan olarak açıktır; Ayarlar › Gizlilik ve
-veriler'den kapatılabilir. Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
+veriler'den kapatılabilir. Sayfa çevirisi yalnızca sen istediğinde, sayfadaki görünen yazıyı Google Çeviri'ye gönderir (form alanları ve
+düzenlenebilir alanlar hariç). Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
 Arama'dan kapatılabilir. Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
 dosyaları bilgisayarda çevirir; hiçbir dosya bir sunucuya yüklenmez.
 

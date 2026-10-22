@@ -884,5 +884,21 @@
   "Kaydedildi: {0}": "Saved: {0}",
   "Aranıyor…": "Searching…",
   "Bu adres bir video dosyası değil (site videoyu parça parça yayınlıyor olabilir).": "This address isn't a video file (the site may stream the video in pieces).",
-  "İndirilemedi: {0}": "Couldn't download: {0}"
+  "İndirilemedi: {0}": "Couldn't download: {0}",
+
+  "Sayfayı Türkçeye çevir": "Translate page to English",
+  "Orijinali göster": "Show original",
+  "Google Çeviri ile çevrildi. Orijinali göstermek için tıkla.": "Translated with Google Translate. Click to show the original.",
+  "Bu sayfa çevrilemez.": "This page can't be translated.",
+  "Bu sayfa zaten {0}.": "This page is already in {0}.",
+  "Bu sayfada çevrilecek yazı bulamadım.": "I found no text to translate on this page.",
+  "Google Çeviri'ye ulaşılamadı, sonra tekrar dene.": "Couldn't reach Google Translate, try again later.",
+  "Bilinmeyen dil": "Unknown language",
+  "Bu güncellemede ayrıca": "Also in this update",
+  "Güncelleme tamamlandı. Senin sürümünden bu yana gelenler:": "Update complete. Here's what's new since your version:",
+  "Sayfa çevirisi": "Page translation",
+  "Başka dildeki bir sayfaya sağ tıkla ve \"Sayfayı Türkçeye çevir\"i seç: Google Çeviri sayfayı yerinde çevirir, girişin ve sayfanın düzeni bozulmaz. Adres çubuğunda hangi dilden çevrildiği yazar; tıklayınca orijinale dönersin.": "Right-click a page in another language and choose \"Translate page to English\": Google Translate translates it in place, keeping your sign-in and the page layout. The address bar shows which language it came from; click it to go back to the original.",
+  "Yenilikler artık doğru sürümü gösteriyor": "What's new now shows the right version",
+  "Bu sayfa önceden her güncellemede aynı kartları gösteriyordu. Artık yalnızca senin sürümünden sonra gelenleri gösteriyor; küçük güncellemeler aşağıda liste halinde.": "This page used to show the same cards after every update. Now it shows only what came after your version; smaller updates are listed below.",
+  "Tüm yama notları": "All patch notes"
 }

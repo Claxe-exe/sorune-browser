@@ -1426,6 +1426,26 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
         }
 
+        // Translate the whole page (Google Translate, in place) or put the original back.
+        if (_viewModel.ActiveTab is { } tab && !InternalPages.IsInternal(tab.Url) && tab.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var translate = new MenuItem
+            {
+                Header = tab.IsTranslated ? L.T("Orijinali göster") : MainViewModel.TranslateMenuTitle,
+                Icon = new TextBlock { Text = "\uE8C1", FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 13 },
+            };
+            translate.Click += (_, _) =>
+            {
+                Complete(null);
+                if (tab.IsTranslated)
+                    _viewModel.ShowOriginal(tab);
+                else
+                    _ = _viewModel.TranslateTabAsync(tab);
+            };
+            menu.Items.Add(translate);
+            menu.Items.Add(new Separator());
+        }
+
         AddMenuItems(menu.Items, e.MenuItems, depth: 0, Complete);
         menu.Closed += (_, _) => Dispatcher.BeginInvoke(() => Complete(null), DispatcherPriority.Background);
         menu.IsOpen = true;

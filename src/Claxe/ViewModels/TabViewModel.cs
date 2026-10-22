@@ -611,6 +611,116 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ---------------------------------------------------------------- translation
+
+    private string? _translateTarget;
+    private string? _translatedFrom;
+    private bool _isTranslating;
+    private System.Windows.Threading.DispatcherTimer? _translateTimer;
+
+    /// <summary>On while the page is shown translated; stays on across the tab's next pages, like Chrome.</summary>
+    public bool IsTranslated => _translateTarget is not null;
+
+    public bool IsTranslating
+    {
+        get => _isTranslating;
+        private set => SetProperty(ref _isTranslating, value);
+    }
+
+    /// <summary>"İngilizce → Türkçe" for the address bar chip.</summary>
+    public string? TranslationLabel => _translateTarget is null
+        ? null
+        : $"{PageTranslator.LanguageName(_translatedFrom)} → {PageTranslator.LanguageName(_translateTarget)}";
+
+    /// <summary>
+    /// Translates the page in place into <paramref name="target"/>. Returns a short note for the
+    /// user when there was nothing to do or Google couldn't be reached; null when it worked.
+    /// </summary>
+    public async Task<string?> TranslateAsync(string target)
+    {
+        if (Core is not { } core || InternalPages.IsInternal(Url) || Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) != true)
+            return L.T("Bu sayfa çevrilemez.");
+
+        var first = _translateTarget is null;
+        _translateTarget = target;
+        OnTranslationChanged();
+        IsTranslating = true;
+        try
+        {
+            var result = await PageTranslator.TranslateNewTextAsync(core, target, CancellationToken.None);
+            if (result.SourceLanguage is { } source)
+                _translatedFrom = source;
+            OnTranslationChanged();
+
+            if (first && SameLanguage(result.SourceLanguage, target))
+            {
+                await ShowOriginalAsync();
+                return L.T("Bu sayfa zaten {0}.", PageTranslator.LanguageName(target));
+            }
+            if (first && result.Translated == 0)
+            {
+                await ShowOriginalAsync();
+                return L.T("Bu sayfada çevrilecek yazı bulamadım.");
+            }
+
+            StartTranslationTimer();
+            return null;
+        }
+        catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or TaskCanceledException or JsonException or COMException or InvalidOperationException)
+        {
+            Log.Info($"Sayfa çevrilemedi ({Url}): {ex.Message}");
+            if (first)
+                await ShowOriginalAsync();
+            return first ? L.T("Google Çeviri'ye ulaşılamadı, sonra tekrar dene.") : null;
+        }
+        finally
+        {
+            IsTranslating = false;
+        }
+    }
+
+    /// <summary>Puts the original text back and stops translating this tab.</summary>
+    public async Task ShowOriginalAsync()
+    {
+        _translateTarget = null;
+        _translatedFrom = null;
+        _translateTimer?.Stop();
+        OnTranslationChanged();
+        try
+        {
+            if (Core is { } core)
+                await core.ExecuteScriptAsync(PageTranslator.RestoreScript);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            // The page is gone; nothing to restore.
+        }
+    }
+
+    /// <summary>Text the page adds later (comments, infinite scroll) is translated too, while the tab is in front.</summary>
+    private void StartTranslationTimer()
+    {
+        if (_translateTimer is null)
+        {
+            _translateTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+            _translateTimer.Tick += async (_, _) =>
+            {
+                if (_translateTarget is { } target && IsActive && !IsSuspended && !IsTranslating && !IsLoading)
+                    await TranslateAsync(target);
+            };
+        }
+        _translateTimer.Start();
+    }
+
+    private static bool SameLanguage(string? a, string? b)
+        => a is not null && b is not null && string.Equals(a.Split('-')[0], b.Split('-')[0], StringComparison.OrdinalIgnoreCase);
+
+    private void OnTranslationChanged()
+    {
+        OnPropertyChanged(nameof(IsTranslated));
+        OnPropertyChanged(nameof(TranslationLabel));
+    }
+
     /// <summary>True while the page shows an element fullscreen (e.g. a video).</summary>
     public bool IsContentFullScreen
     {
@@ -698,6 +808,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             return;
 
         _disposed = true;
+        _translateTimer?.Stop();
         var webView = _webView;
         WebView = null;
         webView?.Dispose();
@@ -768,6 +879,10 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             NavigationFinished?.Invoke(this, e.IsSuccess);
             if (!e.IsSuccess)
                 ShowErrorPage(core, e.WebErrorStatus);
+            else if (_translateTarget is { } target && !InternalPages.IsInternal(Url))
+                _ = TranslateAsync(target); // the next page of a translated tab is translated too
+            else if (_translateTarget is not null)
+                _ = ShowOriginalAsync();
         };
         core.WebMessageReceived += (_, e) => OnWebMessage(e);
         core.HistoryChanged += (_, _) =>

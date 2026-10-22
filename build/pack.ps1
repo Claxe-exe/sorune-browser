@@ -1,9 +1,9 @@
 ﻿# Builds the Sorune installer (Setup.exe) and update packages with Velopack.
 #   Requires: .NET 10 SDK, vpk tool (dotnet tool install -g vpk)
-#   Usage:    ./build/pack.ps1 -Version 0.8.5
+#   Usage:    ./build/pack.ps1 -Version 0.9.0
 #   Output:   artifacts/releases (SoruneBrowser-win-Setup.exe, portable zip, update packages)
 #   Publish:  vpk upload github --repoUrl https://github.com/Claxe-exe/sorune-browser --publish --releaseName "Sorune <version>" --tag v<version> -o artifacts/releases --token <token>
-param([string]$Version = "0.8.5")
+param([string]$Version = "0.9.0")
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path $PSScriptRoot
