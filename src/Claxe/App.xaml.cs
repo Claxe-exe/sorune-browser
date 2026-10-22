@@ -54,6 +54,7 @@ public partial class App : Application
         SoundService.Volume = settings.SoundVolume;
         SoundService.Pack = settings.SoundPack;
         BrowserEnvironment.ForceDark = settings.ForceDarkSites;
+        BrowserEnvironment.SmartScreen = settings.SmartScreenEnabled;
         ThemeService.Apply(settings);
 
         // One click sound for every button in the app (toolbar, tabs, caption buttons).

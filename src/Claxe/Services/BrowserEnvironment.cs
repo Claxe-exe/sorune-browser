@@ -10,6 +10,9 @@ public static class BrowserEnvironment
     /// <summary>Set once at startup from the settings: Chromium's auto-dark for every site.</summary>
     public static bool ForceDark { get; set; }
 
+    /// <summary>Microsoft Defender SmartScreen warnings on dangerous sites and downloads.</summary>
+    public static bool SmartScreen { get; set; } = true;
+
     public static bool IsRuntimeAvailable(out string? version)
     {
         try

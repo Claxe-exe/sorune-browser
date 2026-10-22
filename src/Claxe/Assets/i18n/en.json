@@ -867,5 +867,8 @@
   "Yama notlarını aç": "Open the patch notes",
 
   "Arama önerileri": "Search suggestions",
-  "Adres çubuğuna yazarken Chrome'daki gibi arama motorunun önerileri çıkar. Bunun için yazdıkların seçili arama motoruna gönderilir; gizli sekmelerde hiç gönderilmez.": "While you type in the address bar, the search engine's suggestions appear like in Chrome. For this, what you type is sent to the chosen search engine; never in InPrivate tabs."
+  "Adres çubuğuna yazarken Chrome'daki gibi arama motorunun önerileri çıkar. Bunun için yazdıkların seçili arama motoruna gönderilir; gizli sekmelerde hiç gönderilmez.": "While you type in the address bar, the search engine's suggestions appear like in Chrome. For this, what you type is sent to the chosen search engine; never in InPrivate tabs.",
+  "Geçmiş ve kayıtlı oturum çerezleri Windows hesabına özel şifrelenmiş olarak saklanır. Sorune telemetri toplamaz.": "History and saved session cookies are stored encrypted for your Windows account. Sorune collects no telemetry.",
+  "SmartScreen uyarıları": "SmartScreen warnings",
+  "Microsoft'un tehlikeli bildirdiği sitelerde ve indirmelerde kırmızı uyarı sayfası çıkar. Kapatınca uyarı hiç çıkmaz ve açtığın adresler Microsoft'a sorulmaz; ama dolandırıcı ya da virüslü sitelerde seni artık kimse uyarmaz.": "A red warning page appears on sites and downloads Microsoft reports as dangerous. When off, the warning never appears and the addresses you open aren't checked with Microsoft; but nothing warns you about scam or infected sites anymore."
 }

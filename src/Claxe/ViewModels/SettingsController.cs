@@ -36,6 +36,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "cornerStyle" => Set(StringOrNull(value), v => CornerStyles.Contains(v), v => settings.CornerStyle = v!),
             "density" => Set(StringOrNull(value), v => Densities.Contains(v), v => settings.Density = v!),
             "searchSuggestions" => SetBool(value, v => settings.SearchSuggestions = v),
+            "smartScreenEnabled" => SetBool(value, v => settings.SmartScreenEnabled = v),
             "searchEngine" => Set(StringOrNull(value), v => SearchEngines.All.Any(e => e.Id == v), v => settings.SearchEngine = v!),
             "soundVolume" => Set(NumberOrNull(value), v => v is >= 0 and <= 1, v => settings.SoundVolume = v!.Value),
             "animationsEnabled" => SetBool(value, v => settings.AnimationsEnabled = v),

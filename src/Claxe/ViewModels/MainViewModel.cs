@@ -2580,6 +2580,15 @@ public sealed class MainViewModel : ObservableObject
             case "downloadFolder":
                 _downloads.SetFolder(_settings.DownloadFolder);
                 break;
+            case "smartScreenEnabled":
+                BrowserEnvironment.SmartScreen = _settings.SmartScreenEnabled;
+                // Applies from each page's next navigation.
+                foreach (var page in HostedTabs.Concat(HostedPanels.Select(p => p.Tab).OfType<TabViewModel>()))
+                {
+                    if (page.Core is { } pageCore)
+                        pageCore.Settings.IsReputationCheckingRequired = _settings.SmartScreenEnabled;
+                }
+                break;
             case "siteColorScheme":
                 foreach (var page in HostedTabs.Concat(HostedPanels.Select(p => p.Tab).OfType<TabViewModel>()))
                 {

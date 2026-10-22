@@ -17,6 +17,14 @@ function send(message) {
 
 const RELEASES = [
     {
+        version: "0.8.4",
+        date: "2026-10-22",
+        name: ["SmartScreen anahtarı", "SmartScreen switch"],
+        items: [
+            ["**SmartScreen uyarıları** artık kapatılabiliyor: Ayarlar › Gizlilik ve veriler. Kapalıyken kırmızı \"güvenli olmadığı bildirildi\" sayfası hiç çıkmaz.", "**SmartScreen warnings** can now be turned off in Settings › Privacy and data. When off, the red \"reported as unsafe\" page never appears."],
+        ],
+    },
+    {
         version: "0.8.3",
         date: "2026-10-22",
         name: ["Arama önerileri", "Search suggestions"],

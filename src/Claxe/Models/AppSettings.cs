@@ -8,6 +8,9 @@ public sealed class AppSettings
     /// <summary>Id from <see cref="Services.SearchEngines"/>.</summary>
     public string SearchEngine { get; set; } = "google";
 
+    /// <summary>SmartScreen warning pages for sites and downloads Microsoft reports as unsafe.</summary>
+    public bool SmartScreenEnabled { get; set; } = true;
+
     /// <summary>Ask the search engine for suggestions while typing in the address bar (not in InPrivate tabs).</summary>
     public bool SearchSuggestions { get; set; } = true;
 

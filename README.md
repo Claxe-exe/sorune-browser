@@ -221,7 +221,8 @@ kaldırmak verileri silmez).
 | `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json`, `user-themes.json` | Ayarlar, listeler ve kayıtlı temalar | JSON |
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
-Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
+Microsoft Defender SmartScreen (tehlikeli site ve indirme uyarıları) varsayılan olarak açıktır; Ayarlar › Gizlilik ve
+veriler'den kapatılabilir. Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
 Arama'dan kapatılabilir. Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
 dosyaları bilgisayarda çevirir; hiçbir dosya bir sunucuya yüklenmez.
 

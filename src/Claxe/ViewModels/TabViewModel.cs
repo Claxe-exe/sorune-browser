@@ -820,6 +820,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         settings.AreBrowserAcceleratorKeysEnabled = true;
         settings.IsZoomControlEnabled = true;
+        settings.IsReputationCheckingRequired = BrowserEnvironment.SmartScreen;
     }
 
     private void OnSourceChanged(CoreWebView2 core)
