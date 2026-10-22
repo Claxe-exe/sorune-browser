@@ -17,6 +17,15 @@ function send(message) {
 
 const RELEASES = [
     {
+        version: "0.8.1",
+        date: "2026-10-22",
+        name: ["Düzeltme", "Fix"],
+        items: [
+            ["Bir site kendi sekmesini kapattığında (ör. giriş penceresi işini bitirince) son sekmeyse artık tarayıcı kapanmıyor; yerine yeni sekme açılıyor.", "When a site closes its own tab (e.g. a sign-in window that is done) and it is the last one, the browser no longer quits; a new tab opens instead."],
+            ["Pencere kapandığında nedeni günlüğe yazılıyor, beklenmedik kapanmalar bulunabilsin diye.", "The reason the window closes is now written to the log, so unexpected closes can be tracked down."],
+        ],
+    },
+    {
         version: "0.8.0",
         date: "2026-10-22",
         name: ["Kendi temaların", "Your own themes"],

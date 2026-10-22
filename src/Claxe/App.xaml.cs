@@ -90,6 +90,7 @@ public partial class App : Application
     public void Restart()
     {
         _restartRequested = true;
+        Log.Info("Yeniden başlatılıyor.");
         MainWindow?.Close();
     }
 

@@ -1002,7 +1002,11 @@ public partial class MainWindow : Window
     // Mouse clicks on this button arrive as WM_NCLBUTTONUP (see WndProc); Click covers keyboard/automation.
     private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        Log.Info("Kapat düğmesine basıldı.");
+        Close();
+    }
 
     private void ToggleMaximize()
         => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
@@ -1223,6 +1227,9 @@ public partial class MainWindow : Window
             return;
 
         _shutdownStarted = true;
+        // Whatever asked for it (the lines just before say which; nothing there means Windows:
+        // Alt+F4, the taskbar or another program).
+        Log.Info("Pencere kapanıyor.");
         Hide(); // feels instant while cookies and history are flushed
         try
         {

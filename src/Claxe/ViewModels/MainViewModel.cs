@@ -295,7 +295,10 @@ public sealed class MainViewModel : ObservableObject
     private void ApplyUpdate()
     {
         if (UpdateService.PrepareApplyOnExit())
+        {
+            Log.Info("Güncelleme için kapanıyor.");
             CloseWindowRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public event EventHandler? FocusAddressBarRequested;
@@ -1395,6 +1398,7 @@ public sealed class MainViewModel : ObservableObject
 
         if (Tabs.Count == 0)
         {
+            Log.Info("Son sekme kapandı, pencere kapanıyor.");
             _activeTab = null;
             CloseWindowRequested?.Invoke(this, EventArgs.Empty);
             return;
@@ -1729,12 +1733,23 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>A page closed itself (window.close(), e.g. a sign-in popup that is done).</summary>
     private void OnTabCloseRequested(object? sender, EventArgs e)
     {
-        if (sender is TabViewModel tab && Panels.FirstOrDefault(p => ReferenceEquals(p.Tab, tab)) is { } panel)
+        if (sender is not TabViewModel tab)
+            return;
+
+        Log.Info($"Sayfa kendi sekmesini kapattı: {tab.Url}");
+        if (Panels.FirstOrDefault(p => ReferenceEquals(p.Tab, tab)) is { } panel)
+        {
             UnloadPanel(panel);
-        else
-            CloseTab(sender as TabViewModel);
+            return;
+        }
+
+        // A page may close its own tab, never the whole browser: the last tab becomes a new tab.
+        if (Tabs.Count == 1 && ReferenceEquals(Tabs[0], tab))
+            NewTab();
+        CloseTab(tab);
     }
 
     private void ReloadOrStop()
