@@ -17,6 +17,14 @@ function send(message) {
 
 const RELEASES = [
     {
+        version: "0.8.5",
+        date: "2026-10-23",
+        name: ["Sayfadaki videoyu indir", "Download the video on a page"],
+        items: [
+            ["**Mini araçlar › Video:** açık sayfadaki video dosyalarını bulur, tek tıkla İndirmeler klasörüne kaydeder. YouTube desteklenmez; parça parça yayınlanan videolar dosya olmadığı için bulunamaz.", "**Mini tools › Video:** finds video files on the open page and saves them to Downloads in one click. YouTube isn't supported; streamed videos aren't files, so they can't be found."],
+        ],
+    },
+    {
         version: "0.8.4",
         date: "2026-10-22",
         name: ["SmartScreen anahtarı", "SmartScreen switch"],

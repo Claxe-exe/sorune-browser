@@ -114,7 +114,7 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
   paketi, yeni sekme efekti / karartma / bulanıklık / yerleşim, siteye uyan renkler, çerçeveli sayfa, sitelerde koyu
   mod; hepsini **kendi teman** olarak kaydetme
 - **Yedekle ve taşı:** her şey tek bir `.sorune` dosyasında, başka bilgisayara taşınabilir
-- **Araçlar:** ekran görüntüsü, okuma modu, resim içinde resim, komut paleti, bağlantı önizlemesi, görev yöneticisi
+- **Araçlar:** ekran görüntüsü, sayfadaki videoyu indirme (YouTube hariç), okuma modu, resim içinde resim, komut paleti, bağlantı önizlemesi, görev yöneticisi
 - **Profiller ve zaman makinesi:** birbirinden bağımsız profiller; kapatılan sekmeler ve önceki oturumlar
 - **Kitaplık:** geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
 - **Gizlilik:** geçmiş, oturum çerezleri ve widget notları Windows hesabına bağlı şifrelenir (DPAPI); site izinleri

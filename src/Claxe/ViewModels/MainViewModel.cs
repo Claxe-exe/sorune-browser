@@ -2104,6 +2104,18 @@ public sealed class MainViewModel : ObservableObject
                     tab.Navigate(InternalPages.NewTabUrl);
                 break;
 
+            case "tools:findVideos":
+                await FindPageVideosAsync(tab);
+                break;
+
+            case "tools:downloadVideo" when Text("url") is { } videoUrl && _foundVideos.TryGetValue(videoUrl, out var found):
+                await DownloadPageVideoAsync(tab, found.Video, found.Page);
+                break;
+
+            case "tools:showFile" when Text("path") is { } shownPath && _savedVideos.Contains(shownPath) && File.Exists(shownPath):
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{shownPath}\"");
+                break;
+
             case "tools:changelog":
                 OpenInternal(InternalPages.ChangelogUrl);
                 break;
@@ -2692,6 +2704,70 @@ public sealed class MainViewModel : ObservableObject
     /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
     /// </summary>
     private void SaveSession() => SessionStore.Save(BuildSessionState());
+
+    // ---------------------------------------------------------------- page videos (mini tools)
+
+    /// <summary>Only videos found on a page can be downloaded (the tools page can't name any URL).</summary>
+    private readonly Dictionary<string, (PageVideo Video, string? Page)> _foundVideos = [];
+    private readonly HashSet<string> _savedVideos = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task FindPageVideosAsync(TabViewModel toolsPage)
+    {
+        var page = ActiveTab;
+        if (page?.Core is not { } core || page.Url is not { } url || InternalPages.IsInternal(url) || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            toolsPage.PostToInternalPage(new { type = "toolsVideos", state = "noPage" });
+            return;
+        }
+        if (PageVideos.IsBlocked(url))
+        {
+            toolsPage.PostToInternalPage(new { type = "toolsVideos", state = "youtube" });
+            return;
+        }
+
+        try
+        {
+            var videos = PageVideos.Parse(await core.ExecuteScriptAsync(PageVideos.FindScript));
+            _foundVideos.Clear();
+            foreach (var video in videos)
+                _foundVideos[video.Url] = (video, url);
+            toolsPage.PostToInternalPage(new
+            {
+                type = "toolsVideos",
+                state = videos.Count > 0 ? "found" : "none",
+                page = page.Title,
+                items = videos.Select(v => new { url = v.Url, name = v.Name, host = new Uri(v.Url).Host }),
+            });
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or JsonException)
+        {
+            Log.Info($"Sayfadaki videolar okunamadı ({url}): {ex.Message}");
+            toolsPage.PostToInternalPage(new { type = "toolsVideos", state = "none" });
+        }
+    }
+
+    private async Task DownloadPageVideoAsync(TabViewModel toolsPage, PageVideo video, string? pageUrl)
+    {
+        var folder = _downloads.Folder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var progress = new Progress<double?>(value =>
+            toolsPage.PostToInternalPage(new { type = "toolsVideoProgress", url = video.Url, progress = value }));
+        try
+        {
+            Log.Info($"Video indiriliyor: {video.Url}");
+            var path = await PageVideos.DownloadAsync(video, pageUrl, folder, progress, CancellationToken.None);
+            _savedVideos.Add(path);
+            SoundService.Play(UiSound.Toggle);
+            toolsPage.PostToInternalPage(new { type = "toolsVideoDone", url = video.Url, path, name = Path.GetFileName(path) });
+        }
+        catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException or TaskCanceledException)
+        {
+            Log.Info($"Video indirilemedi ({video.Url}): {ex.Message}");
+            var message = ex is InvalidDataException
+                ? L.T("Bu adres bir video dosyası değil (site videoyu parça parça yayınlıyor olabilir).")
+                : L.T("İndirilemedi: {0}", ex.Message);
+            toolsPage.PostToInternalPage(new { type = "toolsVideoDone", url = video.Url, error = message });
+        }
+    }
 
     private async Task CreateBackupAsync(TabViewModel page, bool includeHistory)
     {

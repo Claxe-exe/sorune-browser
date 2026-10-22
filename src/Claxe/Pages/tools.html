@@ -35,6 +35,7 @@
         <button type="button" role="tab" data-tool="time">Süre</button>
         <button type="button" role="tab" data-tool="count">Sayaç</button>
         <button type="button" role="tab" data-tool="url">URL</button>
+        <button type="button" role="tab" data-tool="video">Video</button>
     </nav>
 
     <!-- JSON -->
@@ -127,6 +128,17 @@
         <label class="check"><input type="checkbox" id="url-full"> <span>Tam adres olarak (/, ?, &amp; korunur)</span></label>
         <p class="status" id="url-status"></p>
         <dl class="url-parts" id="url-parts"></dl>
+    </section>
+
+    <!-- Video on the page -->
+    <section class="card tool" id="tool-video" hidden>
+        <h2>Sayfadaki videoyu indir</h2>
+        <p class="status">Açık sayfadaki video dosyalarını bulur ve İndirmeler klasörüne kaydeder. YouTube desteklenmez; parça parça yayınlanan (canlı yayın, Netflix gibi) videolar dosya olmadığı için bulunamaz.</p>
+        <div class="buttons">
+            <button type="button" class="btn primary" id="video-find">Bu sayfada video ara</button>
+        </div>
+        <p class="status" id="video-status"></p>
+        <ul class="video-list" id="video-list"></ul>
     </section>
 
     <p class="toast" id="toast" hidden></p>

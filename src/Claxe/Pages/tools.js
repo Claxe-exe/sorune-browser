@@ -432,6 +432,30 @@ if (host) {
             if (theme.accentSecondary) root.setProperty("--accent2", theme.accentSecondary);
             const overlay = hexToRgb(theme.overlay);
             if (overlay) root.setProperty("--overlay", overlay);
+        } else if (message.type === "toolsVideos") {
+            renderVideos(message);
+        } else if (message.type === "toolsVideoProgress") {
+            const row = videoRows.get(message.url);
+            if (row) {
+                row.bar.style.width = message.progress == null ? "100%" : `${Math.round(message.progress * 100)}%`;
+                row.bar.classList.toggle("unknown", message.progress == null);
+            }
+        } else if (message.type === "toolsVideoDone") {
+            const row = videoRows.get(message.url);
+            if (!row) return;
+            row.bar.parentElement.hidden = true;
+            if (message.error) {
+                row.button.disabled = false;
+                row.button.textContent = t("Tekrar dene");
+                row.note.textContent = message.error;
+                row.note.classList.add("error");
+            } else {
+                row.button.disabled = false;
+                row.button.textContent = t("Klasörde göster");
+                row.button.onclick = () => send({ type: "tools:showFile", path: message.path });
+                row.note.textContent = t("Kaydedildi: {0}", message.name);
+                row.note.classList.remove("error");
+            }
         } else if (message.type === "toolsCurrentUrl") {
             if (message.url) {
                 $("qr-input").value = message.url;
@@ -442,6 +466,65 @@ if (host) {
         }
     });
 }
+
+// ---------------------------------------------------------------- video on the page
+
+const videoRows = new Map();
+
+function renderVideos(message) {
+    $("video-find").disabled = false;
+    const list = $("video-list");
+    list.replaceChildren();
+    videoRows.clear();
+    const status = {
+        noPage: t("Önce bir web sayfası aç (videonun olduğu sekme önde olsun)."),
+        youtube: t("YouTube videoları indirilemez: YouTube'un kuralları buna izin vermiyor."),
+        none: t("Bu sayfada indirilebilir video dosyası bulunamadı. Video oynuyorsa önce oynatmayı başlatıp tekrar dene."),
+        found: t("{0} video bulundu.", (message.items || []).length),
+    }[message.state] || "";
+    $("video-status").textContent = status;
+
+    for (const item of message.items || []) {
+        const li = document.createElement("li");
+        const name = document.createElement("strong");
+        name.textContent = item.name;
+        const host = document.createElement("span");
+        host.className = "host";
+        host.textContent = item.host;
+        const note = document.createElement("span");
+        note.className = "note";
+        const track = document.createElement("div");
+        track.className = "track";
+        track.hidden = true;
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        track.append(bar);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn";
+        button.textContent = t("İndir");
+        button.onclick = () => {
+            button.disabled = true;
+            button.textContent = t("İndiriliyor…");
+            note.textContent = "";
+            track.hidden = false;
+            bar.style.width = "0%";
+            send({ type: "tools:downloadVideo", url: item.url });
+        };
+        const text = document.createElement("div");
+        text.className = "video-text";
+        text.append(name, host, note, track);
+        li.append(text, button);
+        list.append(li);
+        videoRows.set(item.url, { button, bar, note });
+    }
+}
+
+$("video-find").addEventListener("click", () => {
+    $("video-find").disabled = true;
+    $("video-status").textContent = t("Aranıyor…");
+    send({ type: "tools:findVideos" });
+});
 
 // ---------------------------------------------------------------- start
 
