@@ -248,7 +248,7 @@ public sealed class MascotView : Grid
     private void ShowMood(bool animate)
     {
         var next = GetCustomImage() ?? GetImage(Mood);
-        if (ReferenceEquals(next, _custom) && next is not null)
+        if (ReferenceEquals(next, _custom))
         {
             // One picture: moods show as a hop (happy) or dimming (sleepy).
             next.BeginAnimation(OpacityProperty, null);

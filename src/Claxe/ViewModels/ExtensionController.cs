@@ -31,17 +31,17 @@ public sealed class ExtensionController(
                 break;
 
             case "ext:install" when Text("which") is { } which:
-                await RunAsync(page, profile, () => ExtensionService.InstallRecommendedAsync(profile, which));
+                await RunAsync(page, profile, async () => await ExtensionService.InstallRecommendedAsync(profile, which));
                 break;
 
             case "ext:installFolder":
                 if (pickFolder() is { } folder)
-                    await RunAsync(page, profile, () => ExtensionService.InstallFolderAsync(profile, folder));
+                    await RunAsync(page, profile, async () => await ExtensionService.InstallFolderAsync(profile, folder));
                 break;
 
             case "ext:installFile":
                 if (pickArchive() is { } file)
-                    await RunAsync(page, profile, () => ExtensionService.InstallArchiveAsync(profile, file));
+                    await RunAsync(page, profile, async () => await ExtensionService.InstallArchiveAsync(profile, file));
                 break;
 
             case "ext:toggle" when Text("id") is { } id:
