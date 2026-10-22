@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build src/Claxe/Claxe.csproj -c Release
+
+      - name: Unit tests
+        run: dotnet test tests/Sorune.Tests -c Release --logger "console;verbosity=normal"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: QR encoder checks
+        run: node tests/qr.test.js
