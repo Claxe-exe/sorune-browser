@@ -343,6 +343,74 @@ $("nt-dim-reset").addEventListener("click", () => update("newTabDim", null));
 $("mascot-pick").addEventListener("click", () => { $("mascot-error").hidden = true; send({ type: "pickMascot" }); });
 $("mascot-remove").addEventListener("click", () => send({ type: "removeMascot" }));
 
+// ---------------------------------------------------------------- profiles
+
+const PROFILE_EMOJIS = ["🌸", "⭐", "💼", "🎮", "📚", "🎵", "🌙", "🔥", "🐱", "🦊", "🍓", "⚡"];
+let profiles = { items: [], colors: [] };
+let newProfile = { emoji: "🌸", color: null };
+let deleteArmed = null;
+
+function renderProfiles() {
+    $("profiles").replaceChildren(...profiles.items.map((p) => {
+        const avatar = el("span", { class: "profile-avatar", text: p.emoji });
+        avatar.style.background = p.color;
+        const name = el("input", { class: "rename-input profile-name", type: "text", maxlength: "30", "aria-label": "Profil adı" });
+        name.value = p.name;
+        name.addEventListener("change", () => { if (name.value.trim()) send({ type: "profiles:update", id: p.id, name: name.value.trim() }); });
+
+        const state = p.isCurrent ? t("bu pencere") : p.running ? t("açık") : "";
+        const actions = [];
+        if (!p.isCurrent) actions.push(el("button", { type: "button", class: "chip", text: p.running ? "Öne getir" : "Aç", onclick: () => send({ type: "profiles:open", id: p.id }) }));
+        if (!p.isDefault) {
+            const armed = deleteArmed === p.id;
+            actions.push(el("button", {
+                type: "button",
+                class: "chip danger" + (armed ? " confirm" : ""),
+                text: armed ? "Emin misin? Tüm verisi silinir" : "Sil",
+                onclick: () => {
+                    if (deleteArmed !== p.id) { deleteArmed = p.id; renderProfiles(); setTimeout(() => { if (deleteArmed === p.id) { deleteArmed = null; renderProfiles(); } }, 3500); return; }
+                    deleteArmed = null;
+                    send({ type: "profiles:delete", id: p.id });
+                },
+            }));
+        }
+        const colors = el("div", { class: "swatches mini" }, profiles.colors.map((color) => {
+            const swatch = el("button", { type: "button", class: "swatch" + (color.toUpperCase() === p.color.toUpperCase() ? " selected" : ""), "aria-label": color, onclick: () => send({ type: "profiles:update", id: p.id, color }) });
+            swatch.style.background = color;
+            swatch.style.color = color;
+            return swatch;
+        }));
+        return el("div", { class: "list-row profile-row" }, [
+            avatar,
+            el("span", { class: "grow" }, [name, el("span", { class: "sub", text: [p.isDefault ? t("ana profil") : "", state].filter(Boolean).join(" · ") })]),
+            colors,
+            ...actions,
+        ]);
+    }));
+
+    $("profile-emoji").replaceChildren(...PROFILE_EMOJIS.map((emoji) => {
+        const b = el("button", { type: "button", class: "emoji" + (emoji === newProfile.emoji ? " selected" : ""), text: emoji, onclick: () => { newProfile.emoji = emoji; renderProfiles(); } });
+        return b;
+    }));
+    const pick = newProfile.color || profiles.colors[profiles.items.length % Math.max(1, profiles.colors.length)];
+    $("profile-colors").replaceChildren(...profiles.colors.map((color) => {
+        const swatch = el("button", { type: "button", class: "swatch" + (color === pick ? " selected" : ""), "aria-label": color, onclick: () => { newProfile.color = color; renderProfiles(); } });
+        swatch.style.background = color;
+        swatch.style.color = color;
+        return swatch;
+    }));
+}
+
+$("profile-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = $("profile-name").value.trim();
+    $("profile-error").hidden = true;
+    if (!name) return;
+    send({ type: "profiles:create", name, emoji: newProfile.emoji, color: newProfile.color || profiles.colors[profiles.items.length % profiles.colors.length] });
+    $("profile-name").value = "";
+    newProfile = { emoji: "🌸", color: null };
+});
+
 // ---------------------------------------------------------------- extensions
 
 let extensions = [];
@@ -570,6 +638,14 @@ if (host) {
                 $("ext-status").classList.remove("error");
                 $("ext-status").textContent = message.busy ? t("İşleniyor… (indirme birkaç saniye sürebilir)") : "";
                 break;
+            case "profiles":
+                profiles = message;
+                renderProfiles();
+                break;
+            case "profilesError":
+                $("profile-error").textContent = message.message || "";
+                $("profile-error").hidden = false;
+                break;
             case "mascotError":
                 $("mascot-error").textContent = message.message || t("Görsel eklenemedi.");
                 $("mascot-error").hidden = false;
@@ -619,3 +695,6 @@ send({ type: "ready" });
 send({ type: "getSettings" });
 send({ type: "importSources" });
 send({ type: "ext:list" });
+send({ type: "profiles:list" });
+// Profile windows opened or closed elsewhere: refresh when coming back to this page.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) send({ type: "profiles:list" }); });

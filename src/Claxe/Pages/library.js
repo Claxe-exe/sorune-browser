@@ -9,7 +9,7 @@ if (window.top !== window.self) {
 
 const host = window.chrome && window.chrome.webview;
 const $ = (id) => document.getElementById(id);
-const VIEWS = { "gecmis": "Geçmiş", "yer-imleri": "Yer imleri", "indirmeler": "İndirmeler" };
+const VIEWS = { "gecmis": "Geçmiş", "yer-imleri": "Yer imleri", "indirmeler": "İndirmeler", "zaman": "Zaman makinesi" };
 
 let historyItems = [];
 let bookmarks = [];
@@ -67,6 +67,7 @@ function showView() {
     if (view === "gecmis") send({ type: "history", text: $("history-search").value });
     if (view === "yer-imleri") send({ type: "bookmarks" });
     if (view === "indirmeler") send({ type: "downloads" });
+    if (view === "zaman") send({ type: "tm:list" });
 }
 
 window.addEventListener("hashchange", showView);
@@ -294,6 +295,87 @@ function renderDownloads() {
 
 $("downloads-clear").addEventListener("click", () => send({ type: "download", action: "clear" }));
 
+// ---------------------------------------------------------------- time machine
+
+const timeOnly = new Intl.DateTimeFormat(i18n.locale, { hour: "2-digit", minute: "2-digit" });
+const sessionDate = new Intl.DateTimeFormat(i18n.locale, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+const openSessions = new Set();
+
+function renderTimeMachine(state) {
+    const closedRoot = $("tm-closed");
+    closedRoot.replaceChildren();
+    let lastDay = "";
+    for (const tab of state.closed || []) {
+        const when = new Date(tab.closedAt);
+        const day = dayLabel(when);
+        if (day !== lastDay) {
+            closedRoot.append(el("div", { class: "day", text: day }));
+            lastDay = day;
+        }
+        closedRoot.append(el("div", { class: "item" }, [
+            el("span", { class: "time", text: timeOnly.format(when) }),
+            monogram(tab.title || hostOf(tab.url)),
+            el("span", { class: "item-text" }, [
+                el("span", { class: "item-title", text: tab.title || tab.url, title: tab.url }),
+                el("span", { class: "item-sub", text: [hostOf(tab.url), tab.group ? t("grup: {0}", tab.group) : ""].filter(Boolean).join(" · ") }),
+            ]),
+            el("button", { type: "button", class: "chip", text: "Geri aç", onclick: () => send({ type: "tm:reopen", id: tab.id }) }),
+        ]));
+    }
+    $("tm-closed-empty").hidden = (state.closed || []).length > 0;
+
+    const sessionsRoot = $("tm-sessions");
+    sessionsRoot.replaceChildren();
+    for (const session of state.sessions || []) {
+        const expanded = openSessions.has(session.id);
+        const head = el("div", { class: "item tm-session" }, [
+            el("span", { class: "mono-icon", text: String(session.tabs.length) }),
+            el("span", { class: "item-text" }, [
+                el("span", { class: "item-title", text: sessionDate.format(new Date(session.savedAt)) }),
+                el("span", { class: "item-sub", text: session.tabs.slice(0, 4).map((x) => x.title || hostOf(x.url)).join(" · ") }),
+            ]),
+            el("button", { type: "button", class: "chip", text: expanded ? "Gizle" : "Sekmeler", onclick: () => {
+                if (expanded) openSessions.delete(session.id); else openSessions.add(session.id);
+                renderTimeMachine(state);
+            } }),
+            el("button", { type: "button", class: "chip", text: "Hepsini aç", onclick: () => send({ type: "tm:openSession", id: session.id }) }),
+            el("button", { type: "button", class: "icon-btn danger", text: "×", title: "Listeden kaldır", onclick: () => send({ type: "tm:removeSession", id: session.id }) }),
+        ]);
+        sessionsRoot.append(head);
+        if (expanded) {
+            for (const tab of session.tabs) {
+                sessionsRoot.append(el("div", { class: "item tm-child" }, [
+                    monogram(tab.title || hostOf(tab.url)),
+                    el("span", { class: "item-text" }, [
+                        el("span", { class: "item-title", text: tab.title || tab.url, title: tab.url }),
+                        el("span", { class: "item-sub", text: hostOf(tab.url) }),
+                    ]),
+                    el("button", { type: "button", class: "chip", text: "Aç", onclick: () => send({ type: "tm:openSession", id: session.id, url: tab.url }) }),
+                ]));
+            }
+        }
+    }
+    $("tm-sessions-empty").hidden = (state.sessions || []).length > 0;
+}
+
+let tmClearArmed = false;
+$("tm-clear").addEventListener("click", () => {
+    // Two clicks: the first one asks.
+    if (!tmClearArmed) {
+        tmClearArmed = true;
+        $("tm-clear").textContent = t("Emin misin? Tekrar bas");
+        $("tm-clear").classList.add("confirm");
+        setTimeout(() => {
+            tmClearArmed = false;
+            $("tm-clear").textContent = t("Hepsini temizle");
+            $("tm-clear").classList.remove("confirm");
+        }, 3000);
+        return;
+    }
+    tmClearArmed = false;
+    send({ type: "tm:clear" });
+});
+
 // ---------------------------------------------------------------- look + messages
 
 function applyConfig(config) {
@@ -336,6 +418,9 @@ if (host) {
             case "downloads":
                 downloads = message.items || [];
                 renderDownloads();
+                break;
+            case "timemachine":
+                renderTimeMachine(message);
                 break;
         }
     });

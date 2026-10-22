@@ -29,6 +29,7 @@
             <a href="#kenar">Kenar çubuğu</a>
             <a href="#eklentiler">Eklentiler</a>
             <a href="#arama">Arama ve başlangıç</a>
+            <a href="#profiller">Profiller</a>
             <a href="#indirme">İndirmeler</a>
             <a href="#ice-aktar">İçe aktar</a>
             <a href="#gizlilik">Gizlilik ve veriler</a>
@@ -363,6 +364,19 @@
                         <button type="button" class="chip" id="default-browser-set">Varsayılan yap</button>
                     </div>
                 </div>
+            </section>
+
+            <section class="card" id="profiller">
+                <h2>Profiller</h2>
+                <p class="hint">Her profil tamamen ayrıdır: kendi çerezleri, girişleri, sekmeleri, geçmişi, ayarları ve eklentileri olur; ayrı bir pencerede açılır. İş, okul ya da oyun hesaplarını birbirinden ayırmak için birebir.</p>
+                <div class="panel-list" id="profiles"></div>
+                <form class="profile-add" id="profile-form" autocomplete="off">
+                    <input type="text" id="profile-name" maxlength="30" placeholder="Yeni profil adı, ör. İş" aria-label="Profil adı">
+                    <div class="emoji-pick" id="profile-emoji" role="radiogroup" aria-label="Profil simgesi"></div>
+                    <div class="swatches" id="profile-colors"></div>
+                    <button type="submit" class="chip">Profil oluştur</button>
+                </form>
+                <p class="error" id="profile-error" hidden></p>
             </section>
 
             <section class="card" id="eklentiler">

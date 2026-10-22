@@ -248,6 +248,8 @@
                                         <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                             <MenuItem Header="{controls:T 'Yeni sekme'}" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
                                             <MenuItem Header="{controls:T 'Yeni gizli sekme'}" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
+                                            <MenuItem Header="{controls:T 'Kapatılan sekmeyi yeniden aç'}" InputGestureText="Ctrl+Shift+T"
+                                                      Command="{Binding ReopenClosedTabCommand}" IsEnabled="{Binding CanReopenClosedTab}" />
                                             <Separator />
                                             <MenuItem Header="{controls:T 'Yeniden yükle'}" Command="{Binding ReloadTabCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -666,6 +668,17 @@
                                     </Rectangle.Style>
                                 </Rectangle>
                             </Grid>
+                        </Button>
+                        <!-- Profile: which profile this window is; click to open another -->
+                        <Button x:Name="ProfileButton" Style="{StaticResource IconButtonStyle}" Margin="0,0,2,0"
+                                ToolTip="{Binding CurrentProfile.Name}" Click="ProfileButton_Click">
+                            <Border Width="22" Height="22" CornerRadius="11" Background="{Binding ProfileBrush}">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="8" Opacity="0.5" Color="Black" />
+                                </Border.Effect>
+                                <TextBlock Text="{Binding CurrentProfile.Emoji}" FontFamily="Segoe UI Emoji" FontSize="11.5"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
                         </Button>
                         <Button Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
                                 ToolTip="{controls:T 'Ayarlar (Ctrl+,)'}" Command="{Binding OpenSettingsCommand}" />

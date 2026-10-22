@@ -22,6 +22,7 @@
             <a href="#gecmis">Geçmiş <kbd>Ctrl+H</kbd></a>
             <a href="#yer-imleri">Yer imleri <kbd>Ctrl+Shift+O</kbd></a>
             <a href="#indirmeler">İndirmeler <kbd>Ctrl+J</kbd></a>
+            <a href="#zaman">Zaman makinesi <kbd>Ctrl+Shift+T</kbd></a>
         </nav>
 
         <main class="content">
@@ -57,6 +58,20 @@
                 <div id="download-list"></div>
                 <p class="empty" id="download-empty" hidden>Henüz bir şey indirilmedi.</p>
                 <p class="hint note">Listeyi temizlemek dosyaları silmez. İndirilen programlar açılmadan önce onay sorulur.</p>
+            </section>
+            <!-- Time machine -->
+            <section class="card view" id="view-zaman" hidden>
+                <div class="view-head">
+                    <h2>Zaman makinesi</h2>
+                    <button type="button" class="chip danger" id="tm-clear">Hepsini temizle</button>
+                </div>
+                <p class="hint">Kapattığın sekmeler (30 gün) ve önceki oturumların sekmeleri burada. Ctrl+Shift+T en son kapatılanı yerine geri açar. Gizli sekmeler kaydedilmez.</p>
+                <h3 class="tm-head">Son kapatılanlar</h3>
+                <div id="tm-closed"></div>
+                <p class="empty" id="tm-closed-empty" hidden>Henüz kapatılan sekme yok.</p>
+                <h3 class="tm-head">Önceki oturumlar</h3>
+                <div id="tm-sessions"></div>
+                <p class="empty" id="tm-sessions-empty" hidden>Önceki oturum kaydı yok.</p>
             </section>
         </main>
     </div>

@@ -195,3 +195,11 @@ a.item-title:hover { text-decoration: underline; text-decoration-color: var(--ac
     -webkit-mask: var(--icon) center / contain no-repeat;
     mask: var(--icon) center / contain no-repeat;
 }
+/* ---------- Time machine ---------- */
+
+.tm-head { margin: 22px 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.tm-session { margin-top: 6px; background: rgba(0, 0, 0, 0.18); }
+.tm-session .icon-btn { opacity: 1; }
+.tm-child { margin-left: 30px; }
+.chip.confirm { background: #e5484d; border-color: transparent; color: #fff; }
+.nav a[href="#zaman"], #view-zaman { --icon: var(--i-clock); }

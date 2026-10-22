@@ -1,0 +1,53 @@
+/* Task manager. Builds on settings.css (glass cards over the blurred wallpaper). */
+
+.tm-page { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 36px 28px 80px; }
+
+.tm-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.tm-top h1 { margin: 0 0 6px; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; font-size: 28px; font-weight: 600; }
+.tm-top .hint { max-width: 560px; }
+
+.stats { display: flex; gap: 10px; }
+.stat {
+    min-width: 130px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+}
+.stat strong { display: block; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
+.stat span { font-size: 12px; color: var(--text-dim); }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th {
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--glass-border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.table th.sorted { color: var(--accent); }
+.table th.sorted::after { content: " " attr(data-dir); }
+.table td { padding: 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); vertical-align: middle; }
+.table tr:hover td { background: rgba(255, 255, 255, 0.035); }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table .dim { color: var(--text-dim); font-size: 12px; }
+.table .hot { color: #ffb84d; font-weight: 600; }
+.table tr.system .member { color: var(--text-dim); }
+
+.member { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 1px 0; }
+.member .title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 460px; }
+.badge.tab { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.badge.panel { color: #63d2ff; }
+.sleep { font-size: 11.5px; color: var(--text-dim); }
+
+.bar { height: 3px; margin-top: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+.actions { white-space: nowrap; text-align: right; }
+.actions .chip { height: 26px; margin-left: 4px; padding: 0 9px; font-size: 12px; }

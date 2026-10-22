@@ -9,6 +9,9 @@ public static class SessionStore
 
     private static string MarkerFile => Path.Combine(AppPaths.DataRoot, "running.lock");
 
+    /// <summary>When the saved session was last written (local time), or null when there is none.</summary>
+    public static DateTime? LastSavedAt => File.Exists(AppPaths.SessionFile) ? File.GetLastWriteTime(AppPaths.SessionFile) : null;
+
     /// <summary>True when the previous run never reached a normal exit (crash, kill, power loss).</summary>
     public static bool PreviousRunCrashed { get; private set; }
 

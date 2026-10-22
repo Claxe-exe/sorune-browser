@@ -21,6 +21,10 @@ public static class InternalPages
     public const string HistoryUrl = LibraryUrl + "#gecmis";
     public const string BookmarksUrl = LibraryUrl + "#yer-imleri";
     public const string DownloadsUrl = LibraryUrl + "#indirmeler";
+    public const string TimeMachineUrl = LibraryUrl + "#zaman";
+
+    /// <summary>Per-tab CPU and memory (Shift+Esc).</summary>
+    public const string TaskManagerUrl = Origin + "taskmanager.html";
 
     /// <summary>File converter, shown in its own sidebar panel.</summary>
     public const string ConverterUrl = Origin + "converter.html";
@@ -60,6 +64,10 @@ public static class InternalPages
         ("bookmarks", BookmarksUrl),
         ("indirmeler", DownloadsUrl),
         ("downloads", DownloadsUrl),
+        ("zaman-makinesi", TimeMachineUrl),
+        ("timemachine", TimeMachineUrl),
+        ("gorev-yoneticisi", TaskManagerUrl),
+        ("taskmanager", TaskManagerUrl),
         ("yenilikler", WhatsNewUrl),
         ("whatsnew", WhatsNewUrl),
         ("donusturucu", ConverterUrl),
@@ -88,6 +96,9 @@ public static class InternalPages
         if (IsSettings(url))
             return Scheme + "ayarlar";
 
+        if (IsPage(url, TaskManagerUrl))
+            return Scheme + "gorev-yoneticisi";
+
         if (IsPage(url, WhatsNewUrl))
             return Scheme + "yenilikler";
 
@@ -106,7 +117,7 @@ public static class InternalPages
         if (IsLibrary(url))
         {
             var hash = url.IndexOf('#') is var i and >= 0 ? url[(i + 1)..] : "gecmis";
-            return Scheme + (hash is "yer-imleri" or "indirmeler" ? hash : "gecmis");
+            return Scheme + (hash is "yer-imleri" or "indirmeler" ? hash : hash == "zaman" ? "zaman-makinesi" : "gecmis");
         }
 
         return url;
@@ -168,7 +179,7 @@ public static class InternalPages
     }
 
     // Ignores query strings and fragments (e.g. settings.html#ses).
-    private static bool IsPage(string? url, string page)
+    public static bool IsPage(string? url, string page)
         => url is not null
            && url.StartsWith(page, StringComparison.OrdinalIgnoreCase)
            && (url.Length == page.Length || url[page.Length] is '?' or '#');

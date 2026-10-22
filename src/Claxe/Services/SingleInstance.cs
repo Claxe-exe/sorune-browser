@@ -18,8 +18,19 @@ public sealed class SingleInstance : IDisposable
     private SingleInstance(Mutex mutex) => _mutex = mutex;
 
     /// <summary>Per profile, so a test profile (CLAXE_PROFILE_DIR) runs next to the real one.</summary>
-    private static string Name { get; } = "Sorune-" + Convert.ToHexString(
-        SHA256.HashData(Encoding.UTF8.GetBytes(AppPaths.DataRoot.ToLowerInvariant())))[..16];
+    private static string Name { get; } = NameFor(AppPaths.DataRoot);
+
+    private static string NameFor(string dataRoot) => "Sorune-" + Convert.ToHexString(
+        SHA256.HashData(Encoding.UTF8.GetBytes(dataRoot.ToLowerInvariant())))[..16];
+
+    /// <summary>Whether a Sorune window is open for the profile in <paramref name="dataRoot"/>.</summary>
+    public static bool IsRunning(string dataRoot)
+    {
+        if (!Mutex.TryOpenExisting(NameFor(dataRoot), out var mutex))
+            return false;
+        mutex.Dispose();
+        return true;
+    }
 
     /// <summary>Returns the lock when this is the first instance, otherwise null.</summary>
     public static SingleInstance? TryAcquire()

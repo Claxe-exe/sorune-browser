@@ -696,3 +696,49 @@ body.no-motion * { transition: none !important; }
 .ext-text span { font-size: 12px; color: var(--text-dim); }
 #ext-status.error { color: #ff8a8f; }
 .segmented { flex-wrap: wrap; justify-content: flex-end; }
+/* ---------- Profiles ---------- */
+
+:root { --i-people: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.5'/%3E%3Cpath d='M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5'/%3E%3Ccircle cx='17' cy='9' r='2.5'/%3E%3Cpath d='M16 14.6c2.8.1 4.8 1.8 5.5 5'/%3E%3C/svg%3E"); }
+.nav a[href="#profiller"], #profiller { --icon: var(--i-people); }
+
+.profile-row { flex-wrap: wrap; }
+.profile-avatar {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 50%;
+    font-family: "Segoe UI Emoji", sans-serif;
+    font-size: 17px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+.profile-name { width: 200px; border-color: transparent; background: transparent; font-weight: 500; }
+.profile-name:hover, .profile-name:focus { border-color: var(--accent); background: rgba(0, 0, 0, 0.35); }
+.swatches.mini .swatch { width: 18px; height: 18px; }
+.profile-add { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.profile-add input {
+    flex: 1 1 180px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text);
+    font: inherit;
+    outline: none;
+}
+.profile-add input:focus { border-color: var(--accent); }
+.emoji-pick { display: flex; flex-wrap: wrap; gap: 2px; }
+.emoji-pick .emoji {
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    font-family: "Segoe UI Emoji", sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+}
+.emoji-pick .emoji:hover { background: var(--glass-strong); }
+.emoji-pick .emoji.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent); }

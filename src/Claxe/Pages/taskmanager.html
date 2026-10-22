@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Görev yöneticisi</title>
+    <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="taskmanager.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <main class="tm-page">
+        <header class="tm-top">
+            <div>
+                <h1>Görev yöneticisi</h1>
+                <p class="hint">Sekmelerin ve Sorune'nin işlemci ve bellek kullanımı, 2 saniyede bir güncellenir. Aynı sitenin sekmeleri bazen tek işlemi paylaşır; o zaman aynı satırda görünürler.</p>
+            </div>
+            <div class="stats">
+                <div class="stat"><strong id="sum-memory">–</strong><span>Toplam bellek</span></div>
+                <div class="stat"><strong id="sum-cpu">–</strong><span>Toplam işlemci</span></div>
+                <div class="stat"><strong id="sum-tabs">–</strong><span>Sekme · uyuyan</span></div>
+            </div>
+        </header>
+
+        <section class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Görev</th>
+                        <th data-sort="memory" class="num">Bellek</th>
+                        <th data-sort="cpu" class="num">İşlemci</th>
+                        <th data-sort="pid" class="num">İşlem kimliği</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+            <p class="hint" id="waiting">Ölçülüyor…</p>
+        </section>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="taskmanager.js"></script>
+</body>
+</html>

@@ -169,6 +169,7 @@ public partial class MainWindow : Window
             // Ctrl+Shift+K opens the palette everywhere.
             case Key.K when ctrl && !IsWebsiteFocused(e): OpenPalette(); break;
             case Key.K when ctrlShift: OpenPalette(); break;
+            case Key.Escape when mods == ModifierKeys.Shift: _viewModel.OpenTaskManager(); break;
             case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
@@ -1307,6 +1308,20 @@ public partial class MainWindow : Window
 
         e.Handled = true;
         var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+
+        // Sorune's own item on links: a quick look without opening a tab.
+        if (e.ContextMenuTarget is { HasLinkUri: true, LinkUri: { } link } && AddressResolver.IsNavigable(link))
+        {
+            var preview = new MenuItem { Header = L.T("Bağlantıyı önizle") };
+            preview.Click += (_, _) =>
+            {
+                Complete(null);
+                OpenLinkPreview(link, _viewModel.ActiveTab?.IsPrivate == true);
+            };
+            menu.Items.Add(preview);
+            menu.Items.Add(new Separator());
+        }
+
         AddMenuItems(menu.Items, e.MenuItems, depth: 0, Complete);
         menu.Closed += (_, _) => Dispatcher.BeginInvoke(() => Complete(null), DispatcherPriority.Background);
         menu.IsOpen = true;
@@ -1346,6 +1361,56 @@ public partial class MainWindow : Window
 
         if (target.Count > 0 && target[^1] is Separator)
             target.RemoveAt(target.Count - 1);
+    }
+
+    /// <summary>The profile menu: every profile (open ones marked), then "manage profiles".</summary>
+    private void ProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = ProfileButton, Placement = PlacementMode.Bottom };
+        foreach (var profile in ProfileService.List())
+        {
+            var current = profile.Id == ProfileService.CurrentId;
+            var running = !current && ProfileService.IsRunning(profile.Id);
+            var dot = new Border
+            {
+                Width = 18,
+                Height = 18,
+                CornerRadius = new CornerRadius(9),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(profile.Color)),
+                Child = new TextBlock { Text = profile.Emoji, FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+            var item = new MenuItem
+            {
+                Header = profile.Name + (current ? "  ✓" : running ? "  · " + L.T("açık") : ""),
+                Icon = dot,
+                FontWeight = current ? FontWeights.SemiBold : FontWeights.Normal,
+            };
+            var id = profile.Id;
+            item.Click += (_, _) => _viewModel.OpenProfile(id);
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new Separator());
+        var manage = new MenuItem { Header = L.T("Profil ekle / yönet…") };
+        manage.Click += (_, _) => _viewModel.OpenSettings("profiller");
+        menu.Items.Add(manage);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Opens a link in the preview window, centred over the page area (about 70% of it).</summary>
+    private void OpenLinkPreview(string url, bool isPrivate)
+    {
+        var bounds = ScreenBoundsOf(ContentHost);
+        var window = new LinkPreviewWindow(url, isPrivate, link => _viewModel.OpenInNewTab(link, isPrivate))
+        {
+            Owner = this,
+            Width = Math.Max(480, bounds.Width * 0.7),
+            Height = Math.Max(360, bounds.Height * 0.78),
+        };
+        window.Left = bounds.Left + (bounds.Width - window.Width) / 2;
+        window.Top = bounds.Top + (bounds.Height - window.Height) / 2;
+        window.Show();
+        window.Activate();
     }
 
     /// <summary>A link arrived from another app or launch: show the window above everything once.</summary>

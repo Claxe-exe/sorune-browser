@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
@@ -71,7 +71,9 @@ public partial class App : Application
             updateTimer.Stop();
             await UpdateService.CheckAsync();
         };
-        updateTimer.Start();
+        // Only the main profile updates: an update replaces the files every profile window runs from.
+        if (ProfileService.IsDefault)
+            updateTimer.Start();
 
         _instance?.Listen(links => Dispatcher.BeginInvoke(() =>
         {

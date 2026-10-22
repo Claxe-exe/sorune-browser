@@ -15,7 +15,6 @@ namespace Claxe.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
-    private const int MaxClosedTabs = 25;
 
     private static readonly HashSet<string> AppearanceKeys =
         ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled", "performanceMode",
@@ -37,7 +36,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _suspendTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _downloadsTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    private readonly List<string> _closedTabs = [];
+    private readonly TimeMachineStore _timeMachine = new();
+    private readonly TaskManagerController _taskManager;
     private TabViewModel? _activeTab;
     private PanelViewModel? _activePanel;
     private PermissionRequestViewModel? _pendingPermission;
@@ -90,6 +90,12 @@ public sealed class MainViewModel : ObservableObject
         {
             SoundService.Play(UiSound.Toggle);
             Mascot.Say(L.T("İndirme bitti: {0}", record.FileName), happy: true);
+        };
+        _taskManager = new TaskManagerController(() => HostedTabs, () => HostedPanels);
+        _timeMachine.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(CanReopenClosedTab));
+            BroadcastToInternalPages(BuildTimeMachineState());
         };
         _bookmarks.Changed += (_, _) =>
         {
@@ -349,7 +355,68 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Pages are shown inset as a framed card (off in fullscreen, handled by the view).</summary>
     public bool IsPageFramed => _settings.PageFrameEnabled;
 
-    public string WindowTitle => ActiveTab is { } tab ? $"{tab.Title} - Sorune" : "Sorune";
+    public string WindowTitle => (ActiveTab is { } tab ? $"{tab.Title} - Sorune" : "Sorune")
+                                 + (ProfileService.IsDefault ? "" : $" ({CurrentProfile.Name})");
+
+    // ---------------------------------------------------------------- profiles
+
+    private ProfileInfo _currentProfile = ProfileService.Current;
+
+    /// <summary>The profile this window belongs to (toolbar badge).</summary>
+    public ProfileInfo CurrentProfile
+    {
+        get => _currentProfile;
+        private set
+        {
+            if (SetProperty(ref _currentProfile, value))
+            {
+                OnPropertyChanged(nameof(ProfileBrush));
+                OnPropertyChanged(nameof(WindowTitle));
+            }
+        }
+    }
+
+    public System.Windows.Media.Brush ProfileBrush
+    {
+        get
+        {
+            var brush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_currentProfile.Color));
+            brush.Freeze();
+            return brush;
+        }
+    }
+
+    /// <summary>Profiles for the toolbar menu and the settings page (with which ones are open).</summary>
+    public object BuildProfilesState() => new
+    {
+        type = "profiles",
+        current = ProfileService.CurrentId,
+        items = ProfileService.List().Select(p => new
+        {
+            p.Id,
+            p.Name,
+            p.Emoji,
+            p.Color,
+            isDefault = p.Id == ProfileService.DefaultId,
+            isCurrent = p.Id == ProfileService.CurrentId,
+            running = ProfileService.IsRunning(p.Id),
+        }),
+        colors = ProfileService.Colors,
+    };
+
+    public void OpenProfile(string id)
+    {
+        if (id == ProfileService.CurrentId)
+            return;
+        ProfileService.Launch(id);
+        SoundService.Play(UiSound.TabOpen);
+    }
+
+    private void RefreshProfiles()
+    {
+        CurrentProfile = ProfileService.Current;
+        BroadcastToInternalPages(BuildProfilesState());
+    }
 
     public bool IsContentFullScreen => ActiveTab?.IsContentFullScreen == true;
 
@@ -417,6 +484,8 @@ public sealed class MainViewModel : ObservableObject
         var session = SessionStore.Load();
         if (session is { Tabs.Count: > 0 })
         {
+            // The previous run goes into the time machine before anything else happens.
+            _timeMachine.ArchiveSession(session, SessionStore.LastSavedAt ?? DateTime.Now);
             if (_settings.RestoreSession)
                 RestoreSession(session);
             else if (SessionStore.PreviousRunCrashed)
@@ -550,6 +619,18 @@ public sealed class MainViewModel : ObservableObject
         }
 
         return opened;
+    }
+
+    public void OpenTaskManager() => OpenInternal(InternalPages.TaskManagerUrl);
+
+    private TabViewModel? TabById(string? id) => Tabs.FirstOrDefault(t => t.Id == id);
+
+    /// <summary>A link from the preview window (or similar) as a new tab after the active one.</summary>
+    public void OpenInNewTab(string url, bool isPrivate)
+    {
+        var index = ActiveTab is { } active ? Tabs.IndexOf(active) + 1 : Tabs.Count;
+        ActiveTab = CreateTab(url, index, isPrivate: isPrivate, group: ActiveTab?.Group);
+        SoundService.Play(UiSound.TabOpen);
     }
 
     public void NewPrivateTab()
@@ -960,6 +1041,9 @@ public sealed class MainViewModel : ObservableObject
         if (tab is not null)
             yield return Cmd("", "Sekmeyi yeni gruba ekle", "", () => AddToNewGroup(tab), "group grup");
         yield return Cmd("", "Geçmiş", "Ctrl+H", OpenHistory, "history");
+        yield return Cmd("", "Zaman makinesi", "", () => OpenInternal(InternalPages.TimeMachineUrl), "time machine closed tabs sessions kapatılan oturum");
+        yield return Cmd("", "Görev yöneticisi", "Shift+Esc", OpenTaskManager, "task manager cpu ram bellek işlemci");
+        yield return Cmd("", "Profiller", "", () => OpenSettings("profiller"), "profiles profil");
         yield return Cmd("", "İndirmeler", "Ctrl+J", OpenDownloads, "downloads");
         yield return Cmd("", "Yer imleri", "Ctrl+Shift+O", OpenBookmarks, "bookmarks");
         yield return Cmd("", "Ayarlar", "Ctrl+,", () => OpenSettings(), "settings");
@@ -1172,6 +1256,8 @@ public sealed class MainViewModel : ObservableObject
         _saveTimer.Stop();
         _suspendTimer.Stop();
         _pipTimer.Stop();
+        // This run's tabs go into the time machine even when they won't be restored next time.
+        _timeMachine.ArchiveSession(BuildSessionState(), DateTime.Now);
         if (_settings.RestoreSession)
             SaveSession();
         else
@@ -1238,11 +1324,19 @@ public sealed class MainViewModel : ObservableObject
         if (index < 0)
             return;
 
-        if (tab.Url is { } url && !InternalPages.IsInternal(url) && !tab.IsPrivate)
+        // Remembered for Ctrl+Shift+T and the time machine (never InPrivate tabs or empty new tabs).
+        if (tab.Url is { } url && !tab.IsPrivate && !InternalPages.IsNewTab(url) && !InternalPages.IsPage(url, InternalPages.ReaderUrl))
         {
-            _closedTabs.Add(url);
-            if (_closedTabs.Count > MaxClosedTabs)
-                _closedTabs.RemoveAt(0);
+            _timeMachine.AddClosed(new ClosedTab
+            {
+                Url = url,
+                Title = tab.Title,
+                Index = index,
+                IsPinned = tab.IsPinned,
+                GroupId = tab.Group?.Id,
+                GroupName = tab.Group?.Name,
+                GroupColor = tab.Group?.ColorKey,
+            });
         }
 
         // A closing half of the split screen ends the split (the other tab stays).
@@ -1275,15 +1369,70 @@ public sealed class MainViewModel : ObservableObject
         ScheduleSave();
     }
 
+    /// <summary>Ctrl+Shift+T: the last closed tab comes back where it was (pinned, in its group).</summary>
     public void ReopenClosedTab()
     {
-        if (_closedTabs.Count == 0)
+        if (_timeMachine.TakeLatest() is { } closed)
+            RestoreClosed(closed);
+    }
+
+    public bool CanReopenClosedTab => _timeMachine.Closed.Count > 0;
+
+    public ICommand ReopenClosedTabCommand => new RelayCommand(ReopenClosedTab);
+
+    private void RestoreClosed(ClosedTab closed)
+    {
+        var tab = CreateTab(closed.Url, Math.Clamp(closed.Index, 0, Tabs.Count), closed.Title, isPinned: closed.IsPinned);
+        if (!closed.IsPinned && closed.GroupId is { } groupId)
+        {
+            if (Groups.FirstOrDefault(g => g.Id == groupId) is { } group)
+            {
+                AddToGroup(tab, group);
+            }
+            else
+            {
+                // The group is gone too: it comes back with its name and colour.
+                var revived = new TabGroupViewModel(groupId, closed.GroupName, closed.GroupColor);
+                Groups.Add(revived);
+                tab.Group = revived;
+                RefreshGroups();
+            }
+        }
+
+        ActiveTab = tab;
+        SoundService.Play(UiSound.TabOpen);
+        ScheduleSave();
+    }
+
+    // ---------------------------------------------------------------- tab time machine
+
+    private object BuildTimeMachineState() => new
+    {
+        type = "timemachine",
+        closed = _timeMachine.Closed.Select(c => new { c.Id, c.Url, c.Title, c.ClosedAt, group = c.GroupName }),
+        sessions = _timeMachine.Sessions.Select(s => new { s.Id, s.SavedAt, tabs = s.Tabs }),
+    };
+
+    /// <summary>Opens an earlier run's tabs (all of them, or the one with <paramref name="url"/>).</summary>
+    private void OpenArchivedSession(string? id, string? url)
+    {
+        if (_timeMachine.FindSession(id) is not { } session)
             return;
 
-        var url = _closedTabs[^1];
-        _closedTabs.RemoveAt(_closedTabs.Count - 1);
-        ActiveTab = CreateTab(url, Tabs.Count);
-        SoundService.Play(UiSound.TabOpen);
+        TabViewModel? first = null;
+        foreach (var tab in session.Tabs.Where(t => url is null || t.Url == url))
+        {
+            if (!AddressResolver.IsNavigable(tab.Url))
+                continue;
+            var created = CreateTab(tab.Url, Tabs.Count, tab.Title);
+            first ??= created;
+        }
+
+        if (first is not null)
+        {
+            ActiveTab = first;
+            SoundService.Play(UiSound.TabOpen);
+        }
     }
 
     public void SelectRelative(int delta)
@@ -1765,6 +1914,67 @@ public sealed class MainViewModel : ObservableObject
                 tab.PostToInternalPage(BuildNewTabConfig());
                 break;
 
+            case "profiles:list":
+                tab.PostToInternalPage(BuildProfilesState());
+                break;
+
+            case "profiles:create":
+                if (ProfileService.Create(Text("name"), Text("emoji"), Text("color")) is null)
+                    tab.PostToInternalPage(new { type = "profilesError", message = L.T("Bir ad yaz (en fazla 12 profil olabilir).") });
+                RefreshProfiles();
+                break;
+
+            case "profiles:update":
+                ProfileService.Update(Text("id"), Text("name"), Text("emoji"), Text("color"));
+                RefreshProfiles();
+                break;
+
+            case "profiles:delete":
+                if (!ProfileService.Delete(Text("id")))
+                    tab.PostToInternalPage(new { type = "profilesError", message = L.T("Açık olan ya da ana profil silinemez. Önce o profilin penceresini kapat.") });
+                RefreshProfiles();
+                break;
+
+            case "profiles:open" when Text("id") is { } profileId:
+                OpenProfile(profileId);
+                break;
+
+            case "taskmgr:ready":
+                _taskManager.Start();
+                break;
+
+            case "taskmgr:show" when TabById(Text("id")) is { } shown:
+                ActiveTab = shown;
+                break;
+
+            case "taskmgr:sleep" when TabById(Text("id")) is { } sleeper:
+                SleepTab(sleeper);
+                break;
+
+            case "taskmgr:close" when TabById(Text("id")) is { } closing && !ReferenceEquals(closing, tab):
+                CloseTab(closing);
+                break;
+
+            case "tm:list":
+                tab.PostToInternalPage(BuildTimeMachineState());
+                break;
+
+            case "tm:reopen" when _timeMachine.Take(Text("id")) is { } closedTab:
+                RestoreClosed(closedTab);
+                break;
+
+            case "tm:openSession":
+                OpenArchivedSession(Text("id"), Text("url"));
+                break;
+
+            case "tm:removeSession":
+                _timeMachine.RemoveSession(Text("id"));
+                break;
+
+            case "tm:clear":
+                _timeMachine.Clear();
+                break;
+
             case "reader:ready":
                 tab.PostToInternalPage(new { type = "article", article = _readerArticles.TryGetValue(tab, out var article) ? article : (JsonElement?)null });
                 break;
@@ -1813,6 +2023,15 @@ public sealed class MainViewModel : ObservableObject
                         break;
                     case "newtab-settings":
                         OpenSettings("yeni-sekme");
+                        break;
+                    case "timemachine":
+                        OpenInternal(InternalPages.TimeMachineUrl);
+                        break;
+                    case "profiles":
+                        OpenSettings("profiller");
+                        break;
+                    case "taskmanager":
+                        OpenTaskManager();
                         break;
                     case "close":
                         // Becomes a new tab rather than closing (it may be the only tab).
@@ -2060,7 +2279,10 @@ public sealed class MainViewModel : ObservableObject
         };
 
         if (history)
+        {
             _history.Clear(since);
+            _timeMachine.Clear(since);
+        }
         if (downloads)
             _downloads.ClearFinished(since);
         if (cookies)
@@ -2272,11 +2494,13 @@ public sealed class MainViewModel : ObservableObject
     /// Always written, also with "continue previous session" off, so a crash can be recovered;
     /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
     /// </summary>
-    private void SaveSession()
+    private void SaveSession() => SessionStore.Save(BuildSessionState());
+
+    private SessionState BuildSessionState()
     {
         // InPrivate tabs are never written to disk.
         var saved = Tabs.Where(t => !t.IsPrivate).ToList();
-        var state = new SessionState
+        return new SessionState
         {
             Tabs = saved.Select(t => new SessionTab
             {
@@ -2292,6 +2516,5 @@ public sealed class MainViewModel : ObservableObject
             SplitRight = SplitRight is { } right ? saved.IndexOf(right) : -1,
             SplitRatio = SplitRatio,
         };
-        SessionStore.Save(state);
     }
 }

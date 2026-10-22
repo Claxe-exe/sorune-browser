@@ -101,6 +101,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// <summary>Right click on the page; the view replaces WebView2's menu with a themed one.</summary>
     public event EventHandler<CoreWebView2ContextMenuRequestedEventArgs>? PageContextMenuRequested;
 
+    /// <summary>Identifies the tab to Sorune's own pages during this run (task manager actions).</summary>
+    public string Id { get; } = Guid.NewGuid().ToString("N");
+
     /// <summary>InPrivate: separate throw-away profile, no history, not restored next time.</summary>
     public bool IsPrivate { get; }
 

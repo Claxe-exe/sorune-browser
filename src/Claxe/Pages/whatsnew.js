@@ -16,45 +16,30 @@ function send(message) {
 // Newest release first; "open" asks the app to show the feature.
 const FEATURES = [
     {
-        icon: "🧩",
-        title: "Eklentiler",
-        text: "uBlock Origin Lite ve Bitwarden tek tıkla kurulur; istersen kendi eklentini klasörden ya da ZIP/CRX'ten ekle. Açılır penceresi olan eklentiler kenar çubuğunda görünür.",
-        action: "Eklentileri aç",
-        open: "extensions",
+        icon: "⏪",
+        title: "Sekme zaman makinesi",
+        text: "Ctrl+Shift+T artık Chrome gibi: kapattığın sekme eski yerine, sabitlemesi ve grubuyla geri gelir; liste Sorune kapansa bile kalır. Kitaplık'taki Zaman makinesinde son 30 günün kapatılan sekmeleri ve önceki oturumların tüm sekmeleri var.",
+        action: "Zaman makinesini aç",
+        open: "timemachine",
     },
     {
-        icon: "🧸",
-        title: "Kendi maskotun ve konuşma balonları",
-        text: "Maskot artık konuşuyor: indirme bitince, ekran görüntüsü alınca, uzun süre oturunca ya da gece geç saatte. İstersen kendi karakterinin görselini yükleyip maskot yap.",
-        action: "Maskotu ayarla",
-        open: "mascot",
+        icon: "👥",
+        title: "Profiller",
+        text: "İş, okul, oyun… Her profil kendi çerezleri, girişleri, geçmişi, ayarları ve eklentileriyle ayrı bir pencerede açılır. Araç çubuğundaki yuvarlak simgeden geçiş yap.",
+        action: "Profil oluştur",
+        open: "profiles",
     },
     {
-        icon: "🌌",
-        title: "Yeni sekme senin",
-        text: "Efekti (kar dahil), karartmayı, bulanıklığı ve yerleşimi seç; arama, kısayollar ve widget'ları gizleyebilirsin. Vurgu rengini duvar kâğıdından da alabilirsin.",
-        action: "Yeni sekme ayarları",
-        open: "newtab-settings",
+        icon: "📊",
+        title: "Görev yöneticisi",
+        text: "Shift+Esc: hangi sekme ne kadar bellek ve işlemci kullanıyor, canlı olarak. Ağır sekmeyi oradan uyut ya da kapat.",
+        action: "Görev yöneticisini aç",
+        open: "taskmanager",
     },
     {
-        icon: "📸",
-        title: "Ekran görüntüsü",
-        text: "Araç çubuğundaki kamera: görünen alan, tam sayfa ya da sürükleyerek bölge. Resimler klasörüne kaydedilir ve panoya kopyalanır.",
-    },
-    {
-        icon: "📖",
-        title: "Okuma modu",
-        text: "Makale sayfalarında araç çubuğunda kitap simgesi çıkar: yazıyı sade, temaya uygun bir sütunda oku; yazı tipi, boyut ve renk senin.",
-    },
-    {
-        icon: "🔔",
-        title: "Ses paketleri",
-        text: "Arayüz sesleri için Klasik, Yumuşak, Retro ve Kristal paketleri.",
-    },
-    {
-        icon: "⌨️",
-        title: "Küçük iyileştirmeler",
-        text: "Ctrl+K web sitelerinin içinde artık siteye ait (her yerde Ctrl+Shift+K paleti açar); resim içinde resim düğmesinin simgesi yenilendi.",
+        icon: "🔍",
+        title: "Bağlantı önizlemesi",
+        text: "Bir bağlantıya sağ tıkla ve \"Bağlantıyı önizle\"yi seç: sayfa yeni sekme açmadan küçük bir pencerede açılır. Beğenirsen \"Sekmede aç\", beğenmezsen dışarı tıkla.",
     },
 ];
 

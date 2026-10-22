@@ -26,7 +26,16 @@
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
 
-## ✨ 0.6'da yeni
+## ✨ 0.7'de yeni
+
+| | |
+|---|---|
+| ⏪ **Sekme zaman makinesi** | Ctrl+Shift+T kapattığın sekmeyi eski yerine, sabitlemesi ve grubuyla geri açar; liste yeniden başlatmada kaybolmaz. Kitaplık'ta son 30 günün kapatılan sekmeleri ve önceki oturumlar. |
+| 👥 **Profiller** | Kendi çerezleri, girişleri, geçmişi, ayarları ve eklentileriyle tamamen ayrı profiller; her biri kendi penceresinde. |
+| 📊 **Görev yöneticisi** | Shift+Esc: sekme başına canlı bellek ve işlemci; ağır sekmeyi uyut ya da kapat. |
+| 🔍 **Bağlantı önizlemesi** | Bağlantıya sağ tık → "Bağlantıyı önizle": sekme açmadan küçük pencerede bak. |
+
+## 0.6'da yeni
 
 | | |
 |---|---|
@@ -78,7 +87,8 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
   ve eklentiler
 - **Kişiselleştirme:** tema, duvar kâğıdı, duvar kâğıdından vurgu rengi, cam, köşeler, yoğunluk, kendi maskotun, ses
   paketi, yeni sekme efekti / karartma / bulanıklık / yerleşim, siteye uyan renkler, çerçeveli sayfa
-- **Araçlar:** ekran görüntüsü, okuma modu, resim içinde resim, komut paleti
+- **Araçlar:** ekran görüntüsü, okuma modu, resim içinde resim, komut paleti, bağlantı önizlemesi, görev yöneticisi
+- **Profiller ve zaman makinesi:** birbirinden bağımsız profiller; kapatılan sekmeler ve önceki oturumlar
 - **Kitaplık:** geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
 - **Gizlilik:** geçmiş, oturum çerezleri ve widget notları Windows hesabına bağlı şifrelenir (DPAPI); site izinleri
   hatırlanır; tarama verileri zaman aralığıyla temizlenir; telemetri yok
@@ -111,7 +121,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.6.0
+powershell -File build/pack.ps1 -Version 0.7.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
@@ -137,7 +147,8 @@ Arayüz metinleri `src/Claxe/Assets/i18n/en.json` dosyasındadır (Türkçe meti
 | Kısayol | İşlem |
 |---|---|
 | Ctrl+T / Ctrl+Shift+N | Yeni sekme / yeni gizli sekme |
-| Ctrl+W / Ctrl+Shift+T | Sekmeyi kapat / son kapatılanı geri aç |
+| Ctrl+W / Ctrl+Shift+T | Sekmeyi kapat / son kapatılanı yerine geri aç |
+| Shift+Esc | Görev yöneticisi |
 | Ctrl+Tab / Ctrl+Shift+Tab | Sonraki / önceki sekme |
 | Ctrl+1…8, Ctrl+9 | Sekmeye git, son sekme |
 | Ctrl+L / Alt+D / F6 | Adres çubuğu (↑ ↓ ile öneriler) |
@@ -178,6 +189,8 @@ kaldırmak verileri silmez).
 | `history.dat` | Tarama geçmişi (10.000 kayıt / 180 gün) | DPAPI ile şifreli |
 | `session-cookies.dat` | Kapanışta kaydedilen oturum çerezleri (tek kullanımlık, 14 gün) | DPAPI ile şifreli |
 | `widgets.dat` | Yeni sekme widget'ları (notlar, yapılacaklar) | DPAPI ile şifreli |
+| `closed-tabs.dat`, `sessions-archive.dat` | Zaman makinesi: kapatılan sekmeler ve önceki oturumlar | DPAPI ile şifreli |
+| `profiles.json`, `profiles\` | Profil listesi ve her profilin ayrı veri klasörü | JSON / klasör |
 | `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json` | Ayarlar ve listeler | JSON |
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
