@@ -83,6 +83,17 @@ public sealed class AppSettings
     public bool NewTabShowShortcuts { get; set; } = true;
     public bool NewTabShowWidgets { get; set; } = true;
 
+    /// <summary>Tabs as a list on the left instead of the strip at the top (off unless chosen).</summary>
+    public bool VerticalTabs { get; set; }
+
+    public int VerticalTabsWidth { get; set; } = 240;
+
+    /// <summary>What sites are told about the preferred colour scheme: "auto" (Windows), "dark" or "light".</summary>
+    public string SiteColorScheme { get; set; } = "auto";
+
+    /// <summary>Chromium's experimental auto-dark for sites without a dark theme (applied after a restart).</summary>
+    public bool ForceDarkSites { get; set; }
+
     /// <summary>The toolbar fades into the colour at the top of the open site.</summary>
     public bool SiteTintEnabled { get; set; } = true;
 

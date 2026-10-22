@@ -101,6 +101,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// <summary>Right click on the page; the view replaces WebView2's menu with a themed one.</summary>
     public event EventHandler<CoreWebView2ContextMenuRequestedEventArgs>? PageContextMenuRequested;
 
+    /// <summary>The tab whose link opened this one (orders background tabs like Chrome).</summary>
+    public TabViewModel? Opener { get; set; }
+
     /// <summary>Identifies the tab to Sorune's own pages during this run (task manager actions).</summary>
     public string Id { get; } = Guid.NewGuid().ToString("N");
 
@@ -145,7 +148,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
                 return;
             if (value)
             {
-                IsSuspended = false;
+                Wake();
                 EnsureStarted();
             }
             if (Core is { } core)
@@ -328,6 +331,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             if (_volumeScriptId is not null)
                 core.RemoveScriptToExecuteOnDocumentCreated(_volumeScriptId);
             _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(LinkIntent.Script);
 
             var call = TabAudio.SetCall(_volume);
             await core.ExecuteScriptAsync(call);
@@ -542,7 +546,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
                 return;
 
             if (value)
-                IsSuspended = false; // WebView2 resumes by itself when it becomes visible
+                Wake();
             else
                 LastActiveAt = DateTime.UtcNow;
 
@@ -572,13 +576,38 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         try
         {
-            IsSuspended = await core.TrySuspendAsync();
+            var suspended = await core.TrySuspendAsync();
+            // Opened again while the suspension was on its way: wake it right back up.
+            if (suspended && (IsActive || IsShown))
+            {
+                core.Resume();
+                suspended = false;
+            }
+            IsSuspended = suspended;
             if (IsSuspended)
                 Log.Info($"Sekme uyutuldu: {Url}");
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException)
         {
             Log.Info($"Sekme uyutulamadı ({Url}): {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Resumes a suspended page. WebView2 is supposed to do this when the page becomes visible,
+    /// but that doesn't always happen, which left slept tabs frozen for good; so it is done here.
+    /// </summary>
+    private void Wake()
+    {
+        IsSuspended = false;
+        try
+        {
+            if (Core is { IsSuspended: true } core)
+                core.Resume();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Sekme uyandırılamadı ({Url}): {ex.Message}");
         }
     }
 
@@ -707,6 +736,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         InternalPages.Register(core);
         await InternalPages.InjectLanguageAsync(core);
         _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(LinkIntent.Script);
         if (_disposed)
             return;
 
@@ -874,8 +904,28 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         }
     }
 
+    private DateTime _backgroundOpenUntil;
+
+    /// <summary>
+    /// True (once) when the page just reported a middle click or Ctrl+click on a link, so the
+    /// new window it asks for should open as a background tab, like in Chrome.
+    /// </summary>
+    public bool ConsumeBackgroundOpen()
+    {
+        var background = DateTime.UtcNow < _backgroundOpenUntil;
+        _backgroundOpenUntil = DateTime.MinValue;
+        return background;
+    }
+
     private void OnWebMessage(CoreWebView2WebMessageReceivedEventArgs e)
     {
+        // The only message accepted from websites: "the next new window comes from a background click".
+        if (e.WebMessageAsJson == LinkIntent.BackgroundMessage)
+        {
+            _backgroundOpenUntil = DateTime.UtcNow.AddSeconds(2);
+            return;
+        }
+
         // e.Source is the top-level document URL that posted the message.
         if (!InternalPages.IsInternal(e.Source))
             return;

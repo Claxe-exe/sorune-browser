@@ -27,6 +27,50 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
+        <!-- Tab menu, shared by the horizontal strip and the vertical list (a new copy per tab). -->
+        <ContextMenu x:Key="TabContextMenu" x:Shared="False" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+            <MenuItem Header="{controls:T 'Yeni sekme'}" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
+            <MenuItem Header="{controls:T 'Yeni gizli sekme'}" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
+            <MenuItem Header="{controls:T 'Kapatılan sekmeyi yeniden aç'}" InputGestureText="Ctrl+Shift+T"
+                      Command="{Binding ReopenClosedTabCommand}" IsEnabled="{Binding CanReopenClosedTab}" />
+            <Separator />
+            <MenuItem Header="{controls:T 'Yeniden yükle'}" Command="{Binding ReloadTabCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Çoğalt'}" Command="{Binding DuplicateTabCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Sabitle / sabitlemeyi kaldır'}" Command="{Binding TogglePinCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Sesi kapat / aç'}" Command="{Binding ToggleMuteCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Ses düzeyi…'}" Click="TabVolume_Click" />
+            <MenuItem Header="{controls:T 'Şimdi uyut'}" Command="{Binding SleepTabCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <Separator />
+            <MenuItem Header="{controls:T 'Sağda yan yana aç'}" Command="{Binding SplitRightCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Solda yan yana aç'}" Command="{Binding SplitLeftCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Bölünmüş ekranı kapat'}" Command="{Binding CloseSplitCommand}"
+                      Visibility="{Binding IsSplit, Converter={StaticResource BoolToVisibility}}" />
+            <Separator />
+            <MenuItem Header="{controls:T 'Yeni gruba ekle'}" Command="{Binding AddTabToNewGroupCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Gruba ekle'}" IsEnabled="{Binding HasGroups}"
+                      SubmenuOpened="GroupSubmenu_Opened">
+                <MenuItem Header="…" />
+            </MenuItem>
+            <MenuItem Header="{controls:T 'Gruptan çıkar'}" Command="{Binding RemoveTabFromGroupCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                      Visibility="{Binding PlacementTarget.DataContext.Group, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
+            <Separator />
+            <MenuItem Header="{controls:T 'Diğer sekmeleri kapat'}" Command="{Binding CloseOtherTabsCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Sağdaki sekmeleri kapat'}" Command="{Binding CloseTabsToRightCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="{controls:T 'Kapat'}" InputGestureText="Ctrl+W" Command="{Binding CloseTabCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+        </ContextMenu>
+
         <!-- Neon line under the toolbar. -->
         <LinearGradientBrush x:Key="NeonLineBrush" StartPoint="0,0" EndPoint="1,0">
             <GradientStop Offset="0" Color="Transparent" />
@@ -241,53 +285,10 @@
                                       Background="Transparent"
                                       ToolTip="{Binding Title}"
                                       Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                      ContextMenu="{StaticResource TabContextMenu}"
                                       Loaded="Tab_Loaded"
                                       PreviewMouseLeftButtonDown="Tab_PreviewMouseLeftButtonDown"
                                       MouseUp="Tab_MouseUp">
-                                    <Grid.ContextMenu>
-                                        <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                            <MenuItem Header="{controls:T 'Yeni sekme'}" InputGestureText="Ctrl+T" Command="{Binding NewTabCommand}" />
-                                            <MenuItem Header="{controls:T 'Yeni gizli sekme'}" InputGestureText="Ctrl+Shift+N" Command="{Binding NewPrivateTabCommand}" />
-                                            <MenuItem Header="{controls:T 'Kapatılan sekmeyi yeniden aç'}" InputGestureText="Ctrl+Shift+T"
-                                                      Command="{Binding ReopenClosedTabCommand}" IsEnabled="{Binding CanReopenClosedTab}" />
-                                            <Separator />
-                                            <MenuItem Header="{controls:T 'Yeniden yükle'}" Command="{Binding ReloadTabCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Çoğalt'}" Command="{Binding DuplicateTabCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Sabitle / sabitlemeyi kaldır'}" Command="{Binding TogglePinCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Sesi kapat / aç'}" Command="{Binding ToggleMuteCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Ses düzeyi…'}" Click="TabVolume_Click" />
-                                            <MenuItem Header="{controls:T 'Şimdi uyut'}" Command="{Binding SleepTabCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <Separator />
-                                            <MenuItem Header="{controls:T 'Sağda yan yana aç'}" Command="{Binding SplitRightCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Solda yan yana aç'}" Command="{Binding SplitLeftCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Bölünmüş ekranı kapat'}" Command="{Binding CloseSplitCommand}"
-                                                      Visibility="{Binding IsSplit, Converter={StaticResource BoolToVisibility}}" />
-                                            <Separator />
-                                            <MenuItem Header="{controls:T 'Yeni gruba ekle'}" Command="{Binding AddTabToNewGroupCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Gruba ekle'}" IsEnabled="{Binding HasGroups}"
-                                                      SubmenuOpened="GroupSubmenu_Opened">
-                                                <MenuItem Header="…" />
-                                            </MenuItem>
-                                            <MenuItem Header="{controls:T 'Gruptan çıkar'}" Command="{Binding RemoveTabFromGroupCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                      Visibility="{Binding PlacementTarget.DataContext.Group, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
-                                            <Separator />
-                                            <MenuItem Header="{controls:T 'Diğer sekmeleri kapat'}" Command="{Binding CloseOtherTabsCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Sağdaki sekmeleri kapat'}" Command="{Binding CloseTabsToRightCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="{controls:T 'Kapat'}" InputGestureText="Ctrl+W" Command="{Binding CloseTabCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        </ContextMenu>
-                                    </Grid.ContextMenu>
 
                                     <!-- Inactive hover: a rounded glass chip inside the tab -->
                                     <Border x:Name="HoverChip"
@@ -506,7 +507,14 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button DockPanel.Dock="Left"
+                    <!-- Vertical tabs: the title bar shows the open page's title instead of the strip -->
+                    <TextBlock x:Name="VerticalTitle" DockPanel.Dock="Left" Visibility="Collapsed"
+                               VerticalAlignment="Center" MaxWidth="640" FontSize="13"
+                               Text="{Binding ActiveTab.Title}" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextSecondaryBrush}" IsHitTestVisible="False" />
+
+                    <Button x:Name="StripNewTabButton"
+                            DockPanel.Dock="Left"
                             Margin="10,2,0,0"
                             VerticalAlignment="Center"
                             Style="{StaticResource IconButtonStyle}"
@@ -844,8 +852,204 @@
             <Border x:Name="TitleRowProbe" Grid.Row="0" IsHitTestVisible="False" />
 
             <!-- ============ Layer 4: sidebar, web panel, web content ============ -->
+            <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Vertical tabs (optional): the same tabs as the strip, as a list on the left -->
+            <Border x:Name="VerticalTabsHost" Grid.Column="0" Visibility="Collapsed"
+                    Width="{Binding VerticalTabsWidth}"
+                    Background="{DynamicResource GlassBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Rectangle x:Name="VerticalTintRect" IsHitTestVisible="False" />
+                    <DockPanel Margin="6,8,6,8">
+                        <Button DockPanel.Dock="Top" Height="34" Width="NaN" Margin="0,0,0,6"
+                                HorizontalContentAlignment="Left" Padding="10,0"
+                                Style="{StaticResource IconButtonStyle}"
+                                ToolTip="{controls:T 'Yeni sekme (Ctrl+T)'}"
+                                Command="{Binding NewTabCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{controls:T 'Yeni sekme'}" Margin="10,0,0,0" FontSize="13" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <ScrollViewer x:Name="VerticalTabScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Focusable="False">
+                            <ItemsControl x:Name="VerticalTabList"
+                                          ItemsSource="{Binding Tabs}"
+                                          Background="Transparent"
+                                          Focusable="False"
+                                          MouseMove="VerticalTabList_MouseMove"
+                                          MouseLeftButtonUp="VerticalTabList_MouseLeftButtonUp"
+                                          LostMouseCapture="TabStrip_LostMouseCapture">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:TabViewModel}">
+                                        <StackPanel>
+                                            <!-- Group header: click collapses, right click edits -->
+                                            <Border x:Name="GroupLabel"
+                                                    Margin="2,6,2,3" Height="22" HorizontalAlignment="Left"
+                                                    CornerRadius="8" Cursor="Hand"
+                                                    Background="{Binding Group.Brush}"
+                                                    Visibility="Collapsed"
+                                                    ToolTip="{controls:T 'Grubu daralt / genişlet (sağ tık: düzenle)'}"
+                                                    MouseLeftButtonUp="GroupLabel_MouseLeftButtonUp"
+                                                    MouseRightButtonUp="GroupLabel_MouseRightButtonUp">
+                                                <TextBlock x:Name="GroupName" Text="{Binding Group.Name}" Margin="10,0" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="#140F1D" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            </Border>
+
+                                            <Grid x:Name="TabRoot"
+                                                  Height="34" Margin="0,1"
+                                                  Background="Transparent"
+                                                  ToolTip="{Binding Title}"
+                                                  Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  ContextMenu="{StaticResource TabContextMenu}"
+                                                  PreviewMouseLeftButtonDown="VerticalTab_PreviewMouseLeftButtonDown"
+                                                  MouseUp="Tab_MouseUp">
+                                                <Border x:Name="Chip" CornerRadius="{DynamicResource ControlCornerRadius}"
+                                                        Background="Transparent" BorderBrush="Transparent" BorderThickness="1" />
+                                                <Rectangle x:Name="GroupBar" Width="3" Margin="0,8" HorizontalAlignment="Left"
+                                                           RadiusX="1.5" RadiusY="1.5" Fill="{Binding Group.Brush}" IsHitTestVisible="False"
+                                                           Visibility="{Binding Group, Converter={x:Static controls:IsNullConverter.Instance}, ConverterParameter=collapse}" />
+
+                                                <Grid Margin="11,0,4,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Grid Width="16" Height="16" VerticalAlignment="Center">
+                                                        <Image x:Name="FaviconImage" Source="{Binding Favicon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                        <TextBlock x:Name="DefaultIcon" Text="&#xE774;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
+                                                        <Path x:Name="Spinner" Data="M 8,1.5 A 6.5,6.5 0 1 1 1.5,8" Stroke="{DynamicResource AccentBrush}"
+                                                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                              RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
+                                                            <Path.RenderTransform>
+                                                                <RotateTransform />
+                                                            </Path.RenderTransform>
+                                                        </Path>
+                                                    </Grid>
+
+                                                    <DockPanel Grid.Column="1" Margin="10,0,4,1">
+                                                        <TextBlock x:Name="PinBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Text="&#xE718;"
+                                                                   FontFamily="{StaticResource IconFont}" FontSize="10" VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource AccentBrush}" Visibility="Collapsed" />
+                                                        <TextBlock x:Name="SplitBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Text="&#xE8A0;"
+                                                                   FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource AccentBrush}" Visibility="Collapsed" />
+                                                        <Border x:Name="PrivateBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Padding="5,1"
+                                                                CornerRadius="5" VerticalAlignment="Center"
+                                                                Background="{DynamicResource AccentSoftBrush}" Visibility="Collapsed">
+                                                            <TextBlock Text="{controls:T 'Gizli'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                                                        </Border>
+                                                        <TextBlock x:Name="TitleText" VerticalAlignment="Center" FontSize="{StaticResource TabFontSize}"
+                                                                   Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    </DockPanel>
+
+                                                    <Button x:Name="AudioButton" Grid.Column="2" Style="{StaticResource TabCloseButtonStyle}"
+                                                            FontSize="11" VerticalAlignment="Center" Content="&#xE767;"
+                                                            ToolTip="{controls:T 'Ses düzeyi (sağ tık: sessize al)'}" Visibility="Collapsed"
+                                                            Click="AudioButton_Click"
+                                                            MouseRightButtonUp="AudioButton_MouseRightButtonUp"
+                                                            ContextMenuOpening="AudioButton_ContextMenuOpening" />
+
+                                                    <Button x:Name="CloseButton" Grid.Column="3" Style="{StaticResource TabCloseButtonStyle}"
+                                                            VerticalAlignment="Center" Content="&#xE711;"
+                                                            ToolTip="{controls:T 'Sekmeyi kapat (Ctrl+W)'}" Visibility="Hidden"
+                                                            Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsGroupStart}" Value="True">
+                                                <Setter TargetName="GroupLabel" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Group.HasName}" Value="False">
+                                                <Setter TargetName="GroupName" Property="Text" Value="•••" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsCollapsedInGroup}" Value="True">
+                                                <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                <Setter TargetName="DefaultIcon" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                                <Setter TargetName="Spinner" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="FaviconImage" Property="Visibility" Value="Collapsed" />
+                                                <Setter TargetName="DefaultIcon" Property="Visibility" Value="Collapsed" />
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="VerticalSpinStoryboard">
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Spinner"
+                                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                             From="0" To="360" Duration="0:0:0.8" RepeatBehavior="Forever" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="VerticalSpinStoryboard" />
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSuspended}" Value="True">
+                                                <Setter TargetName="TitleText" Property="Opacity" Value="0.5" />
+                                                <Setter TargetName="FaviconImage" Property="Opacity" Value="0.5" />
+                                                <Setter TargetName="TabRoot" Property="ToolTip" Value="{controls:T 'Uyutuldu: bellek ve işlemci tasarrufu için. Tıklayınca uyanır.'}" />
+                                            </DataTrigger>
+                                            <Trigger SourceName="TabRoot" Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                                <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                                <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                                <Setter TargetName="TitleText" Property="FontWeight" Value="Medium" />
+                                                <Setter TargetName="CloseButton" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                <Setter TargetName="PinBadge" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="CloseButton" Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPrivate}" Value="True">
+                                                <Setter TargetName="PrivateBadge" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPlayingAudio}" Value="True">
+                                                <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasCustomVolume}" Value="True">
+                                                <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="AudioButton" Property="Content" Value="&#xE993;" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                                <Setter TargetName="AudioButton" Property="Content" Value="&#xE74F;" />
+                                                <Setter TargetName="AudioButton" Property="ToolTip" Value="{controls:T 'Sessiz (tıkla: ses düzeyi, sağ tık: sesi aç)'}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsInSplit}" Value="True">
+                                                <Setter TargetName="SplitBadge" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </Border>
+
             <!-- Column order is set in code (sidebar left or right). -->
-            <Grid Grid.Row="2" x:Name="ContentGrid">
+            <Grid Grid.Column="1" x:Name="ContentGrid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="0" />
@@ -1049,6 +1253,7 @@
                         MouseLeftButtonUp="SplitDivider_MouseLeftButtonUp">
                     <Rectangle Width="2" RadiusX="1" RadiusY="1" Margin="0,40" Fill="{DynamicResource AccentBrush}" Opacity="0.55" />
                 </Border>
+            </Grid>
             </Grid>
 
             <!-- ============ Address suggestions ============ -->

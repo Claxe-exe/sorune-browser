@@ -82,6 +82,17 @@ public static class ThemeService
 
     public static bool WallpaperExists(string? id) => id is null || ResolveWallpaper(id) is not null;
 
+    /// <summary>Picture URL for a wallpaper choice (null = the given theme's own wallpaper).</summary>
+    public static string? WallpaperUrlFor(string? wallpaperId, string themeId)
+    {
+        if (wallpaperId is not null)
+            return ResolveWallpaper(wallpaperId)?.Url;
+        return Load(themeId)?.Wallpaper is { } file ? InternalPages.AssetsOrigin + "Themes/" + Uri.EscapeDataString(file) : null;
+    }
+
+    /// <summary>Accent colour of a theme (for previews); the current accent when unknown.</summary>
+    public static string AccentOf(string themeId) => Load(themeId)?.Colors.Accent ?? Accent;
+
     /// <summary>File of the wallpaper in use (for picking colours out of it); null when none.</summary>
     public static string? WallpaperPath => _backdropKey;
 

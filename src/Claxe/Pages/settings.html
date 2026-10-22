@@ -19,6 +19,7 @@
                 Ayarlar
             </h1>
             <a href="#gorunum" class="active">Görünüm</a>
+            <a href="#temalarim">Kendi temaların</a>
             <a href="#duvar">Duvar kâğıdı</a>
             <a href="#renk">Renk ve cam</a>
             <a href="#duzen">Düzen</a>
@@ -26,12 +27,14 @@
             <a href="#maskot">Maskot</a>
             <a href="#hareket">Hareket ve performans</a>
             <a href="#ses">Sesler</a>
+            <a href="#sekmeler">Sekmeler</a>
             <a href="#kenar">Kenar çubuğu</a>
             <a href="#eklentiler">Eklentiler</a>
             <a href="#arama">Arama ve başlangıç</a>
             <a href="#profiller">Profiller</a>
             <a href="#indirme">İndirmeler</a>
             <a href="#ice-aktar">İçe aktar</a>
+            <a href="#yedek">Yedekle ve taşı</a>
             <a href="#gizlilik">Gizlilik ve veriler</a>
             <a href="#hakkinda">Hakkında</a>
         </nav>
@@ -51,6 +54,17 @@
                 <h2>Tema</h2>
                 <p class="hint">Tema değişince duvar kâğıdı, vurgu rengi ve cam ayarı o temanınkine döner.</p>
                 <div class="theme-grid" id="themes"></div>
+            </section>
+
+            <section class="card" id="temalarim">
+                <h2>Kendi temaların</h2>
+                <p class="hint">Şu anki görünümü bir adla kaydet: tema, duvar kâğıdı, vurgu rengi, cam, köşeler, sıklık, yeni sekme efektleri ve ses paketi birlikte saklanır. Tek tıkla geri dönersin.</p>
+                <div class="wall-grid" id="user-themes"></div>
+                <form class="profile-add" id="user-theme-form" autocomplete="off">
+                    <input type="text" id="user-theme-name" maxlength="30" placeholder="Tema adı, ör. Gece mavisi" aria-label="Tema adı">
+                    <button type="submit" class="chip">Şu anki görünümü kaydet</button>
+                </form>
+                <p class="error" id="user-theme-error" hidden></p>
             </section>
 
             <section class="card" id="duvar">
@@ -125,6 +139,27 @@
                         <span class="hint">Sayfa kenarlardan biraz içeride, çerçeveli bir kart olarak durur; etrafında duvar kâğıdı görünür. Tam ekranda çerçeve kalkar.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="pageFrameEnabled" aria-label="Çerçeveli sayfa"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Sitelerin teması</span>
+                        <span class="hint">Koyu teması olan siteler (YouTube, GitHub, Wikipedia…) buna göre açılır.</span>
+                    </div>
+                    <div class="segmented" id="site-scheme" role="radiogroup" aria-label="Sitelerin teması">
+                        <button type="button" data-value="auto">Windows'a göre</button>
+                        <button type="button" data-value="dark">Koyu</button>
+                        <button type="button" data-value="light">Açık renk</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Tüm siteleri karart (deneysel)</span>
+                        <span class="hint">Kendi koyu teması olmayan siteleri de Chromium karartır; bazı sitelerde renkler tuhaf görünebilir. Yeniden başlatınca uygulanır.</span>
+                    </div>
+                    <div class="slider-group">
+                        <button type="button" class="chip" id="force-dark-restart" hidden>Şimdi yeniden başlat</button>
+                        <button type="button" class="switch" role="switch" data-key="forceDarkSites" aria-label="Tüm siteleri karart"></button>
+                    </div>
                 </div>
             </section>
 
@@ -297,6 +332,26 @@
                 </div>
             </section>
 
+            <section class="card" id="sekmeler">
+                <h2>Sekmeler</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Dikey sekmeler</span>
+                        <span class="hint">Sekmeler üstte değil, solda alt alta bir liste olur. Çok sekme açanlar için; sürükleyip sıralayabilir, gruplarını görebilirsin.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="verticalTabs" aria-label="Dikey sekmeler"></button>
+                </div>
+                <div class="row" id="vtabs-width-row">
+                    <div class="row-text">
+                        <span class="label">Liste genişliği</span>
+                        <span class="hint" id="vtabs-width-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="vtabs-width" min="160" max="400" step="10" aria-label="Dikey sekme listesinin genişliği">
+                    </div>
+                </div>
+            </section>
+
             <section class="card" id="kenar">
                 <h2>Kenar çubuğu</h2>
                 <div class="row">
@@ -441,6 +496,31 @@
                         <button type="button" class="chip" id="import-button">İçe aktar</button>
                     </div>
                     <p class="hint" id="import-status" hidden></p>
+                </div>
+            </section>
+
+            <section class="card" id="yedek">
+                <h2>Yedekle ve taşı</h2>
+                <p class="hint">Ayarlarını, temalarını, duvar kâğıtlarını, yer imlerini, kısayollarını, panellerini ve widget'larını tek bir .sorune dosyasına kaydet; yeni bilgisayarda bu dosyayı seçince hepsi geri gelir. Çerezler ve şifreler yedeğe girmez, eklentiler yalnızca adlarıyla listelenir.</p>
+                <div class="clear-box">
+                    <span class="label">Yedek al</span>
+                    <div class="checks">
+                        <label><input type="checkbox" id="backup-history"> Geçmiş, açık sekmeler ve zaman makinesi de girsin <span class="hint">(yedek dosyası şifresizdir, güvendiğin yerde sakla)</span></label>
+                    </div>
+                    <div class="clear-actions">
+                        <span class="hint" id="backup-status"></span>
+                        <button type="button" class="chip" id="backup-create">Yedek dosyası oluştur</button>
+                    </div>
+                </div>
+                <div class="clear-box">
+                    <span class="label">Yedekten geri yükle</span>
+                    <div class="clear-actions">
+                        <span class="hint" id="restore-status">Seçtiğin yedek, Sorune yeniden başlayınca bu profilin üstüne yazılır.</span>
+                        <button type="button" class="chip" id="restore-pick">Yedek dosyası seç</button>
+                        <button type="button" class="chip" id="restore-cancel" hidden>Vazgeç</button>
+                        <button type="button" class="chip primary" id="restore-restart" hidden>Şimdi yeniden başlat</button>
+                    </div>
+                    <p class="error" id="backup-error" hidden></p>
                 </div>
             </section>
 

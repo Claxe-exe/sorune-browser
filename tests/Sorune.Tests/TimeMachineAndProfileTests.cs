@@ -4,6 +4,7 @@ using Claxe.Services;
 
 namespace Sorune.Tests;
 
+[Collection(TestProfile.DataRootCollection)]
 public class TimeMachineTests
 {
     [Fact]
@@ -54,6 +55,7 @@ public class TimeMachineTests
     }
 }
 
+[Collection(TestProfile.DataRootCollection)]
 public class ProfileTests
 {
     [Fact]

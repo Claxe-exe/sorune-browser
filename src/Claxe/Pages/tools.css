@@ -133,3 +133,27 @@ a.btn[hidden] { display: none; }
     font-weight: 600;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
+
+/* Patch notes link under the header */
+.changelog-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), rgba(0, 0, 0, 0.2));
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+}
+.changelog-link:hover { border-color: var(--accent); transform: translateY(-1px); }
+.changelog-icon { font-size: 20px; font-family: "Segoe UI Emoji", sans-serif; }
+.changelog-text { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.changelog-text strong { font-size: 13px; }
+.changelog-text span { font-size: 11.5px; color: var(--text-dim); }
+.changelog-arrow { font-size: 20px; color: var(--accent); }

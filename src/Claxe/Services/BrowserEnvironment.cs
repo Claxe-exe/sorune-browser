@@ -7,6 +7,9 @@ public static class BrowserEnvironment
 {
     private static Task<CoreWebView2Environment>? _environment;
 
+    /// <summary>Set once at startup from the settings: Chromium's auto-dark for every site.</summary>
+    public static bool ForceDark { get; set; }
+
     public static bool IsRuntimeAvailable(out string? version)
     {
         try
@@ -47,5 +50,6 @@ public static class BrowserEnvironment
                 Language = L.Locale,
                 // Unpacked extensions the user installs from Settings → Extensions.
                 AreBrowserExtensionsEnabled = true,
+                AdditionalBrowserArguments = ForceDark ? "--enable-features=WebContentsForceDark" : null,
             });
 }

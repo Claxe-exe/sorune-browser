@@ -9,6 +9,9 @@ namespace Sorune.Tests;
 /// </summary>
 internal static class TestProfile
 {
+    /// <summary>Tests that read or write the shared profile files run one after another.</summary>
+    public const string DataRootCollection = "Profile files";
+
     public static string Folder { get; } = Path.Combine(Path.GetTempPath(), "sorune-tests-" + Guid.NewGuid().ToString("N"));
 
     [ModuleInitializer]

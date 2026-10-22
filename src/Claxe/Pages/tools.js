@@ -453,4 +453,6 @@ $("color-input").value = "#b583ff";
 renderCount();
 showTimer(timer.left);
 swTick();
+$("open-changelog").addEventListener("click", () => send({ type: "tools:changelog" }));
+
 send({ type: "ready" });

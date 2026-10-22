@@ -31,6 +31,8 @@ public partial class App : Application
             return;
         }
 
+        // A restore chosen last time is put in place before anything reads the profile.
+        BackupService.ApplyPendingRestore();
         var settings = SettingsStore.Load();
         L.Load(settings.Language);
         SessionStore.MarkRunning();
@@ -51,6 +53,7 @@ public partial class App : Application
         SoundService.Enabled = settings.SoundsEnabled;
         SoundService.Volume = settings.SoundVolume;
         SoundService.Pack = settings.SoundPack;
+        BrowserEnvironment.ForceDark = settings.ForceDarkSites;
         ThemeService.Apply(settings);
 
         // One click sound for every button in the app (toolbar, tabs, caption buttons).

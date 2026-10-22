@@ -40,6 +40,7 @@ public static class InternalPages
 
     /// <summary>"What's new" after an update.</summary>
     public const string WhatsNewUrl = Origin + "whatsnew.html";
+    public const string ChangelogUrl = Origin + "changelog.html";
 
     public const string AssetsHost = "assets.claxe.internal";
     public const string AssetsOrigin = "https://" + AssetsHost + "/";
@@ -70,6 +71,8 @@ public static class InternalPages
         ("taskmanager", TaskManagerUrl),
         ("yenilikler", WhatsNewUrl),
         ("whatsnew", WhatsNewUrl),
+        ("yama-notlari", ChangelogUrl),
+        ("changelog", ChangelogUrl),
         ("donusturucu", ConverterUrl),
         ("converter", ConverterUrl),
         ("araclar", ToolsUrl),
@@ -101,6 +104,8 @@ public static class InternalPages
 
         if (IsPage(url, WhatsNewUrl))
             return Scheme + "yenilikler";
+        if (IsPage(url, ChangelogUrl))
+            return Scheme + "yama-notlari";
 
         if (IsPage(url, ConverterUrl))
             return Scheme + "donusturucu";

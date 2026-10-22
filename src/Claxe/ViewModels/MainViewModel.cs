@@ -18,7 +18,7 @@ public sealed class MainViewModel : ObservableObject
 
     private static readonly HashSet<string> AppearanceKeys =
         ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled", "performanceMode",
-         "siteTintEnabled", "pageFrameEnabled"];
+         "siteTintEnabled", "pageFrameEnabled", "userTheme"];
 
     private readonly AppSettings _settings;
     private readonly SettingsController _settingsController;
@@ -50,7 +50,8 @@ public sealed class MainViewModel : ObservableObject
         _settingsController = new SettingsController(settings, _permissions, _panelStore);
         _settingsController.Changed += OnSettingChanged;
         _settingsController.DownloadFolderInUse = () => _downloads.Folder;
-        _downloads.SetFolder(settings.DownloadFolder);
+        // A folder from a backup made on another computer may not exist here.
+        _downloads.SetFolder(Directory.Exists(settings.DownloadFolder) ? settings.DownloadFolder : null);
         Mascot = new MascotViewModel(settings.MascotEnabled)
         {
             TalksEnabled = settings.MascotTalks,
@@ -198,6 +199,11 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Folder / archive pickers for installing extensions (shown by the view).</summary>
     public Func<string?>? PickExtensionFolder { get; set; }
     public Func<string?>? PickExtensionArchive { get; set; }
+
+    /// <summary>Asks where to save a backup (suggested file name in, chosen path out).</summary>
+    public Func<string, string?>? PickBackupTarget { get; set; }
+
+    public Func<string?>? PickBackupFile { get; set; }
 
     /// <summary>Keeps the sidebar's extension buttons in line with what is installed and enabled.</summary>
     private async Task RefreshExtensionPanelsAsync(CoreWebView2Profile profile)
@@ -434,6 +440,10 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsSidebarOnRight => _settings.SidebarPosition == "right";
 
+    public bool IsVerticalTabs => _settings.VerticalTabs;
+
+    public double VerticalTabsWidth => _settings.VerticalTabsWidth;
+
     public double PanelWidth => _settings.PanelWidth;
 
     public PanelViewModel? ActivePanel
@@ -622,6 +632,24 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public void OpenTaskManager() => OpenInternal(InternalPages.TaskManagerUrl);
+
+    /// <summary>Tells sites (prefers-color-scheme) which theme to use; per profile, so normal and InPrivate both.</summary>
+    private void ApplyColorScheme(CoreWebView2 core)
+    {
+        try
+        {
+            core.Profile.PreferredColorScheme = _settings.SiteColorScheme switch
+            {
+                "dark" => CoreWebView2PreferredColorScheme.Dark,
+                "light" => CoreWebView2PreferredColorScheme.Light,
+                _ => CoreWebView2PreferredColorScheme.Auto,
+            };
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Site renk teması ayarlanamadı: {ex.Message}");
+        }
+    }
 
     private TabViewModel? TabById(string? id) => Tabs.FirstOrDefault(t => t.Id == id);
 
@@ -1050,7 +1078,11 @@ public sealed class MainViewModel : ObservableObject
         yield return Cmd("", "Tarama verilerini temizle", "Ctrl+Shift+Del", () => OpenSettings("gizlilik"), "clear data privacy");
         yield return Cmd("", "Dosya dönüştürücü", "", () => TogglePanel(ConverterPanel), "converter pdf word");
         yield return Cmd("", "Mini araçlar", "", () => TogglePanel(ToolsPanel), "tools json qr renk color sayaç url");
-        yield return Cmd("", "Yenilikler", "", () => OpenInternal(InternalPages.WhatsNewUrl), "what's new changelog");
+        yield return Cmd("", "Yenilikler", "", () => OpenInternal(InternalPages.WhatsNewUrl), "what's new");
+        yield return Cmd("", "Yama notları", "", () => OpenInternal(InternalPages.ChangelogUrl), "changelog patch notes sürüm version");
+        yield return Cmd("", IsVerticalTabs ? "Sekmeleri üste al" : "Dikey sekmeler", "", () => _settingsController.SetVerticalTabs(!IsVerticalTabs), "vertical tabs dikey sekme liste");
+        yield return Cmd("", "Kendi temaların", "", () => OpenSettings("temalarim"), "theme tema kaydet save look");
+        yield return Cmd("", "Yedekle ve taşı", "", () => OpenSettings("yedek"), "backup restore yedek taşı move export import");
     }
 
     // ---------------------------------------------------------------- reader mode
@@ -1353,6 +1385,8 @@ public sealed class MainViewModel : ObservableObject
 
         DenyPermissionsOf(tab);
         _readerArticles.Remove(tab);
+        foreach (var child in Tabs.Where(t => ReferenceEquals(t.Opener, tab)))
+            child.Opener = null;
         Tabs.Remove(tab);
         HostedTabs.Remove(tab);
         Detach(tab);
@@ -1582,6 +1616,7 @@ public sealed class MainViewModel : ObservableObject
     private void OnCoreCreated(object? sender, CoreWebView2 core)
     {
         _downloads.Attach(core);
+        ApplyColorScheme(core);
         // The first normal page brings the extensions' sidebar buttons.
         if (!_extensionsLoaded && sender is TabViewModel { IsPrivate: false })
         {
@@ -1659,11 +1694,24 @@ public sealed class MainViewModel : ObservableObject
         var deferral = e.GetDeferral();
         try
         {
+            // Middle click / Ctrl+click: a background tab (after the ones already opened from
+            // this page), the page stays where it is. Anything else opens in front.
+            var background = source.ConsumeBackgroundOpen();
+            var index = background ? IndexForBackgroundChild(source) : Tabs.IndexOf(source) + 1;
             // Popups from an InPrivate tab stay InPrivate (and share its profile).
-            var tab = CreateTab(url: null, Tabs.IndexOf(source) + 1, isPrivate: source.IsPrivate, group: source.Group);
-            ActiveTab = tab;
+            var tab = CreateTab(url: null, index, isPrivate: source.IsPrivate, group: source.Group);
+            tab.Opener = source;
+            if (!background)
+                ActiveTab = tab;
             SoundService.Play(UiSound.TabOpen);
-            await tab.EnsureCoreAsync();
+
+            var ensure = tab.EnsureCoreAsync();
+            if (await Task.WhenAny(ensure, Task.Delay(TimeSpan.FromSeconds(4))) != ensure)
+            {
+                // A hidden page didn't get its browser in time: show it rather than lose the link.
+                ActiveTab = tab;
+                await ensure;
+            }
             if (tab.Core is { } core)
             {
                 e.NewWindow = core;
@@ -1785,8 +1833,21 @@ public sealed class MainViewModel : ObservableObject
             return;
 
         e.Handled = true;
-        ActiveTab = CreateTab(e.Uri, Tabs.Count);
+        var tab = CreateTab(e.Uri, Tabs.Count);
+        if (sender is TabViewModel panelPage && panelPage.ConsumeBackgroundOpen())
+            tab.EnsureStarted(); // loads in the background
+        else
+            ActiveTab = tab;
         SoundService.Play(UiSound.TabOpen);
+    }
+
+    /// <summary>Background tabs from one page line up after it in the order they were opened (like Chrome).</summary>
+    private int IndexForBackgroundChild(TabViewModel source)
+    {
+        var index = Tabs.IndexOf(source) + 1;
+        while (index < Tabs.Count && ReferenceEquals(Tabs[index].Opener, source))
+            index++;
+        return index;
     }
 
     private void PanelToTab()
@@ -1986,6 +2047,10 @@ public sealed class MainViewModel : ObservableObject
                     tab.Navigate(InternalPages.NewTabUrl);
                 break;
 
+            case "tools:changelog":
+                OpenInternal(InternalPages.ChangelogUrl);
+                break;
+
             case "tools:currentUrl":
                 // Only real web pages; Sorune's own pages have nothing worth a QR code.
                 var current = ActiveTab?.Url is { } activeUrl && !InternalPages.IsInternal(activeUrl) && AddressResolver.IsNavigable(activeUrl)
@@ -2032,6 +2097,21 @@ public sealed class MainViewModel : ObservableObject
                         break;
                     case "taskmanager":
                         OpenTaskManager();
+                        break;
+                    case "userthemes":
+                        OpenSettings("temalarim");
+                        break;
+                    case "backup":
+                        OpenSettings("yedek");
+                        break;
+                    case "verticaltabs":
+                        OpenSettings("sekmeler");
+                        break;
+                    case "sitedark":
+                        OpenSettings("duzen");
+                        break;
+                    case "changelog":
+                        OpenInternal(InternalPages.ChangelogUrl);
                         break;
                     case "close":
                         // Becomes a new tab rather than closing (it may be the only tab).
@@ -2080,6 +2160,39 @@ public sealed class MainViewModel : ObservableObject
 
             case "pickWallpaper":
                 WallpaperPickRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "userTheme:save":
+                if (!_settingsController.SaveUserTheme(Text("name")))
+                    tab.PostToInternalPage(new { type = "userThemeError", message = L.T("Bir ad yaz (en fazla 24 tema kaydedilebilir).") });
+                break;
+
+            case "userTheme:apply":
+                _settingsController.ApplyUserTheme(Text("id"));
+                break;
+
+            case "userTheme:delete":
+                _settingsController.DeleteUserTheme(Text("id"));
+                break;
+
+            case "backup:create":
+                await CreateBackupAsync(tab, Flag("includeHistory"));
+                break;
+
+            case "backup:restore":
+                if (PickBackupFile?.Invoke() is { } backupFile)
+                {
+                    var manifest = await Task.Run(() => BackupService.StageRestore(backupFile, out var restoreError) is { } staged
+                        ? (object)new { type = "restoreStaged", version = (string?)staged["version"], createdAt = (string?)staged["createdAt"], includesHistory = staged["includesHistory"]?.GetValue<bool>() == true }
+                        : new { type = "backupError", message = restoreError });
+                    tab.PostToInternalPage(manifest);
+                    BroadcastToInternalPages(_settingsController.BuildState());
+                }
+                break;
+
+            case "backup:cancel":
+                BackupService.CancelRestore();
+                BroadcastToInternalPages(_settingsController.BuildState());
                 break;
 
             case "pickMascot":
@@ -2401,8 +2514,21 @@ public sealed class MainViewModel : ObservableObject
             case "sidebarPosition":
                 OnPropertyChanged(nameof(IsSidebarOnRight));
                 break;
+            case "verticalTabs":
+                OnPropertyChanged(nameof(IsVerticalTabs));
+                break;
+            case "verticalTabsWidth":
+                OnPropertyChanged(nameof(VerticalTabsWidth));
+                break;
             case "downloadFolder":
                 _downloads.SetFolder(_settings.DownloadFolder);
+                break;
+            case "siteColorScheme":
+                foreach (var page in HostedTabs.Concat(HostedPanels.Select(p => p.Tab).OfType<TabViewModel>()))
+                {
+                    if (page.Core is { } pageCore)
+                        ApplyColorScheme(pageCore);
+                }
                 break;
             case "mascotTalks":
                 Mascot.TalksEnabled = _settings.MascotTalks;
@@ -2419,6 +2545,11 @@ public sealed class MainViewModel : ObservableObject
             case "soundPack":
                 SoundService.Pack = _settings.SoundPack;
                 SoundService.Play(UiSound.TabOpen);
+                break;
+            case "userTheme":
+                // A saved look also brings its sounds and new tab settings (the look itself is applied above).
+                SoundService.Pack = _settings.SoundPack;
+                SoundService.Play(UiSound.Toggle);
                 break;
             case { } newTabKey when newTabKey.StartsWith("newTab", StringComparison.Ordinal):
                 BroadcastToInternalPages(BuildNewTabConfig());
@@ -2495,6 +2626,33 @@ public sealed class MainViewModel : ObservableObject
     /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
     /// </summary>
     private void SaveSession() => SessionStore.Save(BuildSessionState());
+
+    private async Task CreateBackupAsync(TabViewModel page, bool includeHistory)
+    {
+        var profileName = ProfileService.IsDefault ? "" : string.Concat(CurrentProfile.Name.Where(c => !Path.GetInvalidFileNameChars().Contains(c))) + "-";
+        var suggested = $"Sorune-{profileName}{DateTime.Now:yyyy-MM-dd}{BackupService.Extension}";
+        if (PickBackupTarget?.Invoke(suggested) is not { } target)
+            return;
+
+        // Everything that is only in memory goes to disk first, so the backup is current.
+        _history.Flush();
+        SaveSession();
+        var extensions = page.Core?.Profile is { } profile
+            ? (await ExtensionService.ListAsync(profile)).Select(e => e.Name).ToList()
+            : [];
+
+        page.PostToInternalPage(new { type = "backupBusy" });
+        try
+        {
+            var summary = await Task.Run(() => BackupService.Create(target, includeHistory, extensions));
+            page.PostToInternalPage(new { type = "backupDone", path = target, files = summary.Files, bytes = summary.Bytes });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error($"Yedek oluşturulamadı: {target}", ex);
+            page.PostToInternalPage(new { type = "backupError", message = L.T("Yedek kaydedilemedi: {0}", ex.Message) });
+        }
+    }
 
     private SessionState BuildSessionState()
     {

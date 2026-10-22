@@ -48,6 +48,10 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "sleepAfterMinutes" => Set(NumberOrNull(value), v => v is 0 or 5 or 10 or 15 or 30 or 60, v => settings.SleepAfterMinutes = (int)v!.Value),
             "sleepPinnedTabs" => SetBool(value, v => settings.SleepPinnedTabs = v),
             "siteTintEnabled" => SetBool(value, v => settings.SiteTintEnabled = v),
+            "siteColorScheme" => Set(StringOrNull(value), v => v is "auto" or "dark" or "light", v => settings.SiteColorScheme = v!),
+            "forceDarkSites" => SetBool(value, v => settings.ForceDarkSites = v),
+            "verticalTabs" => SetBool(value, v => settings.VerticalTabs = v),
+            "verticalTabsWidth" => Set(NumberOrNull(value), v => v is >= 160 and <= 400, v => settings.VerticalTabsWidth = (int)v!.Value),
             "mascotTalks" => SetBool(value, v => settings.MascotTalks = v),
             "mascotPeek" => Set(NumberOrNull(value), v => v is >= 0.2 and <= 0.9, v => settings.MascotPeek = v!.Value),
             "soundPack" => Set(StringOrNull(value), v => SoundService.Packs.Contains(v), v => settings.SoundPack = v!),
@@ -109,6 +113,58 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             error = L.T("Görsel kopyalanamadı.");
             return false;
         }
+    }
+
+    public UserThemeStore UserThemes { get; } = new();
+
+    public void SetVerticalTabs(bool value)
+    {
+        settings.VerticalTabs = value;
+        Commit("verticalTabs");
+    }
+
+    /// <summary>Puts a saved look back: base theme, wallpaper, colours, layout, new tab and sounds.</summary>
+    public bool ApplyUserTheme(string? id)
+    {
+        if (UserThemes.Find(id) is not { } theme)
+            return false;
+
+        if (ThemeService.ThemeExists(theme.Theme))
+            settings.Theme = theme.Theme;
+        settings.Wallpaper = ThemeService.WallpaperExists(theme.Wallpaper) ? theme.Wallpaper : null;
+        settings.AccentColor = ThemeService.IsHexColor(theme.AccentColor) ? theme.AccentColor : null;
+        settings.ChromeOpacity = theme.ChromeOpacity is >= 0.4 and <= 0.97 ? theme.ChromeOpacity : null;
+        settings.CornerStyle = CornerStyles.Contains(theme.CornerStyle) ? theme.CornerStyle : settings.CornerStyle;
+        settings.Density = Densities.Contains(theme.Density) ? theme.Density : settings.Density;
+        settings.NewTabEffect = theme.NewTabEffect is "theme" or "petals" or "sparks" or "bubbles" or "snow" or "none" ? theme.NewTabEffect : "theme";
+        settings.NewTabDim = theme.NewTabDim is null or (>= 0 and <= 0.9) ? theme.NewTabDim : null;
+        settings.NewTabBlur = Math.Clamp(theme.NewTabBlur, 0, 30);
+        settings.NewTabAlign = theme.NewTabAlign is "center" ? "center" : "left";
+        settings.SoundPack = SoundService.Packs.Contains(theme.SoundPack) ? theme.SoundPack : settings.SoundPack;
+        Commit("userTheme");
+        return true;
+    }
+
+    public bool SaveUserTheme(string? name)
+    {
+        try
+        {
+            var saved = UserThemes.Save(name, settings) is not null;
+            if (saved)
+                Changed?.Invoke(this, "userThemes");
+            return saved;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error("Tema kaydedilemedi.", ex);
+            return false;
+        }
+    }
+
+    public void DeleteUserTheme(string? id)
+    {
+        UserThemes.Delete(id);
+        Changed?.Invoke(this, "userThemes");
     }
 
     /// <summary>Copies the user's mascot image into the profile (PNG with transparency works best).</summary>
@@ -223,9 +279,21 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
             maxPanels = PanelStore.MaxPanels,
             activeLanguage = L.Language,
+            forceDarkActive = BrowserEnvironment.ForceDark,
             downloadFolder = DownloadFolderInUse?.Invoke(),
             mascotUrl = CustomMascotPath is null ? null : InternalPages.WallpapersOrigin + Uri.EscapeDataString(settings.MascotCustom!),
             wallpaperPalette = ColorExtractor.Palette(ThemeService.WallpaperPath),
+            userThemes = UserThemes.Items.Select(t => new
+            {
+                t.Id,
+                t.Name,
+                accent = t.AccentColor ?? ThemeService.AccentOf(t.Theme),
+                picture = ThemeService.WallpaperUrlFor(t.Wallpaper, t.Theme),
+                active = t.Theme == settings.Theme && t.Wallpaper == settings.Wallpaper && t.AccentColor == settings.AccentColor
+                         && t.ChromeOpacity == settings.ChromeOpacity && t.NewTabEffect == settings.NewTabEffect,
+            }),
+            maxUserThemes = UserThemeStore.MaxThemes,
+            pendingRestore = BackupService.HasPendingRestore,
             soundPacks = SoundService.Packs,
             defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
             update = new

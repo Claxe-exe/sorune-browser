@@ -742,3 +742,11 @@ body.no-motion * { transition: none !important; }
 }
 .emoji-pick .emoji:hover { background: var(--glass-strong); }
 .emoji-pick .emoji.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+
+/* Saved looks */
+.wp.user-theme { background-size: cover; background-position: center; }
+.wp.user-theme .name { display: flex; align-items: center; gap: 6px; }
+.wp.user-theme .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+#user-themes .empty-note { grid-column: 1 / -1; margin: 0; }
+.chip.primary { background: var(--accent); border-color: var(--accent); color: #14101c; font-weight: 600; }
+#yedek .clear-box + .clear-box { margin-top: 10px; }

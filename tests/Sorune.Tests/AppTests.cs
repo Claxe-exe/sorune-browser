@@ -27,6 +27,7 @@ public class ColorExtractorTests
         => Assert.Empty(ColorExtractor.FromPixels(Pixels((10, 10, 12, 100), (100, 100, 100, 100)), 3));
 }
 
+[Collection(TestProfile.DataRootCollection)]
 public class WidgetStoreTests
 {
     [Fact]
@@ -59,6 +60,7 @@ public class WidgetStoreTests
     }
 }
 
+[Collection(TestProfile.DataRootCollection)]
 public class SettingsValidationTests
 {
     private static SettingsController Controller(AppSettings settings)

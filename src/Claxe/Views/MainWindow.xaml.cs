@@ -74,6 +74,26 @@ public partial class MainWindow : Window
             };
             return dialog.ShowDialog(this) == true ? dialog.FileName : null;
         };
+        viewModel.PickBackupTarget = suggested =>
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = L.T("Yedeği nereye kaydedeyim?"),
+                FileName = suggested,
+                DefaultExt = BackupService.Extension,
+                Filter = L.T("Sorune yedeği") + " (*.sorune)|*.sorune",
+            };
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        };
+        viewModel.PickBackupFile = () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = L.T("Geri yüklenecek yedeği seç"),
+                Filter = L.T("Sorune yedeği") + " (*.sorune)|*.sorune",
+            };
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        };
         viewModel.PickExtensionFolder = () =>
         {
             var dialog = new Microsoft.Win32.OpenFolderDialog { Title = L.T("Açılmış eklenti klasörünü seç (içinde manifest.json olan)") };
@@ -101,6 +121,7 @@ public partial class MainWindow : Window
         SiteTintRect.Fill = new LinearGradientBrush(new GradientStopCollection { _tintTop, _tintBottom }, 90);
         TitleTintRect.Fill = new LinearGradientBrush(new GradientStopCollection { _titleTop, _titleBottom }, 90);
         SidebarTintRect.Fill = _sidebarTint;
+        VerticalTintRect.Fill = _sidebarTint;
         ApplyAppearance();
         UpdatePanelColumn();
 
@@ -255,7 +276,11 @@ public partial class MainWindow : Window
         // After layout, so the panel knows the new tab width.
         Dispatcher.BeginInvoke(() =>
         {
-            if (_viewModel.ActiveTab is { } tab)
+            if (_viewModel.ActiveTab is not { } tab)
+                return;
+            if (_viewModel.IsVerticalTabs)
+                (VerticalTabList.ItemContainerGenerator.ContainerFromItem(tab) as FrameworkElement)?.BringIntoView();
+            else
                 TabStripPanelOrNull()?.EnsureVisible(_viewModel.Tabs.IndexOf(tab));
         }, DispatcherPriority.Loaded);
     }
@@ -303,6 +328,47 @@ public partial class MainWindow : Window
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
+
+    private void VerticalTab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TabViewModel tab })
+            return;
+        if (FindAncestor<Button>(e.OriginalSource as DependencyObject, stopAt: (DependencyObject)sender) is not null)
+            return;
+
+        _viewModel.ActiveTab = tab;
+        _dragTab = tab;
+        _dragStart = e.GetPosition(VerticalTabList);
+        _isDragging = false;
+        VerticalTabList.CaptureMouse();
+        e.Handled = true;
+    }
+
+    /// <summary>Dragging a tab up or down the list moves it to the row under the pointer.</summary>
+    private void VerticalTabList_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragTab is null || e.LeftButton != MouseButtonState.Pressed)
+            return;
+
+        var position = e.GetPosition(VerticalTabList);
+        if (!_isDragging && Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        _isDragging = true;
+        // New index = how many other tabs come before the first visible row below the pointer.
+        var index = 0;
+        foreach (var tab in _viewModel.Tabs.Where(t => t != _dragTab))
+        {
+            if (VerticalTabList.ItemContainerGenerator.ContainerFromItem(tab) is FrameworkElement row && row.IsVisible
+                && position.Y < row.TranslatePoint(new Point(0, row.ActualHeight / 2), VerticalTabList).Y)
+                break;
+            index++;
+        }
+        if (index != _viewModel.Tabs.IndexOf(_dragTab))
+            _viewModel.MoveTab(_dragTab, index);
+    }
+
+    private void VerticalTabList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => VerticalTabList.ReleaseMouseCapture();
 
     // ------------------------------------------------------------- screenshots
 
@@ -775,8 +841,9 @@ public partial class MainWindow : Window
     private void OnGroupEditRequested(TabGroupViewModel group)
         => Dispatcher.BeginInvoke(() =>
         {
+            var list = _viewModel.IsVerticalTabs ? VerticalTabList : TabStrip;
             if (_viewModel.Tabs.FirstOrDefault(t => t.Group == group) is { } first
-                && TabStrip.ItemContainerGenerator.ContainerFromItem(first) is ContentPresenter container
+                && list.ItemContainerGenerator.ContainerFromItem(first) is ContentPresenter container
                 && container.ContentTemplate?.FindName("GroupLabel", container) is FrameworkElement label)
             {
                 OpenGroupEditor(group, label);
@@ -1025,6 +1092,7 @@ public partial class MainWindow : Window
             case nameof(MainViewModel.ActivePanel):
             case nameof(MainViewModel.IsSidebarVisible):
             case nameof(MainViewModel.IsSidebarOnRight):
+            case nameof(MainViewModel.IsVerticalTabs):
                 UpdatePanelColumn();
                 break;
             case nameof(MainViewModel.SplitLeftWidth):
@@ -1435,10 +1503,21 @@ public partial class MainWindow : Window
     // ------------------------------------------------------------- web panels
 
     /// <summary>The panel column follows the open panel (width from settings, 0 when closed).</summary>
+    /// <summary>Vertical tabs: the list on the left takes over from the strip, which leaves the page title.</summary>
+    private void ApplyTabLayout()
+    {
+        var vertical = _viewModel.IsVerticalTabs;
+        VerticalTabsHost.Visibility = vertical && !_isBrowserFullScreen ? Visibility.Visible : Visibility.Collapsed;
+        TabStrip.Visibility = vertical ? Visibility.Collapsed : Visibility.Visible;
+        StripNewTabButton.Visibility = TabStrip.Visibility;
+        VerticalTitle.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void UpdatePanelColumn()
     {
         var sidebar = _viewModel.IsSidebarVisible && !_isBrowserFullScreen;
         SidebarHost.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
+        ApplyTabLayout();
 
         // Left:  [sidebar][panel][splitter][content]   Right: [content][splitter][panel][sidebar]
         var right = _viewModel.IsSidebarOnRight;

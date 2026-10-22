@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Yama notları</title>
+    <link rel="stylesheet" href="whatsnew.css">
+    <link rel="stylesheet" href="changelog.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <main class="page">
+        <header class="hero">
+            <p class="eyebrow">Yama notları</p>
+            <h1>Sorune <span class="version" id="version"></span></h1>
+            <p class="lead">İlk satırdan bugüne, her sürümde neler geldi.</p>
+        </header>
+
+        <nav class="jump" id="jump" aria-label="Sürümler"></nav>
+        <section class="releases" id="releases"></section>
+
+        <footer class="footer">
+            <p class="sign">Keyifli gezinmeler! — Claxe</p>
+        </footer>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="changelog.js"></script>
+</body>
+</html>

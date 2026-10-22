@@ -57,6 +57,7 @@ function render() {
     const s = state.settings;
 
     renderThemes(s);
+    renderUserThemes();
     renderWallpapers(s);
     renderSwatches(s);
 
@@ -87,6 +88,7 @@ function render() {
 
     renderPanels();
     renderPermissions();
+    renderRestore();
 
     setSegmented("language", s.language);
     $("language-restart").hidden = s.language === state.activeLanguage;
@@ -150,6 +152,73 @@ function renderThemes(s) {
         return card;
     }));
 }
+
+function renderUserThemes() {
+    const items = state.userThemes || [];
+    const tiles = items.map((theme) => {
+        const tile = el("button", {
+            type: "button",
+            class: "wp user-theme" + (theme.active ? " selected" : ""),
+            "aria-pressed": String(Boolean(theme.active)),
+            title: theme.name,
+            onclick: () => send({ type: "userTheme:apply", id: theme.id }),
+        }, [el("span", { class: "name" }, [el("span", { class: "dot" }), document.createTextNode(theme.name)])]);
+        // User-typed names are shown as they are, never looked up in the dictionary.
+        if (theme.picture) tile.style.backgroundImage = `url("${theme.picture}")`;
+        else tile.style.background = `linear-gradient(135deg, ${theme.accent}, #1a1625)`;
+        const dot = tile.querySelector(".dot");
+        dot.style.background = theme.accent;
+        dot.style.color = theme.accent;
+        tile.append(el("span", {
+            class: "remove",
+            role: "button",
+            tabindex: "0",
+            title: "Temayı sil",
+            "aria-label": "Temayı sil",
+            text: "×",
+            onclick: (event) => { event.stopPropagation(); send({ type: "userTheme:delete", id: theme.id }); },
+        }));
+        return tile;
+    });
+    if (!tiles.length) tiles.push(el("p", { class: "hint empty-note", text: "Henüz kayıtlı temanın yok. Görünümü beğenince aşağıdan bir ad verip kaydet." }));
+    $("user-themes").replaceChildren(...tiles);
+    $("user-theme-form").hidden = items.length >= (state.maxUserThemes || 24);
+}
+
+$("user-theme-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = $("user-theme-name").value.trim();
+    $("user-theme-error").hidden = true;
+    if (!name) return;
+    send({ type: "userTheme:save", name });
+    $("user-theme-name").value = "";
+});
+
+let restoreInfo = null;
+
+function renderRestore() {
+    const pending = Boolean(state.pendingRestore);
+    $("restore-cancel").hidden = !pending;
+    $("restore-restart").hidden = !pending;
+    $("restore-pick").textContent = t(pending ? "Başka yedek seç" : "Yedek dosyası seç");
+    $("restore-status").textContent = !pending
+        ? t("Seçtiğin yedek, Sorune yeniden başlayınca bu profilin üstüne yazılır.")
+        : restoreInfo
+            ? t("{0} tarihli yedek (Sorune {1}) hazır. Yeniden başlatınca uygulanır.", new Date(restoreInfo.createdAt).toLocaleString(), restoreInfo.version || "?")
+            : t("Bir yedek hazır. Yeniden başlatınca uygulanır.");
+}
+
+function formatSize(bytes) {
+    return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+$("backup-create").addEventListener("click", () => {
+    $("backup-error").hidden = true;
+    send({ type: "backup:create", includeHistory: $("backup-history").checked });
+});
+$("restore-pick").addEventListener("click", () => { $("backup-error").hidden = true; send({ type: "backup:restore" }); });
+$("restore-cancel").addEventListener("click", () => { restoreInfo = null; send({ type: "backup:cancel" }); });
+$("restore-restart").addEventListener("click", () => send({ type: "restartApp" }));
 
 function renderWallpapers(s) {
     const tiles = [];
@@ -290,6 +359,8 @@ function renderPermissions() {
 // ---------------------------------------------------------------- personalisation (new tab, mascot, sounds, palette)
 
 function renderPersonal(s) {
+    setSegmented("site-scheme", s.siteColorScheme);
+    $("force-dark-restart").hidden = s.forceDarkSites === state.forceDarkActive;
     setSegmented("nt-effect", s.newTabEffect);
     setSegmented("nt-align", s.newTabAlign);
     setSegmented("sound-pack", s.soundPack);
@@ -299,6 +370,9 @@ function renderPersonal(s) {
     $("nt-dim-reset").disabled = s.newTabDim == null;
     if (dragging !== "nt-blur") $("nt-blur").value = s.newTabBlur;
     $("nt-blur-value").textContent = s.newTabBlur ? `${s.newTabBlur} px` : t("Keskin");
+    if (dragging !== "vtabs-width") $("vtabs-width").value = s.verticalTabsWidth;
+    $("vtabs-width-value").textContent = `${s.verticalTabsWidth} px`;
+    $("vtabs-width-row").hidden = !s.verticalTabs;
 
     const current = (s.accentColor || "").toUpperCase();
     const palette = state.wallpaperPalette || [];
@@ -324,7 +398,8 @@ function renderPersonal(s) {
     if (dragging !== "mascot-peek") $("mascot-peek").value = Math.round(s.mascotPeek * 100);
 }
 
-for (const [id, key] of [["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"]]) {
+$("force-dark-restart").addEventListener("click", () => send({ type: "restartApp" }));
+for (const [id, key] of [["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
     $(id).addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (button) update(key, button.dataset.value);
@@ -338,6 +413,7 @@ function bindRange(id, send) {
 }
 bindRange("nt-dim", (v) => update("newTabDim", v / 100));
 bindRange("nt-blur", (v) => update("newTabBlur", v));
+bindRange("vtabs-width", (v) => update("verticalTabsWidth", v));
 bindRange("mascot-peek", (v) => update("mascotPeek", v / 100));
 $("nt-dim-reset").addEventListener("click", () => update("newTabDim", null));
 $("mascot-pick").addEventListener("click", () => { $("mascot-error").hidden = true; send({ type: "pickMascot" }); });
@@ -641,6 +717,28 @@ if (host) {
             case "profiles":
                 profiles = message;
                 renderProfiles();
+                break;
+            case "backupBusy":
+                $("backup-create").disabled = true;
+                $("backup-status").textContent = t("Yedek hazırlanıyor…");
+                break;
+            case "backupDone":
+                $("backup-create").disabled = false;
+                $("backup-status").textContent = t("Kaydedildi: {0} dosya, {1}.", message.files, formatSize(message.bytes));
+                break;
+            case "backupError":
+                $("backup-create").disabled = false;
+                $("backup-status").textContent = "";
+                $("backup-error").textContent = message.message || "";
+                $("backup-error").hidden = false;
+                break;
+            case "restoreStaged":
+                restoreInfo = message;
+                renderRestore();
+                break;
+            case "userThemeError":
+                $("user-theme-error").textContent = message.message || "";
+                $("user-theme-error").hidden = false;
                 break;
             case "profilesError":
                 $("profile-error").textContent = message.message || "";

@@ -35,7 +35,18 @@
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
 
-## ✨ 0.7'de yeni
+## ✨ 0.8'de yeni
+
+| | |
+|---|---|
+| 🎨 **Kendi temaların** | Şu anki görünümü (tema, duvar kâğıdı, renkler, cam, köşeler, yeni sekme, sesler) bir adla kaydet; tek tıkla geri dön. |
+| 📦 **Yedekle ve taşı** | Ayarlar, temalar, duvar kâğıtları, yer imleri, paneller ve widget'lar tek bir `.sorune` dosyasında; yeni bilgisayarda geri yükle. |
+| 📑 **Dikey sekmeler** | İsteğe bağlı: sekmeler solda alt alta bir liste; sürükle-sırala, genişlik ayarlı. |
+| 🌙 **Sitelerde koyu mod** | Sitelerden koyu / açık temalarını iste; deneysel "tüm siteleri karart". |
+| 📜 **Yama notları** | Mini araçlar panelinden: ilk sürümden bugüne her sürümde gelenler. |
+| 🖱️ **Düzeltmeler** | Orta tıkla (ya da Ctrl+tık) açılan bağlantılar Chrome gibi arka planda, sekmenin yanında açılır; uyutulan sekmeler açılınca artık donuk kalmıyor. |
+
+## 0.7'de yeni
 
 | | |
 |---|---|
@@ -44,7 +55,9 @@
 | 📊 **Görev yöneticisi** | Shift+Esc: sekme başına canlı bellek ve işlemci; ağır sekmeyi uyut ya da kapat. |
 | 🔍 **Bağlantı önizlemesi** | Bağlantıya sağ tık → "Bağlantıyı önizle": sekme açmadan küçük pencerede bak. |
 
-## 0.6'da yeni
+<details>
+<summary>0.6</summary>
+
 
 | | |
 |---|---|
@@ -55,6 +68,8 @@
 | 📖 **Okuma modu** | Makaleleri temaya uygun, sade bir sütunda; yazı tipi, boyut ve renk ayarlı. |
 | 👋 **Karşılama turu** | İlk açılışta dil, tema, tarz, eklentiler ve içe aktarma adım adım. |
 | 🔔 **Ses paketleri** | Klasik, Yumuşak, Retro, Kristal. |
+
+</details>
 
 <details>
 <summary>0.5 ve 0.4</summary>
@@ -88,14 +103,17 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
 - **Görünüm:** cam efektli sekme ve araç çubuğu, kavisli neon aktif sekme, araç çubuğunun arkasından bakan maskot
   (sayfa yüklenince sevinir, boşta kalınca uyur; kapatılabilir)
 - **Yeni sekme:** saat ve selamlama, arama, kısayollar, widget'lar, temaya göre efektler
-- **Sekmeler:** gruplar, bölünmüş ekran, sürükle-sırala, sabitleme, sekme bazlı ses düzeyi ve sessize alma, gizli
+- **Sekmeler:** üstte ya da dikey liste, gruplar, bölünmüş ekran, sürükle-sırala, sabitleme, orta tıkla arka planda
+  açma, sekme bazlı ses düzeyi ve sessize alma, gizli
   (InPrivate) sekmeler, ayarlanabilir uyku modu, oturum geri yükleme ve çökme kurtarma
 - **Komut paleti (Ctrl+K)** ve resim içinde resim
 - **Gezinme:** yerel adres önerileri, sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri, özel hata sayfası
 - **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü, mini araçlar
   ve eklentiler
 - **Kişiselleştirme:** tema, duvar kâğıdı, duvar kâğıdından vurgu rengi, cam, köşeler, yoğunluk, kendi maskotun, ses
-  paketi, yeni sekme efekti / karartma / bulanıklık / yerleşim, siteye uyan renkler, çerçeveli sayfa
+  paketi, yeni sekme efekti / karartma / bulanıklık / yerleşim, siteye uyan renkler, çerçeveli sayfa, sitelerde koyu
+  mod; hepsini **kendi teman** olarak kaydetme
+- **Yedekle ve taşı:** her şey tek bir `.sorune` dosyasında, başka bilgisayara taşınabilir
 - **Araçlar:** ekran görüntüsü, okuma modu, resim içinde resim, komut paleti, bağlantı önizlemesi, görev yöneticisi
 - **Profiller ve zaman makinesi:** birbirinden bağımsız profiller; kapatılan sekmeler ve önceki oturumlar
 - **Kitaplık:** geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
@@ -130,7 +148,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.7.0
+powershell -File build/pack.ps1 -Version 0.8.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
@@ -200,11 +218,15 @@ kaldırmak verileri silmez).
 | `widgets.dat` | Yeni sekme widget'ları (notlar, yapılacaklar) | DPAPI ile şifreli |
 | `closed-tabs.dat`, `sessions-archive.dat` | Zaman makinesi: kapatılan sekmeler ve önceki oturumlar | DPAPI ile şifreli |
 | `profiles.json`, `profiles\` | Profil listesi ve her profilin ayrı veri klasörü | JSON / klasör |
-| `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json` | Ayarlar ve listeler | JSON |
+| `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json`, `user-themes.json` | Ayarlar, listeler ve kayıtlı temalar | JSON |
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
 Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
 dosyaları bilgisayarda çevirir; hiçbir dosya bir sunucuya yüklenmez.
+
+**Yedek dosyaları** (`.sorune`) bir ZIP'tir: şifreli dosyalar başka bir Windows hesabında açılabilsin diye yedeğe
+çözülmüş olarak girer, geri yüklenince yeniden şifrelenir. Bu yüzden yedeği güvendiğin bir yerde sakla. Çerezler,
+şifreler ve önbellek yedeğe hiç girmez; geçmiş yalnızca istersen girer.
 
 Şifre kaydetme kapalıdır. Başka tarayıcılardan çerez ve şifre aktarılmaz (Chromium bunları yalnızca kendisinin
 çözebileceği şekilde şifreler). Geliştirme ve test için `SORUNE_PROFILE_DIR` ortam değişkeni ayrı bir profil klasörü
