@@ -25,6 +25,12 @@ public static class InternalPages
     /// <summary>File converter, shown in its own sidebar panel.</summary>
     public const string ConverterUrl = Origin + "converter.html";
 
+    /// <summary>Reader mode (the article arrives from the app after the page loads).</summary>
+    public const string ReaderUrl = Origin + "reader.html";
+
+    /// <summary>First-run welcome tour.</summary>
+    public const string WelcomeUrl = Origin + "welcome.html";
+
     /// <summary>Mini tools, shown in their own sidebar panel.</summary>
     public const string ToolsUrl = Origin + "tools.html";
 
@@ -59,6 +65,8 @@ public static class InternalPages
         ("donusturucu", ConverterUrl),
         ("converter", ConverterUrl),
         ("araclar", ToolsUrl),
+        ("hosgeldin", WelcomeUrl),
+        ("welcome", WelcomeUrl),
         ("tools", ToolsUrl),
     ];
 
@@ -88,6 +96,12 @@ public static class InternalPages
 
         if (IsPage(url, ToolsUrl))
             return Scheme + "araclar";
+
+        if (IsPage(url, WelcomeUrl))
+            return Scheme + "hosgeldin";
+
+        if (IsPage(url, ReaderUrl))
+            return Scheme + "okuma";
 
         if (IsLibrary(url))
         {

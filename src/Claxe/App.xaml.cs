@@ -50,6 +50,7 @@ public partial class App : Application
         SessionCookieStore.Enabled = settings.RestoreSession;
         SoundService.Enabled = settings.SoundsEnabled;
         SoundService.Volume = settings.SoundVolume;
+        SoundService.Pack = settings.SoundPack;
         ThemeService.Apply(settings);
 
         // One click sound for every button in the app (toolbar, tabs, caption buttons).

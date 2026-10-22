@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Okuma modu</title>
+    <link rel="stylesheet" href="reader.css">
+</head>
+<body class="look-theme">
+    <div class="wall" id="wall"></div>
+
+    <header class="bar">
+        <button type="button" class="btn" id="back" title="Orijinal sayfaya dön">← <span>Orijinal sayfa</span></button>
+        <div class="controls">
+            <div class="group" role="radiogroup" aria-label="Görünüm" id="looks">
+                <button type="button" data-look="theme" title="Tema">●</button>
+                <button type="button" data-look="light" title="Açık">●</button>
+                <button type="button" data-look="sepia" title="Sepya">●</button>
+                <button type="button" data-look="dark" title="Koyu">●</button>
+            </div>
+            <div class="group">
+                <button type="button" id="font" title="Yazı tipi">Aa</button>
+                <button type="button" id="smaller" title="Küçült">A−</button>
+                <button type="button" id="bigger" title="Büyüt">A+</button>
+                <button type="button" id="width" title="Sütun genişliği">↔</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="page" id="page">
+        <p class="site" id="site"></p>
+        <h1 id="title"></h1>
+        <p class="meta" id="meta"></p>
+        <article id="article"></article>
+        <p class="empty" id="empty" hidden>Bu sayfada okunacak bir yazı bulunamadı ya da içerik artık yok.</p>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="reader.js"></script>
+</body>
+</html>

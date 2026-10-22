@@ -62,8 +62,32 @@ public partial class MainWindow : Window
         viewModel.PaletteRequested += (_, _) => OpenPalette();
         viewModel.VolumeEditRequested += (_, tab) => OpenVolumeEditor(tab, TabElement(tab) ?? AddressPill);
         viewModel.FindRequested += (_, _) => OpenFind();
+        viewModel.ScreenshotRequested += async (_, mode) => await TakeScreenshotAsync(mode);
         viewModel.FullScreenRequested += (_, _) => ToggleBrowserFullScreen();
         viewModel.PickFolder = PickFolder;
+        viewModel.PickMascotFile = () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = L.T("Maskot görseli seç"),
+                Filter = L.T("Görseller") + " (*.png;*.webp;*.gif;*.jpg;*.jpeg)|*.png;*.webp;*.gif;*.jpg;*.jpeg",
+            };
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        };
+        viewModel.PickExtensionFolder = () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = L.T("Açılmış eklenti klasörünü seç (içinde manifest.json olan)") };
+            return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
+        };
+        viewModel.PickExtensionArchive = () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = L.T("Eklenti paketini seç"),
+                Filter = L.T("Eklenti paketleri") + " (*.zip;*.crx)|*.zip;*.crx",
+            };
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        };
 
         AddressBox.TextChanged += (_, _) =>
         {
@@ -141,7 +165,10 @@ public partial class MainWindow : Window
             case Key.F11 when none: ToggleBrowserFullScreen(); break;
             case Key.OemComma when ctrl: _viewModel.OpenSettings(); break;
             case Key.F when ctrl: OpenFind(); break;
-            case Key.K when ctrl: OpenPalette(); break;
+            // Inside a website, Ctrl+K belongs to the site (Discord, GitHub, Slack search);
+            // Ctrl+Shift+K opens the palette everywhere.
+            case Key.K when ctrl && !IsWebsiteFocused(e): OpenPalette(); break;
+            case Key.K when ctrlShift: OpenPalette(); break;
             case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
@@ -153,6 +180,11 @@ public partial class MainWindow : Window
 
         e.Handled = handled;
     }
+
+    /// <summary>The key came from a web page (not Sorune's own pages or the browser chrome).</summary>
+    private bool IsWebsiteFocused(KeyEventArgs e)
+        => e.OriginalSource is Microsoft.Web.WebView2.Wpf.WebView2
+           && _viewModel.ActiveTab?.Url is { } url && !Services.InternalPages.IsInternal(url);
 
     private static void Execute(ICommand command)
     {
@@ -270,6 +302,145 @@ public partial class MainWindow : Window
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
+
+    // ------------------------------------------------------------- screenshots
+
+    private void ScreenshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = PlacementMode.Bottom };
+        foreach (var (label, mode) in new[] { (L.T("Görünen alan"), "visible"), (L.T("Tam sayfa"), "full"), (L.T("Bölge seç"), "region") })
+        {
+            var item = new MenuItem { Header = label };
+            item.Click += async (_, _) => await TakeScreenshotAsync(mode);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    public async Task TakeScreenshotAsync(string mode)
+    {
+        if (_viewModel.ActiveTab is not { Core: { } core, WebView: { } view } tab)
+            return;
+
+        try
+        {
+            var image = mode == "full"
+                ? await ScreenshotService.CaptureFullPageAsync(core)
+                : await ScreenshotService.CaptureVisibleAsync(core);
+
+            if (mode == "region")
+            {
+                var picker = new RegionSelectWindow(image, ScreenBoundsOf(view)) { Owner = this };
+                picker.ShowDialog();
+                if (picker.Result is not { } region)
+                    return;
+                image = region;
+            }
+
+            var path = ScreenshotService.SaveAndCopy(image, tab.Title);
+            SoundService.Play(UiSound.Toggle);
+            _viewModel.Mascot.Say(L.T("Ekran görüntüsü kaydedildi 📸"), happy: true);
+            ShowToast(L.T("Ekran görüntüsü kaydedildi ve panoya kopyalandı."), path);
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException
+                                       or System.IO.IOException or System.Text.Json.JsonException or FormatException
+                                       or KeyNotFoundException or NotSupportedException or UnauthorizedAccessException)
+        {
+            Log.Error("Ekran görüntüsü alınamadı.", ex);
+            ShowToast(L.T("Ekran görüntüsü alınamadı."), null);
+        }
+    }
+
+    /// <summary>An element's area on screen in DIPs (for windows placed exactly over it).</summary>
+    private Rect ScreenBoundsOf(FrameworkElement element)
+    {
+        var topLeft = element.PointToScreen(new Point(0, 0));
+        var bottomRight = element.PointToScreen(new Point(element.ActualWidth, element.ActualHeight));
+        var fromDevice = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        return new Rect(fromDevice.Transform(topLeft), fromDevice.Transform(bottomRight));
+    }
+
+    private Popup? _toast;
+
+    /// <summary>A short message under the address bar; with a file, buttons to open it or its folder.</summary>
+    private void ShowToast(string message, string? file)
+    {
+        if (_toast is not null)
+            _toast.IsOpen = false;
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(new TextBlock
+        {
+            Text = message,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            FontSize = 13,
+            Margin = new Thickness(4, 0, 12, 0),
+        });
+        var popup = new Popup
+        {
+            PlacementTarget = AddressPill,
+            Placement = PlacementMode.Bottom,
+            VerticalOffset = 8,
+            AllowsTransparency = true,
+            StaysOpen = true,
+            PopupAnimation = PopupAnimation.Fade,
+        };
+
+        Button Action(string label, Action act)
+        {
+            var button = new Button { Content = label, Style = (Style)FindResource("GhostButtonStyle"), Height = 28, Padding = new Thickness(10, 0, 10, 0), Margin = new Thickness(4, 0, 0, 0) };
+            button.Click += (_, _) =>
+            {
+                popup.IsOpen = false;
+                act();
+            };
+            return button;
+        }
+
+        if (file is not null)
+        {
+            row.Children.Add(Action(L.T("Aç"), () => OpenShell(file, select: false)));
+            row.Children.Add(Action(L.T("Klasörde göster"), () => OpenShell(file, select: true)));
+        }
+
+        popup.Child = new Border
+        {
+            Margin = new Thickness(12),
+            Padding = new Thickness(10, 8, 8, 8),
+            CornerRadius = new CornerRadius(12),
+            Background = (Brush)FindResource("SurfaceBrush"),
+            BorderBrush = (Brush)FindResource("AccentBrush"),
+            BorderThickness = new Thickness(1),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect { ShadowDepth = 4, BlurRadius = 20, Opacity = 0.45, Color = Colors.Black },
+            Child = row,
+        };
+        _toast = popup;
+        popup.IsOpen = true;
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(file is null ? 3 : 6) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            popup.IsOpen = false;
+        };
+        timer.Start();
+    }
+
+    private static void OpenShell(string path, bool select)
+    {
+        try
+        {
+            if (select)
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            else
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            Log.Error($"Açılamadı: {path}", ex);
+        }
+    }
 
     // ------------------------------------------------------------- split screen
 

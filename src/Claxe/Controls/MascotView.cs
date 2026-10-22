@@ -20,6 +20,31 @@ public sealed class MascotView : Grid
         nameof(Mood), typeof(MascotMood), typeof(MascotView),
         new PropertyMetadata(MascotMood.Neutral, (d, _) => ((MascotView)d).ShowMood(animate: true)));
 
+    /// <summary>The user's own mascot image (used for every mood); null = the built-in poses.</summary>
+    public static readonly DependencyProperty CustomImageProperty = DependencyProperty.Register(
+        nameof(CustomImage), typeof(string), typeof(MascotView),
+        new PropertyMetadata(null, (d, _) => ((MascotView)d).Rebuild()));
+
+    /// <summary>Share of a custom image's height shown above the toolbar.</summary>
+    public static readonly DependencyProperty PeekProperty = DependencyProperty.Register(
+        nameof(Peek), typeof(double), typeof(MascotView),
+        new PropertyMetadata(0.5, (d, _) => ((MascotView)d).LayoutPoses()));
+
+    public string? CustomImage
+    {
+        get => (string?)GetValue(CustomImageProperty);
+        set => SetValue(CustomImageProperty, value);
+    }
+
+    public double Peek
+    {
+        get => (double)GetValue(PeekProperty);
+        set => SetValue(PeekProperty, value);
+    }
+
+    private Image? _custom;
+    private bool _customFailed;
+
     /// <summary>Source-pixel measurements of each pose: bottom of the eyes, top of the hair (ignoring the ahoge), centre of the head.</summary>
     private static readonly Dictionary<MascotMood, (string File, double EyeBottom, double HairTop, double HeadCenterX)> Poses = new()
     {
@@ -83,11 +108,81 @@ public sealed class MascotView : Grid
         _headHeight = headHeight;
 
         // Pose images are sized from the head height, so rebuild them.
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
         foreach (var image in _images.Values)
             Children.Remove(image);
         _images.Clear();
+        if (_custom is not null)
+            Children.Remove(_custom);
+        _custom = null;
+        _customFailed = false;
         _current = null;
         ShowMood(animate: false);
+    }
+
+    /// <summary>
+    /// A custom mascot is one picture for every mood: as tall as about 2.6 heads (and no wider
+    /// than the slot), with <see cref="Peek"/> of it showing above the toolbar.
+    /// </summary>
+    private Image? GetCustomImage()
+    {
+        if (_custom is not null || _customFailed || CustomImage is not { } file)
+            return _custom;
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri(file);
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelHeight = 256;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            var height = _headHeight * 2.6;
+            var width = height * bitmap.PixelWidth / bitmap.PixelHeight;
+            var maxWidth = Math.Max(Width is > 0 ? Width : ActualWidth, 60) - 4;
+            if (width > maxWidth)
+            {
+                height *= maxWidth / width;
+                width = maxWidth;
+            }
+
+            _custom = new Image
+            {
+                Source = bitmap,
+                Stretch = Stretch.Fill,
+                Width = width,
+                Height = height,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Opacity = 0,
+            };
+            RenderOptions.SetBitmapScalingMode(_custom, BitmapScalingMode.HighQuality);
+            Children.Add(_custom);
+            LayoutCustom();
+            return _custom;
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException or UriFormatException
+                                       or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            // A broken file: the built-in mascot stays.
+            Log.Info($"Özel maskot yüklenemedi: {ex.Message}");
+            _customFailed = true;
+            return null;
+        }
+    }
+
+    private void LayoutCustom()
+    {
+        if (_custom is null)
+            return;
+        // The toolbar starts 6px below the eye line.
+        _custom.Margin = new Thickness(ActualWidth / 2 - _custom.Width / 2, EyeLine + 6 - _custom.Height * Peek, 0, 0);
     }
 
     private static readonly DependencyProperty GlowColorProperty = DependencyProperty.Register(
@@ -137,6 +232,7 @@ public sealed class MascotView : Grid
     {
         foreach (var (mood, image) in _images)
             LayoutPose(mood, image);
+        LayoutCustom();
     }
 
     private void LayoutPose(MascotMood mood, Image image)
@@ -151,7 +247,19 @@ public sealed class MascotView : Grid
 
     private void ShowMood(bool animate)
     {
-        var next = GetImage(Mood);
+        var next = GetCustomImage() ?? GetImage(Mood);
+        if (ReferenceEquals(next, _custom) && next is not null)
+        {
+            // One picture: moods show as a hop (happy) or dimming (sleepy).
+            next.BeginAnimation(OpacityProperty, null);
+            next.Opacity = Mood == MascotMood.Sleepy ? 0.7 : 1;
+            if (animate && Motion.Enabled && Mood == MascotMood.Happy && _current is not null)
+                Hop();
+            _current = next;
+            StartBob();
+            return;
+        }
+
         if (ReferenceEquals(next, _current))
             return;
 

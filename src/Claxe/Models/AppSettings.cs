@@ -55,6 +55,34 @@ public sealed class AppSettings
     /// <summary>Turns off decorative motion and puts background tabs to sleep sooner.</summary>
     public bool PerformanceMode { get; set; }
 
+    /// <summary>The mascot's speech bubbles and reminders.</summary>
+    public bool MascotTalks { get; set; } = true;
+
+    /// <summary>File name of the user's own mascot image (in the profile's wallpapers folder); null = built-in.</summary>
+    public string? MascotCustom { get; set; }
+
+    /// <summary>How much of a custom mascot shows above the toolbar (0.2..0.9).</summary>
+    public double MascotPeek { get; set; } = 0.5;
+
+    /// <summary>Interface sound pack: "classic", "soft", "retro" or "crystal".</summary>
+    public string SoundPack { get; set; } = "classic";
+
+    /// <summary>New tab: "theme" (the theme's own), "petals", "sparks", "bubbles", "snow" or "none".</summary>
+    public string NewTabEffect { get; set; } = "theme";
+
+    /// <summary>New tab: darkening over the wallpaper, 0..0.9; null = the theme's.</summary>
+    public double? NewTabDim { get; set; }
+
+    /// <summary>New tab: wallpaper blur in pixels (0..30).</summary>
+    public int NewTabBlur { get; set; }
+
+    /// <summary>New tab: "left" or "center".</summary>
+    public string NewTabAlign { get; set; } = "left";
+
+    public bool NewTabShowSearch { get; set; } = true;
+    public bool NewTabShowShortcuts { get; set; } = true;
+    public bool NewTabShowWidgets { get; set; } = true;
+
     /// <summary>The toolbar fades into the colour at the top of the open site.</summary>
     public bool SiteTintEnabled { get; set; } = true;
 

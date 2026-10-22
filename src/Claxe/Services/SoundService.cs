@@ -25,6 +25,27 @@ public static class SoundService
 
     public static bool Enabled { get; set; } = true;
 
+    /// <summary>Sound packs: "classic", "soft", "retro" (8-bit) or "crystal".</summary>
+    public static readonly string[] Packs = ["classic", "soft", "retro", "crystal"];
+
+    private static string _pack = "classic";
+
+    public static string Pack
+    {
+        get => _pack;
+        set
+        {
+            value = Packs.Contains(value) ? value : "classic";
+            if (value == _pack)
+                return;
+
+            _pack = value;
+            foreach (var player in Players.Values)
+                player.Dispose();
+            Players.Clear();
+        }
+    }
+
     public static double Volume
     {
         get => _volume;
@@ -66,12 +87,24 @@ public static class SoundService
 
     private static byte[] Render(UiSound sound, double volume)
     {
-        var samples = sound switch
+        var samples = (_pack, sound) switch
         {
-            UiSound.Click => Click(),
-            UiSound.TabOpen => Sweep(520, 900, 0.11),
-            UiSound.TabClose => Sweep(780, 430, 0.12),
-            UiSound.Toggle => Concat(Tone(660, 0.045), Tone(990, 0.07)),
+            ("soft", UiSound.Click) => Bubble(900, 0.05),
+            ("soft", UiSound.TabOpen) => Sweep(330, 520, 0.16),
+            ("soft", UiSound.TabClose) => Sweep(500, 300, 0.16),
+            ("soft", UiSound.Toggle) => Concat(Bubble(520, 0.06), Bubble(700, 0.08)),
+            ("retro", UiSound.Click) => Square(1200, 0.025),
+            ("retro", UiSound.TabOpen) => Concat(Square(523, 0.05), Square(784, 0.06)),
+            ("retro", UiSound.TabClose) => Concat(Square(784, 0.05), Square(523, 0.06)),
+            ("retro", UiSound.Toggle) => Concat(Square(659, 0.04), Square(988, 0.05), Square(1319, 0.06)),
+            ("crystal", UiSound.Click) => Bell(2637, 0.08),
+            ("crystal", UiSound.TabOpen) => Concat(Bell(1568, 0.07), Bell(2093, 0.16)),
+            ("crystal", UiSound.TabClose) => Concat(Bell(2093, 0.07), Bell(1568, 0.16)),
+            ("crystal", UiSound.Toggle) => Concat(Bell(1760, 0.06), Bell(2637, 0.14)),
+            (_, UiSound.Click) => Click(),
+            (_, UiSound.TabOpen) => Sweep(520, 900, 0.11),
+            (_, UiSound.TabClose) => Sweep(780, 430, 0.12),
+            (_, UiSound.Toggle) => Concat(Tone(660, 0.045), Tone(990, 0.07)),
             _ => [],
         };
 
@@ -101,6 +134,27 @@ public static class SoundService
             return envelope * (0.8 * Math.Sin(phase) + 0.2 * Math.Sin(2 * phase)) * 0.55;
         });
     }
+
+    /// <summary>A round, low "bloop" (pitch dips slightly, like a bubble).</summary>
+    private static double[] Bubble(double frequency, double seconds)
+    {
+        var phase = 0.0;
+        return Generate(seconds, t =>
+        {
+            phase += 2 * Math.PI * frequency * (1 + 0.35 * Math.Exp(-t / 0.015)) / SampleRate;
+            return Math.Min(1, t / 0.006) * Math.Exp(-t / (seconds * 0.4)) * Math.Sin(phase) * 0.5;
+        });
+    }
+
+    /// <summary>8-bit square wave, quieter because squares sound loud.</summary>
+    private static double[] Square(double frequency, double seconds)
+        => Generate(seconds, t => Math.Min(1, t / 0.002) * Math.Exp(-t / (seconds * 0.8))
+                                  * (Math.Sin(2 * Math.PI * frequency * t) >= 0 ? 1 : -1) * 0.18);
+
+    /// <summary>A small glassy bell: sine plus a slightly inharmonic overtone, long decay.</summary>
+    private static double[] Bell(double frequency, double seconds)
+        => Generate(seconds, t => Math.Min(1, t / 0.002) * Math.Exp(-t / (seconds * 0.35))
+                                  * (0.7 * Math.Sin(2 * Math.PI * frequency * t) + 0.3 * Math.Sin(2 * Math.PI * frequency * 2.76 * t)) * 0.35);
 
     private static double[] Tone(double frequency, double seconds)
         => Generate(seconds, t => Math.Min(1, t / 0.004) * Math.Exp(-t / (seconds * 0.45)) * Math.Sin(2 * Math.PI * frequency * t) * 0.45);

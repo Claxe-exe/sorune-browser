@@ -82,6 +82,9 @@ public static class ThemeService
 
     public static bool WallpaperExists(string? id) => id is null || ResolveWallpaper(id) is not null;
 
+    /// <summary>File of the wallpaper in use (for picking colours out of it); null when none.</summary>
+    public static string? WallpaperPath => _backdropKey;
+
     /// <summary>Applies theme, overrides and layout. Cheap to call repeatedly (the backdrop is cached).</summary>
     public static void Apply(AppSettings settings)
     {

@@ -208,8 +208,55 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     private async void RefreshSiteColorSoon(int delayMs)
     {
         await Task.Delay(delayMs);
-        if (!_disposed)
-            await RefreshSiteColorAsync();
+        if (_disposed)
+            return;
+        await RefreshSiteColorAsync();
+        await RefreshReadableAsync();
+    }
+
+    private bool _isReadable;
+
+    /// <summary>The page looks like an article: the toolbar offers reading mode.</summary>
+    public bool IsReadable
+    {
+        get => _isReadable;
+        private set => SetProperty(ref _isReadable, value);
+    }
+
+    public async Task RefreshReadableAsync()
+    {
+        if (Core is not { } core || IsSuspended || InternalPages.IsInternal(Url) || Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            IsReadable = false;
+            return;
+        }
+
+        try
+        {
+            IsReadable = await core.ExecuteScriptAsync(ReaderMode.DetectScript) == "true";
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            IsReadable = false;
+        }
+    }
+
+    /// <summary>The article as JSON blocks, or null when nothing readable was found.</summary>
+    public async Task<string?> ExtractArticleAsync()
+    {
+        if (Core is not { } core)
+            return null;
+
+        try
+        {
+            var json = await core.ExecuteScriptAsync(ReaderMode.ExtractScript);
+            return json is "null" or "" ? null : json;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            Log.Info($"Okuma modu içeriği alınamadı: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>The page has a video that the browser can show in picture-in-picture.</summary>
@@ -746,9 +793,14 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     {
         Url = core.Source;
         if (InternalPages.IsInternal(Url))
+        {
             SiteColor = null;
+            IsReadable = false;
+        }
         else
+        {
             RefreshSiteColorSoon(800);
+        }
         if (!_addressDirty)
             SetAddressFromPage(core.Source);
         OnPropertyChanged(nameof(IsNewTabPage));

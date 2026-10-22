@@ -45,6 +45,7 @@ public static class BrowserEnvironment
             {
                 // Built-in menus and sites' Accept-Language follow the interface language.
                 Language = L.Locale,
-                AreBrowserExtensionsEnabled = false,
+                // Unpacked extensions the user installs from Settings → Extensions.
+                AreBrowserExtensionsEnabled = true,
             });
 }

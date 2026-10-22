@@ -21,12 +21,12 @@ public sealed class PanelViewModel : ObservableObject, IDisposable
 
     private string _name;
 
-    public PanelViewModel(WebPanel panel)
+    public PanelViewModel(WebPanel panel, ImageSource? icon = null)
     {
         Id = panel.Id;
         _name = panel.Name;
         Url = panel.Url;
-        _icon = LoadCachedIcon();
+        _icon = icon ?? LoadCachedIcon();
     }
 
     public string Id { get; }

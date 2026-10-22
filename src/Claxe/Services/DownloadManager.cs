@@ -87,12 +87,9 @@ public sealed class DownloadManager
         _folder = folder is not null && Directory.Exists(folder) ? folder : null;
         foreach (var weak in _cores.ToList())
         {
-            if (!weak.TryGetTarget(out var core))
-            {
+            // Closed tabs' pages can't take the setting any more: forget them.
+            if (!weak.TryGetTarget(out var core) || !ApplyFolder(core))
                 _cores.Remove(weak);
-                continue;
-            }
-            ApplyFolder(core);
         }
     }
 
@@ -134,7 +131,7 @@ public sealed class DownloadManager
         ApplyFolder(core);
     }
 
-    private void ApplyFolder(CoreWebView2 core)
+    private bool ApplyFolder(CoreWebView2 core)
     {
         try
         {
@@ -143,10 +140,16 @@ public sealed class DownloadManager
             var target = _folder ?? _systemFolder;
             if (target is not null && !string.Equals(profile.DefaultDownloadFolderPath, target, StringComparison.OrdinalIgnoreCase))
                 profile.DefaultDownloadFolderPath = target;
+            return true;
         }
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException)
+        catch (InvalidOperationException)
+        {
+            return false; // the tab was closed: its WebView2 is gone
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or ArgumentException)
         {
             Log.Info($"İndirme klasörü ayarlanamadı: {ex.Message}");
+            return true;
         }
     }
 

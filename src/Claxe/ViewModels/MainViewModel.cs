@@ -31,6 +31,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly PanelStore _panelStore = new();
     private readonly ConverterController _converter;
     private readonly WidgetStore _widgets = new();
+    private readonly ExtensionController _extensions;
+    private bool _extensionsLoaded;
     private readonly Queue<PermissionRequestViewModel> _permissionQueue = new();
     private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _suspendTimer = new() { Interval = TimeSpan.FromSeconds(30) };
@@ -49,7 +51,12 @@ public sealed class MainViewModel : ObservableObject
         _settingsController.Changed += OnSettingChanged;
         _settingsController.DownloadFolderInUse = () => _downloads.Folder;
         _downloads.SetFolder(settings.DownloadFolder);
-        Mascot = new MascotViewModel(settings.MascotEnabled);
+        Mascot = new MascotViewModel(settings.MascotEnabled)
+        {
+            TalksEnabled = settings.MascotTalks,
+            Peek = settings.MascotPeek,
+            CustomImage = _settingsController.CustomMascotPath,
+        };
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _saveTimer.Tick += (_, _) =>
@@ -79,10 +86,10 @@ public sealed class MainViewModel : ObservableObject
             if (!_downloadsTimer.IsEnabled)
                 _downloadsTimer.Start();
         };
-        _downloads.Completed += (_, _) =>
+        _downloads.Completed += (_, record) =>
         {
             SoundService.Play(UiSound.Toggle);
-            Mascot.OnPageLoaded(success: true);
+            Mascot.Say(L.T("İndirme bitti: {0}", record.FileName), happy: true);
         };
         _bookmarks.Changed += (_, _) =>
         {
@@ -103,10 +110,22 @@ public sealed class MainViewModel : ObservableObject
         ToolsPanel = new PanelViewModel(new WebPanel { Id = "sorune-tools", Name = L.T("Mini araçlar"), Url = InternalPages.ToolsUrl });
         HostedPanels.Add(ToolsPanel);
 
+        _extensions = new ExtensionController(
+            () => PickExtensionFolder?.Invoke(),
+            () => PickExtensionArchive?.Invoke(),
+            url =>
+            {
+                ActiveTab = CreateTab(url, Tabs.Count);
+                SoundService.Play(UiSound.TabOpen);
+            },
+            RefreshExtensionPanelsAsync);
+
         UpdateService.StateChanged += (_, _) =>
             System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
             {
                 OnPropertyChanged(nameof(IsUpdateReady));
+                if (IsUpdateReady)
+                    Mascot.Say(L.T("Yeni sürüm hazır ✨ Güncelle'ye bas"), happy: true);
                 BroadcastToInternalPages(_settingsController.BuildState());
             });
         ApplyUpdateCommand = new RelayCommand(ApplyUpdate);
@@ -163,6 +182,74 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>Built-in mini tools (JSON, colours, QR, timers, counters, URL encoding).</summary>
     public PanelViewModel ToolsPanel { get; }
+
+    /// <summary>Enabled extensions that have a popup: they open in the sidebar panel.</summary>
+    public ObservableCollection<PanelViewModel> ExtensionPanels { get; } = [];
+
+    /// <summary>Picker for the user's own mascot image (shown by the view).</summary>
+    public Func<string?>? PickMascotFile { get; set; }
+
+    /// <summary>Folder / archive pickers for installing extensions (shown by the view).</summary>
+    public Func<string?>? PickExtensionFolder { get; set; }
+    public Func<string?>? PickExtensionArchive { get; set; }
+
+    /// <summary>Keeps the sidebar's extension buttons in line with what is installed and enabled.</summary>
+    private async Task RefreshExtensionPanelsAsync(CoreWebView2Profile profile)
+    {
+        List<ExtensionInfo> list;
+        try
+        {
+            list = await ExtensionService.ListAsync(profile);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Eklentiler okunamadı: {ex.Message}");
+            return;
+        }
+
+        var wanted = list.Where(e => e.IsEnabled && e.PopupPage is not null)
+            .ToDictionary(e => "ext-" + e.Id, e => e);
+        foreach (var stale in ExtensionPanels.Where(p => !wanted.ContainsKey(p.Id)).ToList())
+        {
+            UnloadPanel(stale);
+            ExtensionPanels.Remove(stale);
+            HostedPanels.Remove(stale);
+        }
+
+        foreach (var (id, extension) in wanted)
+        {
+            if (ExtensionPanels.Any(p => p.Id == id))
+                continue;
+
+            var panel = new PanelViewModel(
+                new WebPanel { Id = id, Name = extension.Name, Url = $"chrome-extension://{extension.Id}/{extension.PopupPage}" },
+                LoadExtensionIcon(extension.IconFile));
+            ExtensionPanels.Add(panel);
+            HostedPanels.Add(panel);
+        }
+    }
+
+    private static ImageSource? LoadExtensionIcon(string? file)
+    {
+        if (file is null || !File.Exists(file))
+            return null;
+
+        try
+        {
+            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = 40;
+            bitmap.UriSource = new Uri(file);
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException or COMException or FileFormatException)
+        {
+            return null;
+        }
+    }
 
     public MascotViewModel Mascot { get; }
 
@@ -339,6 +426,22 @@ public sealed class MainViewModel : ObservableObject
         if (OpenExternal(args) == 0 && Tabs.Count == 0)
             NewTab();
         ScheduleSave();
+
+        // First run: the welcome tour instead of a bare new tab.
+        if (SettingsStore.IsFirstRun)
+        {
+            Tabs[0].Navigate(InternalPages.WelcomeUrl);
+            ActiveTab = Tabs[0];
+        }
+
+        // A hello once things have settled.
+        var greet = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        greet.Tick += (_, _) =>
+        {
+            greet.Stop();
+            Mascot.Greet(recovered: SessionStore.PreviousRunCrashed && _settings.RestoreSession);
+        };
+        greet.Start();
 
         // First start of a new version (not the very first start): show what changed, once.
         var version = UpdateService.CurrentVersion;
@@ -738,6 +841,9 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Opening the volume popup for a tab (from the palette or menus).</summary>
     public event EventHandler<TabViewModel>? VolumeEditRequested;
 
+    /// <summary>Taking a screenshot from the palette ("visible", "full" or "region").</summary>
+    public event EventHandler<string>? ScreenshotRequested;
+
     /// <summary>Opening the find bar from the palette.</summary>
     public event EventHandler? FindRequested;
 
@@ -838,6 +944,15 @@ public sealed class MainViewModel : ObservableObject
         if (tab?.HasPictureInPictureVideo == true)
             yield return Cmd("", "Videoyu resim içinde resim yap", "", () => _ = TogglePictureInPictureAsync(), "picture in picture pip video");
         yield return Cmd("", "Diğer sekmeleri uyut", "", SleepOtherTabs, "sleep suspend uyku");
+        if (tab is { Core: not null })
+        {
+            yield return Cmd("", "Ekran görüntüsü: görünen alan", "", () => ScreenshotRequested?.Invoke(this, "visible"), "screenshot ekran");
+            yield return Cmd("", "Ekran görüntüsü: tam sayfa", "", () => ScreenshotRequested?.Invoke(this, "full"), "screenshot ekran full");
+            yield return Cmd("", "Ekran görüntüsü: bölge seç", "", () => ScreenshotRequested?.Invoke(this, "region"), "screenshot ekran region");
+        }
+        if (tab?.IsReadable == true)
+            yield return Cmd("", "Okuma modu", "", () => _ = OpenReaderAsync(), "reader read okuma");
+        yield return Cmd("", "Karşılama turunu aç", "", () => OpenInternal(InternalPages.WelcomeUrl), "welcome tour karşılama");
         yield return Cmd("", "Sayfada bul", "Ctrl+F", () => FindRequested?.Invoke(this, EventArgs.Empty), "find search ara");
         yield return Cmd("", "Tam ekran", "F11", () => FullScreenRequested?.Invoke(this, EventArgs.Empty), "fullscreen");
         if (CanBookmark)
@@ -854,6 +969,30 @@ public sealed class MainViewModel : ObservableObject
         yield return Cmd("", "Yenilikler", "", () => OpenInternal(InternalPages.WhatsNewUrl), "what's new changelog");
     }
 
+    // ---------------------------------------------------------------- reader mode
+
+    private readonly Dictionary<TabViewModel, JsonElement> _readerArticles = [];
+
+    public ICommand OpenReaderCommand => new RelayCommand(() => _ = OpenReaderAsync());
+
+    /// <summary>Reads the article out of the page, then shows it on the reader page in the same tab (Back returns).</summary>
+    public async Task OpenReaderAsync()
+    {
+        if (ActiveTab is not { } tab)
+            return;
+
+        var json = await tab.ExtractArticleAsync();
+        if (json is null)
+        {
+            Mascot.Say(L.T("Bu sayfada okunacak bir yazı bulamadım"));
+            return;
+        }
+
+        using (var document = JsonDocument.Parse(json))
+            _readerArticles[tab] = document.RootElement.Clone();
+        tab.Navigate(InternalPages.ReaderUrl);
+    }
+
     // ---------------------------------------------------------------- picture-in-picture
 
     private readonly DispatcherTimer _pipTimer = new() { Interval = TimeSpan.FromSeconds(3) };
@@ -867,6 +1006,8 @@ public sealed class MainViewModel : ObservableObject
 
         var result = await tab.TogglePictureInPictureAsync();
         Log.Info($"Resim içinde resim: {result}");
+        if (result == "opened")
+            Mascot.Say(L.T("Keyifli seyirler 🍿"), happy: true);
         if (result?.StartsWith("error", StringComparison.Ordinal) == true || result == "unsupported")
             Mascot.OnPageLoaded(success: false);
         await tab.RefreshPictureInPictureAsync();
@@ -1117,6 +1258,7 @@ public sealed class MainViewModel : ObservableObject
             ActiveTab = partner ?? Tabs[index + 1 < Tabs.Count ? index + 1 : index - 1];
 
         DenyPermissionsOf(tab);
+        _readerArticles.Remove(tab);
         Tabs.Remove(tab);
         HostedTabs.Remove(tab);
         Detach(tab);
@@ -1288,7 +1430,16 @@ public sealed class MainViewModel : ObservableObject
         SoundService.Play(UiSound.TabOpen);
     }
 
-    private void OnCoreCreated(object? sender, CoreWebView2 core) => _downloads.Attach(core);
+    private void OnCoreCreated(object? sender, CoreWebView2 core)
+    {
+        _downloads.Attach(core);
+        // The first normal page brings the extensions' sidebar buttons.
+        if (!_extensionsLoaded && sender is TabViewModel { IsPrivate: false })
+        {
+            _extensionsLoaded = true;
+            _ = RefreshExtensionPanelsAsync(core.Profile);
+        }
+    }
 
     private void OnNavigationFinished(object? sender, bool success)
     {
@@ -1604,9 +1755,25 @@ public sealed class MainViewModel : ObservableObject
                 _converter.Handle(tab, converterMessage, message);
                 break;
 
+            // ----- extensions (settings page)
+            case { } extensionMessage when extensionMessage.StartsWith("ext:", StringComparison.Ordinal):
+                _extensions.Handle(tab, extensionMessage, message);
+                break;
+
             // ----- new tab page
             case "ready":
                 tab.PostToInternalPage(BuildNewTabConfig());
+                break;
+
+            case "reader:ready":
+                tab.PostToInternalPage(new { type = "article", article = _readerArticles.TryGetValue(tab, out var article) ? article : (JsonElement?)null });
+                break;
+
+            case "reader:back":
+                if (tab.CanGoBack)
+                    tab.GoBack();
+                else
+                    tab.Navigate(InternalPages.NewTabUrl);
                 break;
 
             case "tools:currentUrl":
@@ -1682,6 +1849,15 @@ public sealed class MainViewModel : ObservableObject
 
             case "pickWallpaper":
                 WallpaperPickRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "pickMascot":
+                if (PickMascotFile?.Invoke() is { } mascotFile && !_settingsController.TryImportMascot(mascotFile, out var mascotError))
+                    tab.PostToInternalPage(new { type = "mascotError", message = mascotError });
+                break;
+
+            case "removeMascot":
+                _settingsController.RemoveCustomMascot();
                 break;
 
             case "pickDownloadFolder":
@@ -1994,6 +2170,25 @@ public sealed class MainViewModel : ObservableObject
             case "downloadFolder":
                 _downloads.SetFolder(_settings.DownloadFolder);
                 break;
+            case "mascotTalks":
+                Mascot.TalksEnabled = _settings.MascotTalks;
+                if (_settings.MascotTalks)
+                    Mascot.Say(L.T("Merhaba! Artık konuşabiliyorum 👋"));
+                break;
+            case "mascotPeek":
+                Mascot.Peek = _settings.MascotPeek;
+                break;
+            case "mascotCustom":
+                Mascot.CustomImage = _settingsController.CustomMascotPath;
+                Mascot.Say(L.T("Yeni görünümüm nasıl?"), happy: true);
+                break;
+            case "soundPack":
+                SoundService.Pack = _settings.SoundPack;
+                SoundService.Play(UiSound.TabOpen);
+                break;
+            case { } newTabKey when newTabKey.StartsWith("newTab", StringComparison.Ordinal):
+                BroadcastToInternalPages(BuildNewTabConfig());
+                break;
             case "restoreSession":
                 SessionCookieStore.Enabled = _settings.RestoreSession;
                 // The tab list stays on disk as crash insurance; saved cookies go right away.
@@ -2005,7 +2200,7 @@ public sealed class MainViewModel : ObservableObject
 
         // Feedback: a toggle sound for switches, a sample click at the new volume for the slider.
         if (key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession" or "sidebarEnabled" or "performanceMode"
-            or "siteTintEnabled" or "pageFrameEnabled" or "sleepPinnedTabs")
+            or "siteTintEnabled" or "pageFrameEnabled" or "sleepPinnedTabs" or "newTabShowSearch" or "newTabShowShortcuts" or "newTabShowWidgets")
             SoundService.Play(UiSound.Toggle);
         else if (key == "soundVolume")
             SoundService.Play(UiSound.Click);
@@ -2036,6 +2231,16 @@ public sealed class MainViewModel : ObservableObject
             widgets = _widgets.Items,
             maxWidgets = WidgetStore.MaxWidgets,
             version = UpdateService.CurrentVersion,
+            look = new
+            {
+                effect = _settings.NewTabEffect,
+                dim = _settings.NewTabDim,
+                blur = _settings.NewTabBlur,
+                align = _settings.NewTabAlign,
+                showSearch = _settings.NewTabShowSearch,
+                showShortcuts = _settings.NewTabShowShortcuts,
+                showWidgets = _settings.NewTabShowWidgets,
+            },
         };
     }
 

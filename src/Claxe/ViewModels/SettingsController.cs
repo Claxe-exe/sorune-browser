@@ -48,6 +48,16 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "sleepAfterMinutes" => Set(NumberOrNull(value), v => v is 0 or 5 or 10 or 15 or 30 or 60, v => settings.SleepAfterMinutes = (int)v!.Value),
             "sleepPinnedTabs" => SetBool(value, v => settings.SleepPinnedTabs = v),
             "siteTintEnabled" => SetBool(value, v => settings.SiteTintEnabled = v),
+            "mascotTalks" => SetBool(value, v => settings.MascotTalks = v),
+            "mascotPeek" => Set(NumberOrNull(value), v => v is >= 0.2 and <= 0.9, v => settings.MascotPeek = v!.Value),
+            "soundPack" => Set(StringOrNull(value), v => SoundService.Packs.Contains(v), v => settings.SoundPack = v!),
+            "newTabEffect" => Set(StringOrNull(value), v => v is "theme" or "petals" or "sparks" or "bubbles" or "snow" or "none", v => settings.NewTabEffect = v!),
+            "newTabDim" => Set(NumberOrNull(value), v => v is null or (>= 0 and <= 0.9), v => settings.NewTabDim = v),
+            "newTabBlur" => Set(NumberOrNull(value), v => v is >= 0 and <= 30, v => settings.NewTabBlur = (int)v!.Value),
+            "newTabAlign" => Set(StringOrNull(value), v => v is "left" or "center", v => settings.NewTabAlign = v!),
+            "newTabShowSearch" => SetBool(value, v => settings.NewTabShowSearch = v),
+            "newTabShowShortcuts" => SetBool(value, v => settings.NewTabShowShortcuts = v),
+            "newTabShowWidgets" => SetBool(value, v => settings.NewTabShowWidgets = v),
             "pageFrameEnabled" => SetBool(value, v => settings.PageFrameEnabled = v),
             _ => false,
         };
@@ -98,6 +108,68 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             Log.Error($"Duvar kâğıdı kopyalanamadı: {sourcePath}", ex);
             error = L.T("Görsel kopyalanamadı.");
             return false;
+        }
+    }
+
+    /// <summary>Copies the user's mascot image into the profile (PNG with transparency works best).</summary>
+    public bool TryImportMascot(string sourcePath, out string? error)
+    {
+        error = null;
+        var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+        var info = new FileInfo(sourcePath);
+        if (extension is not (".png" or ".webp" or ".gif" or ".jpg" or ".jpeg") || !info.Exists || info.Length > 10 * 1024 * 1024)
+        {
+            error = L.T("PNG, WEBP, GIF ya da JPG seç (en fazla 10 MB). Arka planı şeffaf PNG en güzel durur.");
+            return false;
+        }
+
+        try
+        {
+            var folder = ThemeService.CustomWallpapersFolder;
+            Directory.CreateDirectory(folder);
+            var name = $"mascot-{DateTime.Now:yyyyMMdd-HHmmss}{extension}";
+            File.Copy(sourcePath, Path.Combine(folder, name));
+            DeleteMascots(except: name);
+            settings.MascotCustom = name;
+            Commit("mascotCustom");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error($"Maskot görseli kopyalanamadı: {sourcePath}", ex);
+            error = L.T("Görsel kopyalanamadı.");
+            return false;
+        }
+    }
+
+    public void RemoveCustomMascot()
+    {
+        settings.MascotCustom = null;
+        DeleteMascots(except: null);
+        Commit("mascotCustom");
+    }
+
+    /// <summary>Full path of the custom mascot image, or null.</summary>
+    public string? CustomMascotPath
+        => settings.MascotCustom is { } name && File.Exists(Path.Combine(ThemeService.CustomWallpapersFolder, name))
+            ? Path.Combine(ThemeService.CustomWallpapersFolder, name)
+            : null;
+
+    private static void DeleteMascots(string? except)
+    {
+        var folder = ThemeService.CustomWallpapersFolder;
+        if (!Directory.Exists(folder))
+            return;
+        foreach (var file in Directory.EnumerateFiles(folder, "mascot-*").Where(f => Path.GetFileName(f) != except))
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch (IOException ex)
+            {
+                Log.Info($"Eski maskot silinemedi: {ex.Message}");
+            }
         }
     }
 
@@ -152,6 +224,9 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             maxPanels = PanelStore.MaxPanels,
             activeLanguage = L.Language,
             downloadFolder = DownloadFolderInUse?.Invoke(),
+            mascotUrl = CustomMascotPath is null ? null : InternalPages.WallpapersOrigin + Uri.EscapeDataString(settings.MascotCustom!),
+            wallpaperPalette = ColorExtractor.Palette(ThemeService.WallpaperPath),
+            soundPacks = SoundService.Packs,
             defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
             update = new
             {
