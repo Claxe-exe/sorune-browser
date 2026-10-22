@@ -50,6 +50,8 @@
                    Stretch="UniformToFill"
                    IsHitTestVisible="False" />
             <Rectangle Grid.RowSpan="3" Fill="{DynamicResource ChromeTintBrush}" IsHitTestVisible="False" />
+            <!-- Tab strip fading toward the open site's colour (brush set in code) -->
+            <Rectangle x:Name="TitleTintRect" Grid.Row="0" IsHitTestVisible="False" />
 
             <!-- ============ Layer 1: mascot (its body is hidden behind the toolbar) ============ -->
             <controls:MascotView x:Name="Mascot"
@@ -752,6 +754,9 @@
                 <Border x:Name="SidebarHost" Grid.Column="0" Width="52"
                         Background="{DynamicResource GlassBrush}"
                         BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,1,0">
+                    <Grid>
+                    <!-- Follows the open site's colour (brush set in code) -->
+                    <Rectangle x:Name="SidebarTintRect" IsHitTestVisible="False" />
                     <DockPanel Margin="0,8">
                         <Button DockPanel.Dock="Bottom"
                                 Style="{StaticResource IconButtonStyle}"
@@ -877,6 +882,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </DockPanel>
+                    </Grid>
                 </Border>
 
                 <!-- Open web panel: header + every loaded panel's page (hidden ones stay alive) -->

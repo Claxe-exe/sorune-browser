@@ -606,5 +606,9 @@
   "Sayfa kenarlardan biraz içeride, çerçeveli bir kart olarak durur; etrafında duvar kâğıdı görünür. Tam ekranda çerçeve kalkar.": "The page sits slightly inset as a framed card with the wallpaper around it. The frame goes away in full screen.",
 
   "Araç çubuğu artık açık sitenin üst rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.": "The toolbar now fades into the colour at the top of the open site, so dark sites like YouTube no longer look pasted in. You can turn it off in Settings → Layout.",
-  "İstersen sayfa kenarlardan biraz içeride, ince çerçeveli bir kart olarak durur ve etrafında duvar kâğıdın görünür. Ayarlar → Düzen'den aç.": "If you like, the page can sit slightly inset as a framed card with your wallpaper around it. Turn it on in Settings → Layout."
+  "İstersen sayfa kenarlardan biraz içeride, ince çerçeveli bir kart olarak durur ve etrafında duvar kâğıdın görünür. Ayarlar → Düzen'den aç.": "If you like, the page can sit slightly inset as a framed card with your wallpaper around it. Turn it on in Settings → Layout.",
+
+  "Siteye uyan renkler": "Colours match the site",
+  "Sekme şeridi, araç çubuğu ve kenar çubuğu açık sitenin üst kısmının rengine yumuşakça geçer (ör. YouTube'da siyah). Sorune'nin kendi sayfalarında tema rengi kalır.": "The tab strip, toolbar and sidebar fade into the colour at the top of the open site (black on YouTube, for example). Sorune's own pages keep the theme colour.",
+  "Sekme şeridi, araç çubuğu ve kenar çubuğu artık açık sitenin rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.": "The tab strip, toolbar and sidebar now fade into the open site's colour, so dark sites like YouTube no longer look pasted in. You can turn it off in Settings → Layout."
 }

@@ -75,6 +75,8 @@ public partial class MainWindow : Window
         AddressBox.LostKeyboardFocus += (_, _) =>
             Dispatcher.BeginInvoke(() => _viewModel.ClearSuggestions(), DispatcherPriority.Input);
         SiteTintRect.Fill = new LinearGradientBrush(new GradientStopCollection { _tintTop, _tintBottom }, 90);
+        TitleTintRect.Fill = new LinearGradientBrush(new GradientStopCollection { _titleTop, _titleBottom }, 90);
+        SidebarTintRect.Fill = _sidebarTint;
         ApplyAppearance();
         UpdatePanelColumn();
 
@@ -916,33 +918,35 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------- site colour + page frame
 
+    private readonly GradientStop _titleTop = new(Colors.Transparent, 0);
+    private readonly GradientStop _titleBottom = new(Colors.Transparent, 1);
     private readonly GradientStop _tintTop = new(Colors.Transparent, 0);
     private readonly GradientStop _tintBottom = new(Colors.Transparent, 1);
+    private readonly SolidColorBrush _sidebarTint = new(Colors.Transparent);
 
     /// <summary>
-    /// The toolbar fades from the theme (top, next to the tabs) into the site's colour (bottom,
-    /// next to the page). Light sites get only a hint of it, so the light toolbar text stays readable.
+    /// The chrome around the page takes on the site's colour: the tab strip lightly (the wallpaper
+    /// still shows a little), the toolbar growing stronger towards the page, and the sidebar.
+    /// Light sites get only a hint of it, so the light interface text stays readable.
     /// </summary>
     private void ApplySiteTint()
     {
-        Color top, bottom;
-        if (_viewModel.ToolbarSiteColor is { } hex && ColorConverter.ConvertFromString(hex) is Color site)
+        var duration = TimeSpan.FromMilliseconds(Motion.Enabled ? 350 : 0);
+        void Animate(Animatable target, DependencyProperty property, Color current, Color? site, byte alpha)
         {
-            var luminance = (0.2126 * site.R + 0.7152 * site.G + 0.0722 * site.B) / 255;
-            var light = luminance > 0.55;
-            top = Color.FromArgb((byte)(light ? 20 : 90), site.R, site.G, site.B);
-            bottom = Color.FromArgb((byte)(light ? 80 : 240), site.R, site.G, site.B);
-        }
-        else
-        {
-            // Fade out in the current hue instead of through grey.
-            top = Color.FromArgb(0, _tintTop.Color.R, _tintTop.Color.G, _tintTop.Color.B);
-            bottom = Color.FromArgb(0, _tintBottom.Color.R, _tintBottom.Color.G, _tintBottom.Color.B);
+            // Without a site colour, fade out in the current hue instead of through grey.
+            var to = site is { } c ? Color.FromArgb(alpha, c.R, c.G, c.B) : Color.FromArgb(0, current.R, current.G, current.B);
+            target.BeginAnimation(property, new ColorAnimation(to, duration));
         }
 
-        var duration = TimeSpan.FromMilliseconds(Motion.Enabled ? 350 : 0);
-        _tintTop.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(top, duration));
-        _tintBottom.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(bottom, duration));
+        Color? site = _viewModel.ToolbarSiteColor is { } hex && ColorConverter.ConvertFromString(hex) is Color parsed ? parsed : null;
+        var light = site is { } s && (0.2126 * s.R + 0.7152 * s.G + 0.0722 * s.B) / 255 > 0.55;
+        //                                                              light  dark
+        Animate(_titleTop, GradientStop.ColorProperty, _titleTop.Color, site, (byte)(light ? 15 : 150));
+        Animate(_titleBottom, GradientStop.ColorProperty, _titleBottom.Color, site, (byte)(light ? 30 : 190));
+        Animate(_tintTop, GradientStop.ColorProperty, _tintTop.Color, site, (byte)(light ? 35 : 195));
+        Animate(_tintBottom, GradientStop.ColorProperty, _tintBottom.Color, site, (byte)(light ? 80 : 240));
+        Animate(_sidebarTint, SolidColorBrush.ColorProperty, _sidebarTint.Color, site, (byte)(light ? 45 : 225));
     }
 
     /// <summary>Insets the page as a framed card (wallpaper around it); never in fullscreen.</summary>

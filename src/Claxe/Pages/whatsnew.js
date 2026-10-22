@@ -17,8 +17,8 @@ function send(message) {
 const FEATURES = [
     {
         icon: "🎨",
-        title: "Siteye uyan araç çubuğu",
-        text: "Araç çubuğu artık açık sitenin üst rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.",
+        title: "Siteye uyan renkler",
+        text: "Sekme şeridi, araç çubuğu ve kenar çubuğu artık açık sitenin rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.",
         action: "Ayarlara göz at",
         open: "settings",
     },

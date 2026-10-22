@@ -35,7 +35,7 @@
 | 📺 **Resim içinde resim** | Desteklenen videoları küçük, her zaman üstte duran pencereye taşır. |
 | 🧰 **Mini araçlar** | JSON, renk seçici, QR kod, kronometre ve zamanlayıcı, metin sayacı, URL kodlama; hepsi çevrimdışı. |
 | 💤 **Uyku modu ve indirmeler** | Ayarlanabilir uyku süresi, sabitlenmiş sekme muafiyeti; indirmelerde hız, kalan süre ve klasör seçimi. |
-| 🎨 **Siteye uyan araç çubuğu** (0.5.1) | Araç çubuğu açık sitenin üst rengine geçer; istersen sayfa çerçeveli bir kart olarak durur. |
+| 🎨 **Siteye uyan renkler** (0.5.1–0.5.2) | Sekme şeridi, araç çubuğu ve kenar çubuğu açık sitenin rengine geçer; istersen sayfa çerçeveli bir kart olarak durur. |
 | 🛟 **Çökme kurtarma** | Beklenmedik kapanıştan sonra sekmeleri geri yüklemeyi teklif eder. |
 
 <details>
@@ -100,7 +100,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.5.1
+powershell -File build/pack.ps1 -Version 0.5.2
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
