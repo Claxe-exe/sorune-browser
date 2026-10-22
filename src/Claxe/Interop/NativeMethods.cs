@@ -5,6 +5,11 @@ namespace Claxe.Interop;
 internal static partial class NativeMethods
 {
     public const int WM_NCHITTEST = 0x0084;
+    public const int WM_CLOSE = 0x0010;
+    public const int WM_SYSCOMMAND = 0x0112;
+    public const int SC_CLOSE = 0xF060;
+    public const int WM_QUERYENDSESSION = 0x0011;
+    public const int WM_ENDSESSION = 0x0016;
     public const int WM_NCMOUSEMOVE = 0x00A0;
     public const int WM_NCLBUTTONDOWN = 0x00A1;
     public const int WM_NCLBUTTONUP = 0x00A2;

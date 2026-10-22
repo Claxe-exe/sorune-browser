@@ -17,6 +17,14 @@ function send(message) {
 
 const RELEASES = [
     {
+        version: "0.8.2",
+        date: "2026-10-22",
+        name: ["Google ile giriş düzeltmesi", "Google sign-in fix"],
+        items: [
+            ["**Google ile giriş** (ör. Kling AI) \"Devam et\"e basınca tarayıcıyı kapatıyordu: giriş penceresi kapanırken WebView2 bütün pencereye kapan diyordu. Artık yalnızca o sekme kapanıyor.", "**Google sign-in** (e.g. Kling AI) closed the browser after \"Continue\": as the sign-in window closed, WebView2 told the whole window to close. Now only that tab closes."],
+        ],
+    },
+    {
         version: "0.8.1",
         date: "2026-10-22",
         name: ["Düzeltme", "Fix"],

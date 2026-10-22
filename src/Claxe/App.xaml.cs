@@ -91,7 +91,7 @@ public partial class App : Application
     {
         _restartRequested = true;
         Log.Info("Yeniden başlatılıyor.");
-        MainWindow?.Close();
+        (MainWindow as MainWindow)?.CloseWindow();
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -46,7 +46,7 @@ public partial class MainWindow : Window
 
         viewModel.FocusAddressBarRequested += (_, _) => FocusAddressBar();
         viewModel.FocusContentRequested += (_, _) => FocusActiveWebView();
-        viewModel.CloseWindowRequested += (_, _) => Close();
+        viewModel.CloseWindowRequested += (_, _) => CloseWindow();
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         viewModel.Mascot.PropertyChanged += (_, e) =>
         {
@@ -1005,7 +1005,7 @@ public partial class MainWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         Log.Info("Kapat düğmesine basıldı.");
-        Close();
+        CloseWindow();
     }
 
     private void ToggleMaximize()
@@ -1034,10 +1034,39 @@ public partial class MainWindow : Window
         return new Thickness(dips);
     }
 
+    /// <summary>Set when the user or Sorune itself closes the window; any other WM_CLOSE is ignored.</summary>
+    private bool _closeAllowed;
+
+    /// <summary>Closes the window on purpose (Window.Close() goes through WM_CLOSE, see WndProc).</summary>
+    public void CloseWindow()
+    {
+        _closeAllowed = true;
+        Close();
+    }
+
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
         switch (msg)
         {
+            // X, Alt+F4 and the taskbar's "Close window" all arrive as SC_CLOSE first.
+            case NativeMethods.WM_SYSCOMMAND when ((int)wParam & 0xFFF0) == NativeMethods.SC_CLOSE:
+                Log.Info("Kapatma isteği (Alt+F4 / görev çubuğu).");
+                _closeAllowed = true;
+                break;
+
+            // Windows is signing out or shutting down: WPF closes the window with a bare WM_CLOSE.
+            case NativeMethods.WM_QUERYENDSESSION:
+            case NativeMethods.WM_ENDSESSION:
+                _closeAllowed = true;
+                break;
+
+            // A bare WM_CLOSE comes from elsewhere: WebView2 sends one to the whole window when a
+            // page (e.g. Google's sign-in popup) calls window.close(). That closes only the tab.
+            case NativeMethods.WM_CLOSE when !_closeAllowed:
+                Log.Info("Dışarıdan gelen kapatma isteği yok sayıldı.");
+                handled = true;
+                return 0;
+
             case NativeMethods.WM_NCHITTEST:
                 if (IsOverMaximizeButton(lParam))
                 {
@@ -1243,7 +1272,7 @@ public partial class MainWindow : Window
         finally
         {
             _readyToClose = true;
-            Close();
+            CloseWindow();
         }
     }
 
