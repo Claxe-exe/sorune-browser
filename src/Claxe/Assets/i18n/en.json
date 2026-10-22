@@ -864,5 +864,8 @@
   "Sitelere koyu ya da açık temalarını iste. Koyu teması olmayan siteler için deneysel \"Tüm siteleri karart\" seçeneği de var.": "Ask sites for their dark or light theme. For sites without one there's also the experimental \"Darken all sites\" option.",
   "Ayarı aç": "Open the setting",
   "Mini araçlar panelinde yeni bir düğme: Sorune'nin ilk sürümünden bugüne her sürümde gelenler tek sayfada.": "A new button in the mini tools panel: everything each release brought, from Sorune's first version to today, on one page.",
-  "Yama notlarını aç": "Open the patch notes"
+  "Yama notlarını aç": "Open the patch notes",
+
+  "Arama önerileri": "Search suggestions",
+  "Adres çubuğuna yazarken Chrome'daki gibi arama motorunun önerileri çıkar. Bunun için yazdıkların seçili arama motoruna gönderilir; gizli sekmelerde hiç gönderilmez.": "While you type in the address bar, the search engine's suggestions appear like in Chrome. For this, what you type is sent to the chosen search engine; never in InPrivate tabs."
 }

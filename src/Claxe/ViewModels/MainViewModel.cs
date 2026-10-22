@@ -685,8 +685,12 @@ public sealed class MainViewModel : ObservableObject
     public bool HasSuggestions => Suggestions.Count > 0;
 
     /// <summary>Local suggestions only (bookmarks + history): nothing typed is sent anywhere.</summary>
+    private CancellationTokenSource? _suggestCancel;
+
     public void UpdateSuggestions(string text)
     {
+        _suggestCancel?.Cancel();
+        _suggestCancel = null;
         Suggestions.Clear();
         _selectedSuggestion = -1;
         text = text.Trim();
@@ -694,6 +698,11 @@ public sealed class MainViewModel : ObservableObject
         {
             var resolved = AddressResolver.Resolve(text, SearchEngine);
             var isSearch = resolved.StartsWith(SearchEngine.BuildUrl(""), StringComparison.Ordinal);
+            if (_settings.SearchSuggestions && ActiveTab?.IsPrivate != true)
+            {
+                _suggestCancel = new CancellationTokenSource();
+                _ = AddSearchSuggestionsAsync(text, _suggestCancel.Token);
+            }
             Suggestions.Add(isSearch
                 ? new SuggestionViewModel(text, L.T("{0} ile ara", SearchEngine.Name), resolved, "")
                 : new SuggestionViewModel(resolved, L.T("Siteye git"), resolved, ""));
@@ -723,6 +732,39 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public void ClearSuggestions() => UpdateSuggestions("");
+
+    /// <summary>
+    /// Like Chrome: the search engine's suggestions go right under the first row, ahead of history.
+    /// Waits a moment so fast typing sends one request, not one per key.
+    /// </summary>
+    private async Task AddSearchSuggestionsAsync(string text, CancellationToken cancel)
+    {
+        try
+        {
+            await Task.Delay(120, cancel);
+            var engine = SearchEngine;
+            var results = await SearchSuggestions.FetchAsync(engine, text, cancel);
+            // Still the same text, and the user hasn't started picking rows with the arrows.
+            if (cancel.IsCancellationRequested || results.Count == 0 || Suggestions.Count == 0 || _selectedSuggestion > 0)
+                return;
+
+            var existing = new HashSet<string>(Suggestions.Select(s => s.Url));
+            var at = 1;
+            foreach (var result in results.Where(r => !string.Equals(r, text, StringComparison.OrdinalIgnoreCase)))
+            {
+                var url = engine.BuildUrl(result);
+                if (existing.Add(url))
+                    Suggestions.Insert(at++, new SuggestionViewModel(result, L.T("{0} ile ara", engine.Name), url, "\uE721"));
+            }
+            while (Suggestions.Count > 10)
+                Suggestions.RemoveAt(Suggestions.Count - 1);
+            OnPropertyChanged(nameof(HasSuggestions));
+        }
+        catch (TaskCanceledException)
+        {
+            // Typed on: a newer request takes over.
+        }
+    }
 
     /// <summary>Arrow keys in the address bar; wraps through "nothing selected".</summary>
     public void MoveSuggestion(int delta)

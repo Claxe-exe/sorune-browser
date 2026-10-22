@@ -107,7 +107,7 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
   açma, sekme bazlı ses düzeyi ve sessize alma, gizli
   (InPrivate) sekmeler, ayarlanabilir uyku modu, oturum geri yükleme ve çökme kurtarma
 - **Komut paleti (Ctrl+K)** ve resim içinde resim
-- **Gezinme:** yerel adres önerileri, sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri, özel hata sayfası
+- **Gezinme:** arama motoru önerileri (Chrome gibi; kapatılabilir), geçmiş ve yer imi önerileri, sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri, özel hata sayfası
 - **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü, mini araçlar
   ve eklentiler
 - **Kişiselleştirme:** tema, duvar kâğıdı, duvar kâğıdından vurgu rengi, cam, köşeler, yoğunluk, kendi maskotun, ses
@@ -221,7 +221,8 @@ kaldırmak verileri silmez).
 | `settings.json`, `bookmarks.json`, `downloads.json`, `permissions.json`, `panels.json`, `shortcuts.json`, `user-themes.json` | Ayarlar, listeler ve kayıtlı temalar | JSON |
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
-Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
+Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
+Arama'dan kapatılabilir. Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
 dosyaları bilgisayarda çevirir; hiçbir dosya bir sunucuya yüklenmez.
 
 **Yedek dosyaları** (`.sorune`) bir ZIP'tir: şifreli dosyalar başka bir Windows hesabında açılabilsin diye yedeğe

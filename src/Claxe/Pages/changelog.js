@@ -17,6 +17,14 @@ function send(message) {
 
 const RELEASES = [
     {
+        version: "0.8.3",
+        date: "2026-10-22",
+        name: ["Arama önerileri", "Search suggestions"],
+        items: [
+            ["**Arama önerileri:** adres çubuğuna yazarken Chrome'daki gibi arama motorunun (Google, DuckDuckGo, Bing, Brave) önerileri çıkıyor. Ayarlar › Arama'dan kapatılabilir; gizli sekmelerde hiç kullanılmaz.", "**Search suggestions:** the search engine's suggestions (Google, DuckDuckGo, Bing, Brave) appear while you type in the address bar, like in Chrome. Can be turned off in Settings › Search; never used in InPrivate tabs."],
+        ],
+    },
+    {
         version: "0.8.2",
         date: "2026-10-22",
         name: ["Google ile giriş düzeltmesi", "Google sign-in fix"],

@@ -35,6 +35,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "chromeOpacity" => Set(NumberOrNull(value), v => v is null or (>= 0.4 and <= 0.97), v => settings.ChromeOpacity = v),
             "cornerStyle" => Set(StringOrNull(value), v => CornerStyles.Contains(v), v => settings.CornerStyle = v!),
             "density" => Set(StringOrNull(value), v => Densities.Contains(v), v => settings.Density = v!),
+            "searchSuggestions" => SetBool(value, v => settings.SearchSuggestions = v),
             "searchEngine" => Set(StringOrNull(value), v => SearchEngines.All.Any(e => e.Id == v), v => settings.SearchEngine = v!),
             "soundVolume" => Set(NumberOrNull(value), v => v is >= 0 and <= 1, v => settings.SoundVolume = v!.Value),
             "animationsEnabled" => SetBool(value, v => settings.AnimationsEnabled = v),
