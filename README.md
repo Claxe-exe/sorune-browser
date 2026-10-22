@@ -11,6 +11,7 @@
 [![İndirme](https://img.shields.io/github/downloads/Claxe-exe/sorune-browser/total?style=for-the-badge&color=dd7fd0&label=indirme)](https://github.com/Claxe-exe/sorune-browser/releases)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-5b9dff?style=for-the-badge&logo=windows11&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10-512bd4?style=for-the-badge&logo=dotnet&logoColor=white)
+[![Lisans](https://img.shields.io/badge/lisans-MIT-4ade80?style=for-the-badge)](LICENSE)
 ![WebView2](https://img.shields.io/badge/WebView2-Chromium-0f9d58?style=for-the-badge&logo=microsoftedge&logoColor=white)
 
 <a href="https://github.com/Claxe-exe/sorune-browser/releases/latest/download/SoruneBrowser-win-Setup.exe">
@@ -175,6 +176,12 @@ gösterebilir.
 
 ## 📄 Lisans
 
-© 2026 Claxe. Tüm hakları saklıdır. Bu depo yalnızca incelenmek içindir; kod ve görseller izin alınmadan
-kopyalanamaz, dağıtılamaz veya başka projelerde kullanılamaz. Kullanılan açık kaynak paketler (WebView2 SDK, Velopack,
-Microsoft.Data.Sqlite, PdfPig, Open XML SDK) kendi lisanslarına tabidir.
+Sorune'nin kaynak kodu [MIT lisansı](LICENSE) ile açıktır: kullanabilir, değiştirebilir, dağıtabilir, kendi
+projelerinde kullanabilirsin; yeter ki telif ve lisans bildirimini koru. © 2026 Claxe.
+
+**İstisna:** tema duvar kâğıtları, maskot, uygulama simgesi ve ekran görüntülerindeki anime görselleri bu lisansa
+dahil değildir; hakları sahiplerine aittir. Ayrıntılar ve kullanılan açık kaynak paketlerin lisansları için
+[NOTICE.md](NOTICE.md).
+
+<sub>**EN:** Sorune's source code is licensed under [MIT](LICENSE). The anime artwork (theme wallpapers, mascot, app
+icon, screenshots) is excluded and belongs to its respective owners; see [NOTICE.md](NOTICE.md).</sub>
