@@ -1606,6 +1606,12 @@ public sealed class MainViewModel : ObservableObject
                     case "converter" when !ConverterPanel.IsOpen:
                         TogglePanel(ConverterPanel);
                         break;
+                    case "tools" when !ToolsPanel.IsOpen:
+                        TogglePanel(ToolsPanel);
+                        break;
+                    case "palette":
+                        OpenPalette();
+                        break;
                     case "newtab":
                         NewTab();
                         break;

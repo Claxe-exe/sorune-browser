@@ -583,5 +583,20 @@
   "Kodlandı": "Encoded",
   "Çözüldü": "Decoded",
   "Geçersiz % dizisi var; çözülemedi.": "Contains an invalid % sequence; couldn't decode.",
-  "Açık bir web sayfası yok": "No web page is open"
+  "Açık bir web sayfası yok": "No web page is open",
+
+  "Komut paleti": "Command palette",
+  "Ctrl+K'ye bas ve yaz: komutlar, açık sekmeler, yer imleri ve geçmiş tek kutuda. Ok tuşlarıyla seç, Enter ile çalıştır.": "Press Ctrl+K and type: commands, open tabs, bookmarks and history in one box. Pick with the arrow keys, run with Enter.",
+  "Paleti aç": "Open the palette",
+  "İki sayfayı yan yana kullan: araç çubuğundaki düğmeye bas ya da bir sekmeye sağ tıklayıp \"Sağda yan yana aç\"ı seç. Ortadaki çizgiyi sürükleyerek boyutlandır; tıkladığın panel adres çubuğunu yönetir.": "Use two pages side by side: press the toolbar button or right-click a tab and choose \"Open side by side (right)\". Drag the line in the middle to resize; the pane you click drives the address bar.",
+  "Sekme bazlı ses": "Per-tab volume",
+  "Sekmedeki hoparlöre tıkla ve sesini diğerlerinden bağımsız ayarla (sağ tık: sessize al). Ses düzeyi oturumla birlikte kaydedilir.": "Click the speaker on a tab and set its volume independently of the others (right-click: mute). The volume is saved with your session.",
+  "Resim içinde resim": "Picture-in-picture",
+  "Sayfada uygun bir video varsa araç çubuğunda düğme belirir: video küçük, her zaman üstte duran bir pencereye geçer.": "When the page has a suitable video, a toolbar button appears: the video moves to a small window that stays on top.",
+  "Kenar çubuğunda yeni panel: JSON biçimlendirme, renk seçici, QR kod, kronometre ve zamanlayıcı, metin sayacı, URL kodlama. Hepsi çevrimdışı.": "A new sidebar panel: JSON formatting, colour picker, QR codes, stopwatch and timer, text counter, URL encoding. All offline.",
+  "Araçları aç": "Open the tools",
+  "Uyku modu ve indirmeler": "Tab sleeping and downloads",
+  "Sekmelerin ne zaman uyuyacağını sen seç; sabitlenmiş sekmeleri muaf tut. İndirmelerde hız ve kalan süre görünür, indirme klasörünü ayarlardan değiştirebilirsin.": "Choose when tabs go to sleep and keep pinned tabs awake. Downloads show their speed and time left, and you can change the download folder in settings.",
+  "Çökme kurtarma": "Crash recovery",
+  "Sorune beklenmedik şekilde kapanırsa bir sonraki açılışta sekmelerini geri yüklemeyi teklif eder; \"Önceki oturuma devam et\" kapalı olsa bile.": "If Sorune closes unexpectedly, it offers to restore your tabs the next time, even with \"Continue previous session\" off."
 }

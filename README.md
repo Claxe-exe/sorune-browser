@@ -25,15 +25,25 @@
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
 
-## ✨ 0.4.0'da yeni
+## ✨ 0.5.0'da yeni
 
 | | |
 |---|---|
-| 🔄 **Dosya dönüştürücü** | Kenar çubuğunun altında: resim ↔ resim, resimler → PDF, PDF → Word, metin/Markdown → PDF, sayfayı PDF olarak kaydetme. Word, PowerPoint ve Excel için LibreOffice'i panelden tek tıkla kurar. Dosyalar bilgisayardan çıkmaz. |
-| 🗂️ **Sekme grupları** | Renkli etiketler, tıklayınca daralan gruplar, ad ve renk düzenleme; oturumla kaydedilir. |
-| 🧩 **Yeni sekme widget'ları** | Hava durumu, yapılacaklar, notlar (şifreli), geri sayım, odak zamanlayıcı; selamlamada adın. |
-| ⬆️ **Tek tıkla güncelleme** | Yeni sürüm inince araç çubuğunda *Güncelle* düğmesi; oturum kaydedilip yeniden açılır, ardından "Yenilikler" sayfası. |
-| 🎨 **Yenilenen sayfalar** | Ayarlar ve kitaplık simgeli, temaya uyumlu yeni görünümde. |
+| ⌨️ **Komut paleti** | Ctrl+K: komutlar, açık sekmeler, yer imleri ve geçmiş tek kutuda; klavyeyle seç, Enter ile çalıştır. |
+| 🪟 **Bölünmüş ekran** | İki sayfa yan yana, sürüklenebilir ayırıcı; tıkladığın panel adres çubuğunu ve geri/ileri tuşlarını yönetir. |
+| 🔊 **Sekme bazlı ses** | Her sekmenin kendi ses düzeyi (0–100), diğerlerini etkilemez; oturumla kaydedilir. |
+| 📺 **Resim içinde resim** | Desteklenen videoları küçük, her zaman üstte duran pencereye taşır. |
+| 🧰 **Mini araçlar** | JSON, renk seçici, QR kod, kronometre ve zamanlayıcı, metin sayacı, URL kodlama; hepsi çevrimdışı. |
+| 💤 **Uyku modu ve indirmeler** | Ayarlanabilir uyku süresi, sabitlenmiş sekme muafiyeti; indirmelerde hız, kalan süre ve klasör seçimi. |
+| 🛟 **Çökme kurtarma** | Beklenmedik kapanıştan sonra sekmeleri geri yüklemeyi teklif eder. |
+
+<details>
+<summary>0.4.0</summary>
+
+Dosya dönüştürücü (LibreOffice desteğiyle), sekme grupları, yeni sekme widget'ları (hava durumu, yapılacaklar, notlar,
+geri sayım, odak zamanlayıcı), tek tıkla güncelleme, yenilenen ayarlar ve kitaplık sayfaları.
+
+</details>
 
 ## 🎨 Temalar
 
@@ -56,10 +66,11 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
 - **Görünüm:** cam efektli sekme ve araç çubuğu, kavisli neon aktif sekme, araç çubuğunun arkasından bakan maskot
   (sayfa yüklenince sevinir, boşta kalınca uyur; kapatılabilir)
 - **Yeni sekme:** saat ve selamlama, arama, kısayollar, widget'lar, temaya göre efektler
-- **Sekmeler:** gruplar, sürükle-sırala, sabitleme, ses göstergesi ve sessize alma, gizli (InPrivate) sekmeler,
-  arka plan sekmelerini uyutma, oturum geri yükleme
+- **Sekmeler:** gruplar, bölünmüş ekran, sürükle-sırala, sabitleme, sekme bazlı ses düzeyi ve sessize alma, gizli
+  (InPrivate) sekmeler, ayarlanabilir uyku modu, oturum geri yükleme ve çökme kurtarma
+- **Komut paleti (Ctrl+K)** ve resim içinde resim
 - **Gezinme:** yerel adres önerileri, sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri, özel hata sayfası
-- **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü
+- **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü ve mini araçlar
 - **Kitaplık:** geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
 - **Gizlilik:** geçmiş, oturum çerezleri ve widget notları Windows hesabına bağlı şifrelenir (DPAPI); site izinleri
   hatırlanır; tarama verileri zaman aralığıyla temizlenir; telemetri yok
@@ -88,7 +99,7 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.4.0
+powershell -File build/pack.ps1 -Version 0.5.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
@@ -113,6 +124,7 @@ Arayüz metinleri `src/Claxe/Assets/i18n/en.json` dosyasındadır (Türkçe meti
 | Alt+Sol / Alt+Sağ | Geri / ileri |
 | Ctrl+D | Yer imlerine ekle / çıkar |
 | Ctrl+H / Ctrl+J / Ctrl+Shift+O | Geçmiş / İndirmeler / Yer imleri |
+| Ctrl+K | Komut paleti |
 | Ctrl+, / Ctrl+Shift+Del | Ayarlar / Tarama verilerini temizle |
 | F11 | Tam ekran |
 
