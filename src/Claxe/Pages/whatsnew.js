@@ -16,56 +16,45 @@ function send(message) {
 // Newest release first; "open" asks the app to show the feature.
 const FEATURES = [
     {
-        icon: "🎨",
-        title: "Siteye uyan renkler",
-        text: "Sekme şeridi, araç çubuğu ve kenar çubuğu artık açık sitenin rengine yumuşakça geçiyor; YouTube gibi koyu sitelerde sayfa yapıştırılmış gibi durmuyor. Ayarlar → Düzen'den kapatabilirsin.",
-        action: "Ayarlara göz at",
-        open: "settings",
+        icon: "🧩",
+        title: "Eklentiler",
+        text: "uBlock Origin Lite ve Bitwarden tek tıkla kurulur; istersen kendi eklentini klasörden ya da ZIP/CRX'ten ekle. Açılır penceresi olan eklentiler kenar çubuğunda görünür.",
+        action: "Eklentileri aç",
+        open: "extensions",
     },
     {
-        icon: "🖼️",
-        title: "Çerçeveli sayfa",
-        text: "İstersen sayfa kenarlardan biraz içeride, ince çerçeveli bir kart olarak durur ve etrafında duvar kâğıdın görünür. Ayarlar → Düzen'den aç.",
-    },    {
+        icon: "🧸",
+        title: "Kendi maskotun ve konuşma balonları",
+        text: "Maskot artık konuşuyor: indirme bitince, ekran görüntüsü alınca, uzun süre oturunca ya da gece geç saatte. İstersen kendi karakterinin görselini yükleyip maskot yap.",
+        action: "Maskotu ayarla",
+        open: "mascot",
+    },
+    {
+        icon: "🌌",
+        title: "Yeni sekme senin",
+        text: "Efekti (kar dahil), karartmayı, bulanıklığı ve yerleşimi seç; arama, kısayollar ve widget'ları gizleyebilirsin. Vurgu rengini duvar kâğıdından da alabilirsin.",
+        action: "Yeni sekme ayarları",
+        open: "newtab-settings",
+    },
+    {
+        icon: "📸",
+        title: "Ekran görüntüsü",
+        text: "Araç çubuğundaki kamera: görünen alan, tam sayfa ya da sürükleyerek bölge. Resimler klasörüne kaydedilir ve panoya kopyalanır.",
+    },
+    {
+        icon: "📖",
+        title: "Okuma modu",
+        text: "Makale sayfalarında araç çubuğunda kitap simgesi çıkar: yazıyı sade, temaya uygun bir sütunda oku; yazı tipi, boyut ve renk senin.",
+    },
+    {
+        icon: "🔔",
+        title: "Ses paketleri",
+        text: "Arayüz sesleri için Klasik, Yumuşak, Retro ve Kristal paketleri.",
+    },
+    {
         icon: "⌨️",
-        title: "Komut paleti",
-        text: "Ctrl+K'ye bas ve yaz: komutlar, açık sekmeler, yer imleri ve geçmiş tek kutuda. Ok tuşlarıyla seç, Enter ile çalıştır.",
-        action: "Paleti aç",
-        open: "palette",
-    },
-    {
-        icon: "🪟",
-        title: "Bölünmüş ekran",
-        text: "İki sayfayı yan yana kullan: araç çubuğundaki düğmeye bas ya da bir sekmeye sağ tıklayıp \"Sağda yan yana aç\"ı seç. Ortadaki çizgiyi sürükleyerek boyutlandır; tıkladığın panel adres çubuğunu yönetir.",
-    },
-    {
-        icon: "🔊",
-        title: "Sekme bazlı ses",
-        text: "Sekmedeki hoparlöre tıkla ve sesini diğerlerinden bağımsız ayarla (sağ tık: sessize al). Ses düzeyi oturumla birlikte kaydedilir.",
-    },
-    {
-        icon: "📺",
-        title: "Resim içinde resim",
-        text: "Sayfada uygun bir video varsa araç çubuğunda düğme belirir: video küçük, her zaman üstte duran bir pencereye geçer.",
-    },
-    {
-        icon: "🧰",
-        title: "Mini araçlar",
-        text: "Kenar çubuğunda yeni panel: JSON biçimlendirme, renk seçici, QR kod, kronometre ve zamanlayıcı, metin sayacı, URL kodlama. Hepsi çevrimdışı.",
-        action: "Araçları aç",
-        open: "tools",
-    },
-    {
-        icon: "💤",
-        title: "Uyku modu ve indirmeler",
-        text: "Sekmelerin ne zaman uyuyacağını sen seç; sabitlenmiş sekmeleri muaf tut. İndirmelerde hız ve kalan süre görünür, indirme klasörünü ayarlardan değiştirebilirsin.",
-        action: "Ayarlara göz at",
-        open: "settings",
-    },
-    {
-        icon: "🛟",
-        title: "Çökme kurtarma",
-        text: "Sorune beklenmedik şekilde kapanırsa bir sonraki açılışta sekmelerini geri yüklemeyi teklif eder; \"Önceki oturuma devam et\" kapalı olsa bile.",
+        title: "Küçük iyileştirmeler",
+        text: "Ctrl+K web sitelerinin içinde artık siteye ait (her yerde Ctrl+Shift+K paleti açar); resim içinde resim düğmesinin simgesi yenilendi.",
     },
 ];
 

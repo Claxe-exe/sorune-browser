@@ -185,7 +185,7 @@ public static class ExtensionService
     }
 
     /// <summary>Unzips a .zip, or the zip inside a .crx (CRX2/CRX3 header skipped). .NET refuses entries escaping the folder.</summary>
-    private static void Extract(string file, string target)
+    internal static void Extract(string file, string target)
     {
         Directory.CreateDirectory(target);
         var bytes = File.ReadAllBytes(file);

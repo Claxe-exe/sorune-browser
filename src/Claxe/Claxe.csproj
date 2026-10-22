@@ -11,7 +11,7 @@
     <Product>Sorune</Product>
     <Company>Claxe</Company>
     <Authors>Claxe</Authors>
-    <Version>0.5.2</Version>
+    <Version>0.6.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\claxe.ico</ApplicationIcon>
     <!-- Program.Main (Velopack hooks first) instead of the WPF-generated entry point. -->
@@ -26,6 +26,10 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sorune.Tests" />
   </ItemGroup>
 
   <ItemGroup>

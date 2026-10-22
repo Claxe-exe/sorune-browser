@@ -208,6 +208,7 @@ function startParticles(kind, colors) {
     const canvas = $("particles");
     const ctx = canvas.getContext("2d");
     const rising = kind === "sparks" || kind === "bubbles";
+    const snow = kind === "snow";
     let width = 0;
     let height = 0;
     let items = [];
@@ -220,8 +221,8 @@ function startParticles(kind, colors) {
         canvas.width = Math.round(width * ratio);
         canvas.height = Math.round(height * ratio);
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        const density = kind === "bubbles" ? 110 : 70;
-        items = Array.from({ length: Math.min(26, Math.round(width / density)) }, () => spawn(true));
+        const density = kind === "bubbles" ? 110 : snow ? 30 : 70;
+        items = Array.from({ length: Math.min(snow ? 60 : 26, Math.round(width / density)) }, () => spawn(true));
     }
 
     function spawn(anywhere) {
@@ -233,7 +234,14 @@ function startParticles(kind, colors) {
             color: colors[Math.floor(Math.random() * colors.length)],
             alpha: 0.3 + Math.random() * 0.45,
         };
-        if (rising) {
+        if (snow) {
+            p.size = 1.2 + Math.random() * 2.6;
+            p.color = "#ffffff";
+            p.x = Math.random() * width;
+            p.y = anywhere ? Math.random() * height : -10;
+            p.vx = (Math.random() - 0.5) * 0.15;
+            p.vy = 0.25 + Math.random() * 0.6;
+        } else if (rising) {
             p.x = Math.random() * width;
             p.y = anywhere ? Math.random() * height : height + 20;
             p.vx = (Math.random() - 0.5) * 0.2;
@@ -254,14 +262,20 @@ function startParticles(kind, colors) {
             p.x += p.vx + Math.sin(p.sway) * (rising ? 0.25 : 0.35);
             p.y += p.vy;
             p.angle += p.spin;
-            const gone = rising ? p.y < -30 : (p.y > height + 20 || p.x < -30);
+            const gone = rising ? p.y < -30 : (p.y > height + 20 || p.x < -30 || p.x > width + 40);
             if (gone) Object.assign(p, spawn(false));
 
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.globalAlpha = p.alpha;
             ctx.beginPath();
-            if (kind === "sparks") {
+            if (snow) {
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = "rgba(255,255,255,0.8)";
+                ctx.shadowBlur = 6;
+                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (kind === "sparks") {
                 // Fades out as it rises; shadowBlur gives the ember glow.
                 ctx.globalAlpha = p.alpha * Math.max(0, Math.min(1, p.y / (height * 0.6)));
                 ctx.shadowColor = p.color;
@@ -313,7 +327,17 @@ function hexToRgb(hex) {
 
 function applyConfig(config) {
     const theme = config.theme || {};
+    const look = config.look || {};
     const root = document.documentElement.style;
+
+    // The user's own new tab look (settings → New tab).
+    document.body.classList.toggle("align-center", look.align === "center");
+    document.body.classList.toggle("hide-search", look.showSearch === false);
+    document.body.classList.toggle("hide-shortcuts", look.showShortcuts === false);
+    document.body.classList.toggle("hide-widgets", look.showWidgets === false);
+    document.body.classList.toggle("custom-dim", typeof look.dim === "number");
+    if (typeof look.dim === "number") root.setProperty("--dim", String(look.dim));
+    root.setProperty("--blur", `${Math.max(0, Math.min(30, look.blur || 0))}px`);
     if (theme.accent) root.setProperty("--accent", theme.accent);
     if (theme.accentSecondary) root.setProperty("--accent2", theme.accentSecondary);
     const overlay = hexToRgb(theme.overlay);
@@ -345,8 +369,9 @@ function applyConfig(config) {
         stopParticles();
         stopParticles = null;
     }
-    if (state.animations && theme.particles && theme.particles !== "none") {
-        stopParticles = startParticles(theme.particles, [theme.accent || "#b583ff", theme.accentSecondary || "#dd7fd0"]);
+    const effect = look.effect && look.effect !== "theme" ? look.effect : theme.particles;
+    if (state.animations && effect && effect !== "none") {
+        stopParticles = startParticles(effect, [theme.accent || "#b583ff", theme.accentSecondary || "#dd7fd0"]);
     }
 }
 

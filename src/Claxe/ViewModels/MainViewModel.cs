@@ -1802,6 +1802,18 @@ public sealed class MainViewModel : ObservableObject
                     case "settings":
                         OpenSettings();
                         break;
+                    case "import":
+                        OpenSettings("ice-aktar");
+                        break;
+                    case "extensions":
+                        OpenSettings("eklentiler");
+                        break;
+                    case "mascot":
+                        OpenSettings("maskot");
+                        break;
+                    case "newtab-settings":
+                        OpenSettings("yeni-sekme");
+                        break;
                     case "close":
                         // Becomes a new tab rather than closing (it may be the only tab).
                         tab.Navigate(InternalPages.NewTabUrl);

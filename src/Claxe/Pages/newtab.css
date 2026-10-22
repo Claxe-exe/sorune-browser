@@ -657,3 +657,26 @@ body.editing .customize { background: linear-gradient(135deg, var(--accent), var
     .widgets { margin-left: auto; margin-right: auto; text-align: left; }
     .hero { align-self: center; }
 }
+/* ---------- 0.6: user's new tab look ---------- */
+
+.wall { filter: blur(var(--blur, 0px)); inset: calc(var(--blur, 0px) * -2); }
+body.custom-dim .shade { background: rgba(var(--overlay), var(--dim, 0.45)); }
+
+body.hide-search .search,
+body.hide-shortcuts .shortcuts,
+body.hide-widgets .widgets,
+body.hide-widgets .customize { display: none; }
+
+body.align-center .content {
+    margin: 0 auto;
+    max-width: 760px;
+    padding-left: 24px;
+    padding-right: 24px;
+    align-items: center;
+    text-align: center;
+}
+body.align-center .hero { align-self: center; }
+body.align-center .greeting, body.align-center .date { margin-left: 0; }
+body.align-center .shortcuts { justify-content: center; }
+body.align-center .widgets { margin-left: auto; margin-right: auto; text-align: left; }
+body.align-center:not(.custom-dim) .shade { background: radial-gradient(ellipse at center, rgba(var(--overlay), 0.72), rgba(var(--overlay), 0.35)); }

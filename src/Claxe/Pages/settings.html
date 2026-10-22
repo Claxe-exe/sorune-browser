@@ -22,9 +22,12 @@
             <a href="#duvar">Duvar kâğıdı</a>
             <a href="#renk">Renk ve cam</a>
             <a href="#duzen">Düzen</a>
+            <a href="#yeni-sekme">Yeni sekme</a>
+            <a href="#maskot">Maskot</a>
             <a href="#hareket">Hareket ve performans</a>
             <a href="#ses">Sesler</a>
             <a href="#kenar">Kenar çubuğu</a>
+            <a href="#eklentiler">Eklentiler</a>
             <a href="#arama">Arama ve başlangıç</a>
             <a href="#indirme">İndirmeler</a>
             <a href="#ice-aktar">İçe aktar</a>
@@ -64,6 +67,13 @@
                         <span class="hint">Neon çizgiler, odak halkaları ve seçili öğeler.</span>
                     </div>
                     <div class="swatches" id="swatches"></div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Duvar kâğıdındaki renkler</span>
+                        <span class="hint">Duvar kâğıdından çıkarılan canlı renkler; birine tıklayınca vurgu rengi olur.</span>
+                    </div>
+                    <div class="swatches" id="wall-palette"></div>
                 </div>
                 <div class="row">
                     <div class="row-text">
@@ -117,6 +127,104 @@
                 </div>
             </section>
 
+            <section class="card" id="yeni-sekme">
+                <h2>Yeni sekme</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Efekt</span>
+                        <span class="hint">Duvar kâğıdının üzerinde süzülen parçacıklar.</span>
+                    </div>
+                    <div class="segmented" id="nt-effect" role="radiogroup" aria-label="Efekt">
+                        <button type="button" data-value="theme">Temanınki</button>
+                        <button type="button" data-value="petals">Yaprak</button>
+                        <button type="button" data-value="sparks">Kıvılcım</button>
+                        <button type="button" data-value="bubbles">Kabarcık</button>
+                        <button type="button" data-value="snow">Kar</button>
+                        <button type="button" data-value="none">Yok</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Karartma</span>
+                        <span class="hint" id="nt-dim-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="nt-dim" min="0" max="90" step="5" aria-label="Karartma">
+                        <button type="button" class="chip" id="nt-dim-reset">Temanınki</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Bulanıklık</span>
+                        <span class="hint" id="nt-blur-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="nt-blur" min="0" max="30" step="1" aria-label="Bulanıklık">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Yerleşim</span>
+                        <span class="hint">Saat, arama ve widget'lar solda mı ortada mı dursun.</span>
+                    </div>
+                    <div class="segmented" id="nt-align" role="radiogroup" aria-label="Yerleşim">
+                        <button type="button" data-value="left">Sol</button>
+                        <button type="button" data-value="center">Orta</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Arama kutusu</span></div>
+                    <button type="button" class="switch" role="switch" data-key="newTabShowSearch" aria-label="Arama kutusu"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Kısayollar</span></div>
+                    <button type="button" class="switch" role="switch" data-key="newTabShowShortcuts" aria-label="Kısayollar"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Widget'lar</span></div>
+                    <button type="button" class="switch" role="switch" data-key="newTabShowWidgets" aria-label="Widget'lar"></button>
+                </div>
+            </section>
+
+            <section class="card" id="maskot">
+                <h2>Maskot</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Maskot</span>
+                        <span class="hint">Araç çubuğunun arkasından bakan karakter.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="mascotEnabled" aria-label="Maskot"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Konuşma balonları</span>
+                        <span class="hint">İndirme bitince, ekran görüntüsü alınca ya da uzun süre oturunca kısa mesajlar; gece geç saatte uyku hatırlatması.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="mascotTalks" aria-label="Konuşma balonları"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Kendi maskotun</span>
+                        <span class="hint">Herhangi bir karakterin görselini yükle; arka planı şeffaf PNG en güzel durur. Tek görsel tüm ruh hallerinde kullanılır.</span>
+                    </div>
+                    <div class="slider-group">
+                        <img class="mascot-preview" id="mascot-preview" alt="" hidden>
+                        <button type="button" class="chip" id="mascot-remove" hidden>Varsayılana dön</button>
+                        <button type="button" class="chip" id="mascot-pick">Görsel yükle</button>
+                    </div>
+                </div>
+                <div class="row" id="mascot-peek-row" hidden>
+                    <div class="row-text">
+                        <span class="label">Görünme yüksekliği</span>
+                        <span class="hint">Maskotunun ne kadarı araç çubuğunun üstünde görünsün.</span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="mascot-peek" min="20" max="90" step="5" aria-label="Görünme yüksekliği">
+                    </div>
+                </div>
+                <p class="error" id="mascot-error" hidden></p>
+            </section>
+
             <section class="card" id="hareket">
                 <h2>Hareket ve performans</h2>
                 <div class="row">
@@ -153,13 +261,7 @@
                     </div>
                     <button type="button" class="switch" role="switch" data-key="animationsEnabled" aria-label="Animasyonlar"></button>
                 </div>
-                <div class="row">
-                    <div class="row-text">
-                        <span class="label">Maskot</span>
-                        <span class="hint">Araç çubuğunun arkasından bakan karakter.</span>
-                    </div>
-                    <button type="button" class="switch" role="switch" data-key="mascotEnabled" aria-label="Maskot"></button>
-                </div>
+
             </section>
 
             <section class="card" id="ses">
@@ -170,6 +272,18 @@
                         <span class="hint">Tıklama, sekme açma ve kapatma.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="soundsEnabled" aria-label="Arayüz sesleri"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Ses paketi</span>
+                        <span class="hint">Seçince örnek çalar.</span>
+                    </div>
+                    <div class="segmented" id="sound-pack" role="radiogroup" aria-label="Ses paketi">
+                        <button type="button" data-value="classic">Klasik</button>
+                        <button type="button" data-value="soft">Yumuşak</button>
+                        <button type="button" data-value="retro">Retro</button>
+                        <button type="button" data-value="crystal">Kristal</button>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="row-text">
@@ -247,6 +361,38 @@
                     <div class="slider-group">
                         <button type="button" class="chip" id="default-browser-remove" hidden>Kaydı kaldır</button>
                         <button type="button" class="chip" id="default-browser-set">Varsayılan yap</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="eklentiler">
+                <h2>Eklentiler</h2>
+                <p class="hint">Chromium eklentileri açılmış (unpacked) olarak yüklenir; Chrome Web Mağazası WebView2'de yok. Eklentiler gezdiğin sayfaları okuyabilir, yalnızca güvendiklerini kur. Açılır penceresi olan eklentiler kenar çubuğunda bir düğme olarak görünür.</p>
+                <div class="ext-recommended">
+                    <div class="ext-card">
+                        <div class="ext-logo ublock" aria-hidden="true">uB</div>
+                        <div class="ext-text">
+                            <strong>uBlock Origin Lite</strong>
+                            <span>Reklam ve izleyici engelleyici</span>
+                        </div>
+                        <button type="button" class="chip" data-install="ublock">Kur</button>
+                    </div>
+                    <div class="ext-card">
+                        <div class="ext-logo bitwarden" aria-hidden="true">bw</div>
+                        <div class="ext-text">
+                            <strong>Bitwarden</strong>
+                            <span>Açık kaynak şifre yöneticisi</span>
+                        </div>
+                        <button type="button" class="chip" data-install="bitwarden">Kur</button>
+                    </div>
+                </div>
+                <p class="hint">İkisi de projelerinin resmi GitHub sürümlerinden indirilir.</p>
+                <div class="panel-list" id="extensions"></div>
+                <div class="clear-actions">
+                    <span class="hint" id="ext-status"></span>
+                    <div class="slider-group">
+                        <button type="button" class="chip" id="ext-folder">Klasörden ekle</button>
+                        <button type="button" class="chip" id="ext-file">ZIP / CRX'ten ekle</button>
                     </div>
                 </div>
             </section>

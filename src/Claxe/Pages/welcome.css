@@ -1,0 +1,138 @@
+/* First-run welcome tour: one glass card over the theme wallpaper, a step at a time. */
+
+:root {
+    color-scheme: dark;
+    --accent: #b583ff;
+    --text: #eee9f7;
+    --dim: #b3aac9;
+    --glass: rgba(255, 255, 255, 0.07);
+    --line: rgba(255, 255, 255, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #0b0910;
+    color: var(--text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.wall {
+    position: fixed;
+    inset: -30px;
+    background: var(--wallpaper, none) center / cover no-repeat;
+    filter: blur(6px) saturate(115%);
+    opacity: 0;
+    transition: opacity 0.6s ease, background-image 0.4s ease;
+}
+.wall.ready { opacity: 1; }
+.shade { position: fixed; inset: 0; background: radial-gradient(ellipse at center, rgba(8, 6, 14, 0.55), rgba(8, 6, 14, 0.85)); }
+
+.tour {
+    position: relative;
+    z-index: 1;
+    width: min(760px, calc(100% - 32px));
+    margin: 7vh auto;
+    padding: 34px 38px 26px;
+    border-radius: 26px;
+    border: 1px solid var(--line);
+    background: rgba(18, 14, 26, 0.62);
+    backdrop-filter: blur(22px) saturate(140%);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 60px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.dots { display: flex; gap: 8px; list-style: none; margin: 0 0 22px; padding: 0; }
+.dots li { width: 28px; height: 4px; border-radius: 2px; background: var(--line); transition: background 0.2s ease, width 0.2s ease; }
+.dots li.done { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.dots li.active { width: 44px; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+.step { animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; min-height: 300px; }
+.step[hidden] { display: none; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 0; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; font-size: 34px; font-weight: 600; }
+.brandname { color: var(--accent); text-shadow: 0 0 22px color-mix(in srgb, var(--accent) 60%, transparent); }
+.lead { margin: 10px 0 24px; font-size: 15px; line-height: 1.55; color: var(--dim); }
+.hint { font-size: 13px; color: var(--dim); }
+.mini-label { margin: 22px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.choice-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.choice {
+    height: 42px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    font-size: 14px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.choice:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.choice.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.theme {
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.theme:hover { transform: translateY(-3px); }
+.theme img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.theme span { display: block; padding: 9px 12px; font-weight: 600; font-size: 13.5px; }
+.theme.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    text-align: left;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.toggle .icon { font-size: 22px; }
+.toggle .text { display: flex; flex-direction: column; }
+.toggle .text span { font-size: 12px; color: var(--dim); }
+.toggle[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.toggle[aria-pressed="false"] { opacity: 0.7; }
+
+.exts { display: flex; flex-direction: column; gap: 10px; }
+.ext { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--glass); }
+.ext .text { flex: 1; display: flex; flex-direction: column; }
+.ext .text span { font-size: 12.5px; color: var(--dim); }
+.ext-logo { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: #fff; font-weight: 700; }
+.ext-logo.ublock { background: #800000; }
+.ext-logo.bitwarden { background: #175ddc; }
+
+.tips { margin-top: 26px; font-size: 13px; color: var(--dim); }
+kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); font-family: inherit; font-size: 12px; }
+
+.btn {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    font-size: 14px;
+}
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn.primary { border: 0; background: var(--accent); color: #120e18; font-weight: 700; box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.ghost { background: transparent; }
+.btn.big { height: 48px; padding: 0 24px; font-size: 15px; }
+.link { border: 0; background: none; color: var(--dim); text-decoration: underline; padding: 0; }
+.link:hover { color: var(--accent); }
+
+.nav { display: flex; align-items: center; justify-content: space-between; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

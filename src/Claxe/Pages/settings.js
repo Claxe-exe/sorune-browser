@@ -68,6 +68,7 @@ function render() {
     setSegmented("corner", s.cornerStyle);
     setSegmented("density", s.density);
     setSegmented("sleep-after", String(s.sleepAfterMinutes));
+    renderPersonal(s);
 
     $("download-folder").textContent = state.downloadFolder || t("Windows'un İndirilenler klasörü");
     $("download-folder-reset").hidden = !s.downloadFolder;
@@ -286,6 +287,99 @@ function renderPermissions() {
     $("permissions-clear").disabled = state.permissions.length === 0;
 }
 
+// ---------------------------------------------------------------- personalisation (new tab, mascot, sounds, palette)
+
+function renderPersonal(s) {
+    setSegmented("nt-effect", s.newTabEffect);
+    setSegmented("nt-align", s.newTabAlign);
+    setSegmented("sound-pack", s.soundPack);
+
+    if (dragging !== "nt-dim") $("nt-dim").value = Math.round((s.newTabDim ?? 0.45) * 100);
+    $("nt-dim-value").textContent = s.newTabDim == null ? t("Temanınki") : `%${Math.round(s.newTabDim * 100)}`;
+    $("nt-dim-reset").disabled = s.newTabDim == null;
+    if (dragging !== "nt-blur") $("nt-blur").value = s.newTabBlur;
+    $("nt-blur-value").textContent = s.newTabBlur ? `${s.newTabBlur} px` : t("Keskin");
+
+    const current = (s.accentColor || "").toUpperCase();
+    const palette = state.wallpaperPalette || [];
+    $("wall-palette").replaceChildren(...palette.map((color) => {
+        const swatch = el("button", {
+            type: "button",
+            class: "swatch" + (color.toUpperCase() === current ? " selected" : ""),
+            title: color,
+            "aria-label": t("Vurgu rengi {0}", color),
+            onclick: () => update("accentColor", color.toUpperCase()),
+        });
+        swatch.style.background = color;
+        swatch.style.color = color;
+        return swatch;
+    }));
+    if (palette.length === 0) $("wall-palette").append(el("span", { class: "hint", text: "Bu duvar kâğıdında belirgin bir renk bulunamadı." }));
+
+    const mascot = state.mascotUrl;
+    $("mascot-preview").hidden = !mascot;
+    if (mascot && $("mascot-preview").getAttribute("src") !== mascot) $("mascot-preview").src = mascot;
+    $("mascot-remove").hidden = !mascot;
+    $("mascot-peek-row").hidden = !mascot;
+    if (dragging !== "mascot-peek") $("mascot-peek").value = Math.round(s.mascotPeek * 100);
+}
+
+for (const [id, key] of [["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"]]) {
+    $(id).addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (button) update(key, button.dataset.value);
+    });
+}
+
+function bindRange(id, send) {
+    const throttled = throttle(send, 80);
+    $(id).addEventListener("input", () => { dragging = id; throttled(Number($(id).value)); });
+    $(id).addEventListener("change", () => { dragging = null; });
+}
+bindRange("nt-dim", (v) => update("newTabDim", v / 100));
+bindRange("nt-blur", (v) => update("newTabBlur", v));
+bindRange("mascot-peek", (v) => update("mascotPeek", v / 100));
+$("nt-dim-reset").addEventListener("click", () => update("newTabDim", null));
+$("mascot-pick").addEventListener("click", () => { $("mascot-error").hidden = true; send({ type: "pickMascot" }); });
+$("mascot-remove").addEventListener("click", () => send({ type: "removeMascot" }));
+
+// ---------------------------------------------------------------- extensions
+
+let extensions = [];
+
+function renderExtensions(busy) {
+    const installedNames = extensions.map((e) => e.name.toLowerCase());
+    for (const button of document.querySelectorAll("[data-install]")) {
+        const which = button.dataset.install;
+        const installed = installedNames.some((n) => which === "ublock" ? n.includes("ublock") : n.includes("bitwarden"));
+        button.textContent = installed ? t("Kurulu ✓") : t("Kur");
+        button.disabled = busy || installed;
+    }
+    $("ext-folder").disabled = $("ext-file").disabled = busy;
+
+    $("extensions").replaceChildren(...extensions.map((ext) => {
+        const actions = [];
+        if (ext.hasOptions) actions.push(el("button", { type: "button", class: "chip", text: "Seçenekler", onclick: () => send({ type: "ext:options", id: ext.id }) }));
+        actions.push(el("button", { type: "button", class: "chip", text: ext.isEnabled ? "Kapat" : "Aç", onclick: () => send({ type: "ext:toggle", id: ext.id, enabled: !ext.isEnabled }) }));
+        actions.push(el("button", { type: "button", class: "chip danger", text: "Kaldır", onclick: () => send({ type: "ext:remove", id: ext.id }) }));
+        actions.forEach((a) => { a.disabled = Boolean(busy); });
+        return el("div", { class: "list-row" }, [
+            el("span", { class: "grow" }, [
+                el("span", { text: ext.name }),
+                el("span", { class: "sub", text: [ext.version ? `v${ext.version}` : "", ext.isEnabled ? t("Etkin") : t("Devre dışı"), ext.hasPopup ? t("kenar çubuğunda") : ""].filter(Boolean).join(" · ") }),
+            ]),
+            ...actions,
+        ]);
+    }));
+    if (extensions.length === 0) $("extensions").append(el("p", { class: "hint", text: "Henüz eklenti yok." }));
+}
+
+for (const button of document.querySelectorAll("[data-install]")) {
+    button.addEventListener("click", () => send({ type: "ext:install", which: button.dataset.install }));
+}
+$("ext-folder").addEventListener("click", () => send({ type: "ext:installFolder" }));
+$("ext-file").addEventListener("click", () => send({ type: "ext:installFile" }));
+
 function setSegmented(id, value) {
     for (const button of $(id).querySelectorAll("button")) {
         button.setAttribute("role", "radio");
@@ -463,6 +557,23 @@ if (host) {
                 if (first && location.hash) document.querySelector(location.hash)?.scrollIntoView();
                 break;
             }
+            case "extensions":
+                extensions = message.items || [];
+                renderExtensions(message.busy);
+                $("ext-status").textContent = message.error
+                    ? message.error
+                    : message.installed ? t("{0} kuruldu.", message.installed) : "";
+                $("ext-status").classList.toggle("error", Boolean(message.error));
+                break;
+            case "extensionsBusy":
+                renderExtensions(message.busy);
+                $("ext-status").classList.remove("error");
+                $("ext-status").textContent = message.busy ? t("İşleniyor… (indirme birkaç saniye sürebilir)") : "";
+                break;
+            case "mascotError":
+                $("mascot-error").textContent = message.message || t("Görsel eklenemedi.");
+                $("mascot-error").hidden = false;
+                break;
             case "importSources":
                 importSources = message.items || [];
                 renderImportSources();
@@ -507,3 +618,4 @@ if (host) {
 send({ type: "ready" });
 send({ type: "getSettings" });
 send({ type: "importSources" });
+send({ type: "ext:list" });

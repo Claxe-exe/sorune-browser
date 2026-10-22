@@ -26,24 +26,26 @@
 
 ![Yeni sekme](docs/screenshots/new-tab.png)
 
-## ✨ 0.5'te yeni
+## ✨ 0.6'da yeni
 
 | | |
 |---|---|
-| ⌨️ **Komut paleti** | Ctrl+K: komutlar, açık sekmeler, yer imleri ve geçmiş tek kutuda; klavyeyle seç, Enter ile çalıştır. |
-| 🪟 **Bölünmüş ekran** | İki sayfa yan yana, sürüklenebilir ayırıcı; tıkladığın panel adres çubuğunu ve geri/ileri tuşlarını yönetir. |
-| 🔊 **Sekme bazlı ses** | Her sekmenin kendi ses düzeyi (0–100), diğerlerini etkilemez; oturumla kaydedilir. |
-| 📺 **Resim içinde resim** | Desteklenen videoları küçük, her zaman üstte duran pencereye taşır. |
-| 🧰 **Mini araçlar** | JSON, renk seçici, QR kod, kronometre ve zamanlayıcı, metin sayacı, URL kodlama; hepsi çevrimdışı. |
-| 💤 **Uyku modu ve indirmeler** | Ayarlanabilir uyku süresi, sabitlenmiş sekme muafiyeti; indirmelerde hız, kalan süre ve klasör seçimi. |
-| 🎨 **Siteye uyan renkler** (0.5.1–0.5.2) | Sekme şeridi, araç çubuğu ve kenar çubuğu açık sitenin rengine geçer; istersen sayfa çerçeveli bir kart olarak durur. |
-| 🛟 **Çökme kurtarma** | Beklenmedik kapanıştan sonra sekmeleri geri yüklemeyi teklif eder. |
+| 🧩 **Eklentiler** | uBlock Origin Lite ve Bitwarden tek tıkla (resmi GitHub sürümlerinden); kendi eklentini klasörden ya da ZIP/CRX'ten ekle. Açılır penceresi olanlar kenar çubuğunda. |
+| 🧸 **Kendi maskotun** | İstediğin karakterin görselini yükle; maskot artık konuşma balonlarıyla tepki veriyor ve mola / uyku hatırlatıyor. |
+| 🌌 **Yeni sekme senin** | Efekt (kar dahil), karartma, bulanıklık, sol / orta yerleşim, öğeleri gizleme; vurgu rengini duvar kâğıdından çıkarma. |
+| 📸 **Ekran görüntüsü** | Görünen alan, tam sayfa ya da sürükleyerek bölge; panoya da kopyalanır. |
+| 📖 **Okuma modu** | Makaleleri temaya uygun, sade bir sütunda; yazı tipi, boyut ve renk ayarlı. |
+| 👋 **Karşılama turu** | İlk açılışta dil, tema, tarz, eklentiler ve içe aktarma adım adım. |
+| 🔔 **Ses paketleri** | Klasik, Yumuşak, Retro, Kristal. |
 
 <details>
-<summary>0.4.0</summary>
+<summary>0.5 ve 0.4</summary>
 
-Dosya dönüştürücü (LibreOffice desteğiyle), sekme grupları, yeni sekme widget'ları (hava durumu, yapılacaklar, notlar,
-geri sayım, odak zamanlayıcı), tek tıkla güncelleme, yenilenen ayarlar ve kitaplık sayfaları.
+**0.5:** komut paleti (Ctrl+K), bölünmüş ekran, sekme bazlı ses, resim içinde resim, mini araçlar (JSON, renk, QR,
+kronometre, sayaç, URL), ayarlanabilir uyku modu, indirme hızı ve klasör seçimi, çökme kurtarma, siteye uyan renkler,
+çerçeveli sayfa.
+**0.4:** dosya dönüştürücü (LibreOffice desteğiyle), sekme grupları, yeni sekme widget'ları, tek tıkla güncelleme,
+yenilenen ayarlar ve kitaplık.
 
 </details>
 
@@ -72,7 +74,11 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
   (InPrivate) sekmeler, ayarlanabilir uyku modu, oturum geri yükleme ve çökme kurtarma
 - **Komut paleti (Ctrl+K)** ve resim içinde resim
 - **Gezinme:** yerel adres önerileri, sayfada bul, yakınlaştırma göstergesi, temalı sağ tık menüleri, özel hata sayfası
-- **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü ve mini araçlar
+- **Kenar çubuğu:** WhatsApp, Discord, Telegram, Spotify, Twitch ve kendi web panellerin; dosya dönüştürücü, mini araçlar
+  ve eklentiler
+- **Kişiselleştirme:** tema, duvar kâğıdı, duvar kâğıdından vurgu rengi, cam, köşeler, yoğunluk, kendi maskotun, ses
+  paketi, yeni sekme efekti / karartma / bulanıklık / yerleşim, siteye uyan renkler, çerçeveli sayfa
+- **Araçlar:** ekran görüntüsü, okuma modu, resim içinde resim, komut paleti
 - **Kitaplık:** geçmiş, klasörlü yer imleri, kendi indirme yöneticisi
 - **Gizlilik:** geçmiş, oturum çerezleri ve widget notları Windows hesabına bağlı şifrelenir (DPAPI); site izinleri
   hatırlanır; tarama verileri zaman aralığıyla temizlenir; telemetri yok
@@ -85,6 +91,10 @@ köşe stili ve yoğunluk ayrıca ayarlanır; istersen kendi duvar kâğıdını
 [Son sürümdeki](https://github.com/Claxe-exe/sorune-browser/releases/latest) `SoruneBrowser-win-Setup.exe` dosyasını
 çalıştır. .NET kurulu olması gerekmez; WebView2 Runtime Windows 11'de hazır gelir. Sorune
 `%LOCALAPPDATA%\SoruneBrowser` klasörüne kurulur ve yeni sürümleri kendisi indirir.
+
+> **"Windows bilgisayarınızı korudu" uyarısı:** kurulum dosyası kod imzalama sertifikasıyla imzalı değil (sertifikalar
+> ücretli). Uyarıda **Ek bilgi → Yine de çalıştır**'a bas. İçinden emin olmak istersen dosyayı
+> [VirusTotal](https://www.virustotal.com)'da taratabilir ya da kaynak koddan kendin derleyebilirsin.
 
 ## 🛠️ Kaynaktan derleme
 
@@ -101,10 +111,20 @@ dotnet tool install -g vpk
 ```
 
 ```bash
-powershell -File build/pack.ps1 -Version 0.5.2
+powershell -File build/pack.ps1 -Version 0.6.0
 ```
 
 Çıktı `artifacts/releases` klasörüne yazılır; önceki sürüm GitHub'dan indirilip küçük fark (delta) paketi de üretilir.
+
+Testler (dönüştürücü, ayar doğrulama, widget'lar, eklenti paketleri) ve QR kodlayıcı denetimi:
+
+```bash
+dotnet test tests/Sorune.Tests
+```
+
+```bash
+node tests/qr.test.js
+```
 
 > Hazır duvar kâğıtları depoda yoktur; yalnızca dört temanın görselleri ve maskot depodadır.
 > Kendi görsellerini `src/Claxe/Assets/Wallpapers` klasörüne `.jpg` olarak (ve `thumbs/` altına küçük önizlemesini)
@@ -126,7 +146,7 @@ Arayüz metinleri `src/Claxe/Assets/i18n/en.json` dosyasındadır (Türkçe meti
 | Alt+Sol / Alt+Sağ | Geri / ileri |
 | Ctrl+D | Yer imlerine ekle / çıkar |
 | Ctrl+H / Ctrl+J / Ctrl+Shift+O | Geçmiş / İndirmeler / Yer imleri |
-| Ctrl+K | Komut paleti |
+| Ctrl+K / Ctrl+Shift+K | Komut paleti (web sitelerinin içinde Ctrl+Shift+K) |
 | Ctrl+, / Ctrl+Shift+Del | Ayarlar / Tarama verilerini temizle |
 | F11 | Tam ekran |
 
@@ -145,6 +165,7 @@ src/Claxe/
   Pages/       Uygulamanın kendi sayfaları: yeni sekme, ayarlar, kitaplık, dönüştürücü, yenilikler (HTML/CSS/JS)
   Assets/      Tema görselleri ve JSON'ları, maskot, simge, çeviriler
 build/pack.ps1 Kurulum dosyası
+tests/         Birim testleri (xUnit) ve QR kodlayıcı denetimi
 ```
 
 ## 🔒 Veriler ve gizlilik

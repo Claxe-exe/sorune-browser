@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Hoş geldin</title>
+    <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+    <div class="wall" id="wall"></div>
+    <div class="shade"></div>
+
+    <main class="tour">
+        <ol class="dots" id="dots" aria-hidden="true"></ol>
+
+        <!-- 1 -->
+        <section class="step" data-step="0">
+            <p class="eyebrow">Hoş geldin</p>
+            <h1>Merhaba, ben <span class="brandname">Sorune</span> ✨</h1>
+            <p class="lead">Birkaç adımda tarayıcını kendine göre ayarlayalım. İstediğin zaman Ayarlar'dan hepsini değiştirebilirsin.</p>
+            <div class="choice-row" id="language">
+                <button type="button" class="choice" data-value="tr">🇹🇷 Türkçe</button>
+                <button type="button" class="choice" data-value="en">🇬🇧 English</button>
+            </div>
+            <p class="hint" id="language-hint" hidden>Dil, Sorune yeniden başlayınca değişir. <button type="button" class="link" id="restart">Şimdi yeniden başlat</button></p>
+        </section>
+
+        <!-- 2 -->
+        <section class="step" data-step="1" hidden>
+            <p class="eyebrow">Adım 2</p>
+            <h1>Bir tema seç</h1>
+            <p class="lead">Her temanın kendi duvar kâğıdı, renkleri ve yeni sekme efekti var.</p>
+            <div class="themes" id="themes"></div>
+        </section>
+
+        <!-- 3 -->
+        <section class="step" data-step="2" hidden>
+            <p class="eyebrow">Adım 3</p>
+            <h1>Senin tarzın</h1>
+            <p class="lead">Küçük dokunuşlar; hepsi açılıp kapanabilir.</p>
+            <div class="toggles">
+                <button type="button" class="toggle" data-key="mascotEnabled"><span class="icon">🧸</span><span class="text"><strong>Maskot</strong><span>Araç çubuğunun arkasından bakan karakter</span></span></button>
+                <button type="button" class="toggle" data-key="mascotTalks"><span class="icon">💬</span><span class="text"><strong>Konuşan maskot</strong><span>Kısa mesajlar ve hatırlatmalar</span></span></button>
+                <button type="button" class="toggle" data-key="siteTintEnabled"><span class="icon">🎨</span><span class="text"><strong>Siteye uyan renkler</strong><span>Arayüz açık sitenin rengine geçer</span></span></button>
+                <button type="button" class="toggle" data-key="soundsEnabled"><span class="icon">🔔</span><span class="text"><strong>Arayüz sesleri</strong><span>Tıklama ve sekme sesleri</span></span></button>
+                <button type="button" class="toggle" data-key="sidebarEnabled"><span class="icon">📌</span><span class="text"><strong>Kenar çubuğu</strong><span>Web panelleri, dönüştürücü ve araçlar</span></span></button>
+                <button type="button" class="toggle" data-key="pageFrameEnabled"><span class="icon">🖼️</span><span class="text"><strong>Çerçeveli sayfa</strong><span>Sayfa duvar kâğıdının üstünde bir kart gibi</span></span></button>
+            </div>
+            <p class="mini-label">Ses paketi</p>
+            <div class="choice-row" id="sound-pack">
+                <button type="button" class="choice" data-value="classic">Klasik</button>
+                <button type="button" class="choice" data-value="soft">Yumuşak</button>
+                <button type="button" class="choice" data-value="retro">Retro</button>
+                <button type="button" class="choice" data-value="crystal">Kristal</button>
+            </div>
+        </section>
+
+        <!-- 4 -->
+        <section class="step" data-step="3" hidden>
+            <p class="eyebrow">Adım 4</p>
+            <h1>Eklentiler</h1>
+            <p class="lead">İstersen iki popüler eklentiyi şimdi kurabilirsin; ikisi de resmi GitHub sürümlerinden indirilir.</p>
+            <div class="exts">
+                <div class="ext"><span class="ext-logo ublock">uB</span><span class="text"><strong>uBlock Origin Lite</strong><span>Reklam ve izleyici engelleyici</span></span><button type="button" class="btn" data-install="ublock">Kur</button></div>
+                <div class="ext"><span class="ext-logo bitwarden">bw</span><span class="text"><strong>Bitwarden</strong><span>Açık kaynak şifre yöneticisi</span></span><button type="button" class="btn" data-install="bitwarden">Kur</button></div>
+            </div>
+            <p class="hint" id="ext-status"></p>
+        </section>
+
+        <!-- 5 -->
+        <section class="step" data-step="4" hidden>
+            <p class="eyebrow">Son adım</p>
+            <h1>Eski tarayıcından taşın</h1>
+            <p class="lead">Chrome, Opera GX, Edge, Brave, Vivaldi ya da Firefox'taki yer imlerini ve geçmişini Sorune'ye aktarabilirsin.</p>
+            <button type="button" class="btn ghost big" id="import">Yer imlerini ve geçmişi içe aktar</button>
+            <div class="tips">
+                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> komut paleti · <kbd>Ctrl</kbd>+<kbd>T</kbd> yeni sekme · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> gizli sekme</p>
+            </div>
+        </section>
+
+        <footer class="nav">
+            <button type="button" class="btn ghost" id="prev">Geri</button>
+            <button type="button" class="link" id="skip">Turu atla</button>
+            <button type="button" class="btn primary" id="next">Devam</button>
+        </footer>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="welcome.js"></script>
+</body>
+</html>
