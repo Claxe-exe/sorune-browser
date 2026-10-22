@@ -645,3 +645,4 @@ body.no-motion * { transition: none !important; }
     .nav a.active::after { display: none; }
     .hero-card { min-height: 130px; flex-direction: column; align-items: flex-start; }
 }
+.nav a[href="#indirme"], #indirme { --icon: var(--i-download); }

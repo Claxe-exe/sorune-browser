@@ -55,6 +55,15 @@ public sealed class AppSettings
     /// <summary>Turns off decorative motion and puts background tabs to sleep sooner.</summary>
     public bool PerformanceMode { get; set; }
 
+    /// <summary>Background tabs untouched this long go to sleep; 0 = never.</summary>
+    public int SleepAfterMinutes { get; set; } = 10;
+
+    /// <summary>Pinned tabs may sleep too (off: pinned tabs always stay awake).</summary>
+    public bool SleepPinnedTabs { get; set; }
+
+    /// <summary>Where downloads are saved; null = Windows' Downloads folder.</summary>
+    public string? DownloadFolder { get; set; }
+
     /// <summary>Version of the last run; a different one means "just updated" (shows what's new).</summary>
     public string? LastSeenVersion { get; set; }
 }

@@ -59,6 +59,11 @@ public partial class MainWindow : Window
         viewModel.ConfirmOpenRiskyFile = ConfirmOpenRiskyFile;
         viewModel.PageContextMenuRequested += (_, e) => ShowPageContextMenu(e);
         viewModel.GroupEditRequested += (_, group) => OnGroupEditRequested(group);
+        viewModel.PaletteRequested += (_, _) => OpenPalette();
+        viewModel.VolumeEditRequested += (_, tab) => OpenVolumeEditor(tab, TabElement(tab) ?? AddressPill);
+        viewModel.FindRequested += (_, _) => OpenFind();
+        viewModel.FullScreenRequested += (_, _) => ToggleBrowserFullScreen();
+        viewModel.PickFolder = PickFolder;
 
         AddressBox.TextChanged += (_, _) =>
         {
@@ -133,6 +138,7 @@ public partial class MainWindow : Window
             case Key.F11 when none: ToggleBrowserFullScreen(); break;
             case Key.OemComma when ctrl: _viewModel.OpenSettings(); break;
             case Key.F when ctrl: OpenFind(); break;
+            case Key.K when ctrl: OpenPalette(); break;
             case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
@@ -261,6 +267,289 @@ public partial class MainWindow : Window
     }
 
     private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
+
+    // ------------------------------------------------------------- split screen
+
+    private bool _draggingDivider;
+
+    private void SplitButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.IsSplit)
+            _viewModel.CloseSplit();
+        else
+            _viewModel.SplitWithNewTab();
+    }
+
+    private void PaneHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TabViewModel tab })
+        {
+            _viewModel.ActiveTab = tab;
+            tab.WebView?.Focus();
+        }
+    }
+
+    private void ContentHost_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateSplitDivider();
+
+    /// <summary>The divider sits exactly in the 6px gap the content grid leaves between the panes.</summary>
+    private void UpdateSplitDivider()
+    {
+        var usable = Math.Max(0, ContentHost.ActualWidth - SplitDivider.Width);
+        SplitDivider.Margin = new Thickness(usable * _viewModel.SplitRatio, 0, 0, 0);
+    }
+
+    private void SplitDivider_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _draggingDivider = SplitDivider.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void SplitDivider_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_draggingDivider)
+            return;
+
+        var usable = ContentHost.ActualWidth - SplitDivider.Width;
+        if (usable > 0)
+            _viewModel.SplitRatio = (e.GetPosition(ContentHost).X - SplitDivider.Width / 2) / usable;
+    }
+
+    private void SplitDivider_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _draggingDivider = false;
+        SplitDivider.ReleaseMouseCapture();
+    }
+
+    // ------------------------------------------------------------- per-tab volume
+
+    private Popup? _volumeEditor;
+
+    private void AudioButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TabViewModel tab } button)
+            OpenVolumeEditor(tab, button);
+    }
+
+    private void AudioButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TabViewModel tab })
+        {
+            tab.ToggleMute();
+            e.Handled = true; // not the tab's context menu
+        }
+    }
+
+    // Right click on the speaker mutes; the tab's menu stays closed.
+    private void AudioButton_ContextMenuOpening(object sender, ContextMenuEventArgs e) => e.Handled = true;
+
+    private void TabVolume_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: TabViewModel tab } target } })
+            OpenVolumeEditor(tab, target);
+    }
+
+    private FrameworkElement? TabElement(TabViewModel tab)
+        => TabStrip.ItemContainerGenerator.ContainerFromItem(tab) as FrameworkElement;
+
+    /// <summary>A slider for this tab only (0–100 %) plus mute, under the tab.</summary>
+    private void OpenVolumeEditor(TabViewModel tab, FrameworkElement anchor)
+    {
+        if (_volumeEditor is not null)
+            _volumeEditor.IsOpen = false;
+
+        var popup = new Popup
+        {
+            PlacementTarget = anchor,
+            Placement = PlacementMode.Bottom,
+            VerticalOffset = 2,
+            AllowsTransparency = true,
+            StaysOpen = false,
+            PopupAnimation = PopupAnimation.Fade,
+        };
+
+        var value = new TextBlock
+        {
+            Width = 44,
+            TextAlignment = TextAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            Text = $"%{tab.Volume}",
+        };
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = tab.Volume,
+            SmallChange = 5,
+            LargeChange = 10,
+            Width = 170,
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = (Style)FindResource("ClaxeSliderStyle"),
+        };
+        slider.ValueChanged += (_, e) =>
+        {
+            tab.Volume = (int)Math.Round(e.NewValue);
+            value.Text = $"%{tab.Volume}";
+        };
+
+        var mute = new Button
+        {
+            Style = (Style)FindResource("IconButtonStyle"),
+            Width = 30,
+            Height = 30,
+            FontSize = 13,
+            Content = tab.IsMuted ? "" : "",
+            ToolTip = tab.IsMuted ? L.T("Sesi aç") : L.T("Sesi kapat"),
+        };
+        mute.Click += (_, _) =>
+        {
+            tab.ToggleMute();
+            // IsMuted changes asynchronously; show the new state right away.
+            var muted = !tab.IsMuted;
+            mute.Content = muted ? "" : "";
+            mute.ToolTip = muted ? L.T("Sesi aç") : L.T("Sesi kapat");
+        };
+
+        var reset = new Button
+        {
+            Content = L.T("%100"),
+            Style = (Style)FindResource("GhostButtonStyle"),
+            Height = 26,
+            Padding = new Thickness(8, 0, 8, 0),
+            FontSize = 11.5,
+            Margin = new Thickness(6, 0, 0, 0),
+        };
+        reset.Click += (_, _) => slider.Value = 100;
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(mute);
+        row.Children.Add(new Border { Width = 8 });
+        row.Children.Add(slider);
+        row.Children.Add(value);
+        row.Children.Add(reset);
+
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = L.T("Bu sekmenin ses düzeyi"),
+            FontSize = 12,
+            Margin = new Thickness(2, 0, 0, 8),
+            Foreground = (Brush)FindResource("TextSecondaryBrush"),
+        });
+        panel.Children.Add(row);
+
+        popup.Child = new Border
+        {
+            Margin = new Thickness(12),
+            Padding = new Thickness(12, 10, 12, 12),
+            CornerRadius = new CornerRadius(14),
+            Background = (Brush)FindResource("SurfaceBrush"),
+            BorderBrush = (Brush)FindResource("GlassBorderBrush"),
+            BorderThickness = new Thickness(1),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect { ShadowDepth = 4, BlurRadius = 20, Opacity = 0.45, Color = Colors.Black },
+            Child = panel,
+        };
+        popup.Opened += (_, _) => slider.Focus();
+        popup.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_volumeEditor, popup))
+                _volumeEditor = null;
+        };
+        _volumeEditor = popup;
+        popup.IsOpen = true;
+    }
+
+    // ------------------------------------------------------------- command palette
+
+    private void OpenPalette()
+    {
+        _viewModel.UpdatePalette("");
+        PaletteBox.Text = "";
+        // Centred near the top of the page area.
+        PalettePopup.HorizontalOffset = Math.Max(0, (ContentGrid.ActualWidth - 652) / 2);
+        PalettePopup.VerticalOffset = 24;
+        PalettePopup.IsOpen = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            PaletteBox.Focus();
+            Keyboard.Focus(PaletteBox);
+        }, DispatcherPriority.Input);
+    }
+
+    private void ClosePalette()
+    {
+        PalettePopup.IsOpen = false;
+    }
+
+    private void PalettePopup_Closed(object? sender, EventArgs e) => _viewModel.PaletteItems.Clear();
+
+    private void PaletteBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _viewModel.UpdatePalette(PaletteBox.Text);
+        ScrollPaletteToSelection();
+    }
+
+    private void PaletteBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Down:
+                _viewModel.PaletteIndex++;
+                break;
+            case Key.Up:
+                _viewModel.PaletteIndex--;
+                break;
+            case Key.PageDown:
+                _viewModel.PaletteIndex += 8;
+                break;
+            case Key.PageUp:
+                _viewModel.PaletteIndex -= 8;
+                break;
+            case Key.Enter:
+                RunPalette(_viewModel.PaletteIndex);
+                break;
+            case Key.Escape:
+                ClosePalette();
+                FocusActiveWebView();
+                break;
+            default:
+                return;
+        }
+
+        ScrollPaletteToSelection();
+        e.Handled = true;
+    }
+
+    private void PaletteRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PaletteItem item })
+        {
+            RunPalette(_viewModel.PaletteItems.IndexOf(item));
+            e.Handled = true;
+        }
+    }
+
+    private void RunPalette(int index)
+    {
+        ClosePalette();
+        _viewModel.RunPaletteItem(index);
+    }
+
+    private void ScrollPaletteToSelection()
+    {
+        if (PaletteList.SelectedItem is { } item)
+            PaletteList.ScrollIntoView(item);
+    }
+
+    private string? PickFolder(string? start)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = L.T("İndirme klasörünü seç") };
+        if (start is not null && System.IO.Directory.Exists(start))
+            dialog.InitialDirectory = start;
+        return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
+    }
 
     // ------------------------------------------------------------- tab groups
 
@@ -562,6 +851,10 @@ public partial class MainWindow : Window
             case nameof(MainViewModel.IsSidebarOnRight):
                 UpdatePanelColumn();
                 break;
+            case nameof(MainViewModel.SplitLeftWidth):
+            case nameof(MainViewModel.IsSplitVisible):
+                UpdateSplitDivider();
+                break;
         }
     }
 
@@ -862,6 +1155,7 @@ public partial class MainWindow : Window
         Grid.SetColumn(PanelHost, order[1]);
         Grid.SetColumn(PanelSplitter, order[2]);
         Grid.SetColumn(ContentHost, order[3]);
+        Grid.SetColumn(SplitDivider, order[3]);
         SidebarHost.BorderThickness = right ? new Thickness(1, 0, 0, 0) : new Thickness(0, 0, 1, 0);
         PanelHost.BorderThickness = SidebarHost.BorderThickness;
 

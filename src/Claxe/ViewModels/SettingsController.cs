@@ -22,6 +22,9 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
 
     public AppSettings Settings => settings;
 
+    /// <summary>The folder downloads actually go to (shown on the page).</summary>
+    public Func<string?>? DownloadFolderInUse { get; set; }
+
     public bool TryUpdate(string? key, JsonElement value)
     {
         var applied = key switch
@@ -42,6 +45,8 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "sidebarEnabled" => SetBool(value, v => settings.SidebarEnabled = v),
             "sidebarPosition" => Set(StringOrNull(value), v => v is "left" or "right", v => settings.SidebarPosition = v!),
             "performanceMode" => SetBool(value, v => settings.PerformanceMode = v),
+            "sleepAfterMinutes" => Set(NumberOrNull(value), v => v is 0 or 5 or 10 or 15 or 30 or 60, v => settings.SleepAfterMinutes = (int)v!.Value),
+            "sleepPinnedTabs" => SetBool(value, v => settings.SleepPinnedTabs = v),
             _ => false,
         };
 
@@ -94,6 +99,13 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
         }
     }
 
+    /// <summary>Picked with the folder dialog (null = back to Windows' Downloads folder).</summary>
+    public void SetDownloadFolder(string? folder)
+    {
+        settings.DownloadFolder = folder is not null && Directory.Exists(folder) ? folder : null;
+        Commit("downloadFolder");
+    }
+
     /// <summary>Panel width is changed by dragging, not from the page; saved without a broadcast.</summary>
     public void SetPanelWidth(double width)
     {
@@ -137,6 +149,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
             maxPanels = PanelStore.MaxPanels,
             activeLanguage = L.Language,
+            downloadFolder = DownloadFolderInUse?.Invoke(),
             defaultBrowser = new { registeredExe = DefaultBrowser.RegisteredExe, currentExe = Environment.ProcessPath },
             update = new
             {

@@ -26,6 +26,7 @@
             <a href="#ses">Sesler</a>
             <a href="#kenar">Kenar çubuğu</a>
             <a href="#arama">Arama ve başlangıç</a>
+            <a href="#indirme">İndirmeler</a>
             <a href="#ice-aktar">İçe aktar</a>
             <a href="#gizlilik">Gizlilik ve veriler</a>
             <a href="#hakkinda">Hakkında</a>
@@ -110,6 +111,26 @@
                         <span class="hint">Animasyonları kapatır ve arka plandaki sekmeleri 3 dakika sonra uyutur (normalde 10 dakika). Ses çalan sekmeler uyutulmaz.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="performanceMode" aria-label="Performans modu"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Sekmeleri uyut</span>
+                        <span class="hint">Bu kadar süre bakılmayan sekmeler dondurulur; tıklayınca kaldığı yerden devam eder, yazdıkların kaybolmaz. Ses çalan, indirme yapan ve görünen sekmeler uyutulmaz.</span>
+                    </div>
+                    <div class="segmented" id="sleep-after" role="radiogroup" aria-label="Sekmeleri uyut">
+                        <button type="button" data-value="0">Hiç</button>
+                        <button type="button" data-value="5">5 dk</button>
+                        <button type="button" data-value="10">10 dk</button>
+                        <button type="button" data-value="30">30 dk</button>
+                        <button type="button" data-value="60">1 sa</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Sabitlenmiş sekmeler de uyusun</span>
+                        <span class="hint">Kapalıyken sabitlenmiş sekmeler hep uyanık kalır.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="sleepPinnedTabs" aria-label="Sabitlenmiş sekmeler de uyusun"></button>
                 </div>
                 <div class="row">
                     <div class="row-text">
@@ -199,10 +220,10 @@
                 </div>
                 <div class="row">
                     <div class="row-text">
-                        <span class="label">Açık sekmeleri yeniden aç</span>
-                        <span class="hint">Sorune kapanıp açılınca sekmeler geri gelir. Kapatınca kayıtlı oturum silinir.</span>
+                        <span class="label">Önceki oturuma devam et</span>
+                        <span class="hint">Sekmeler, gruplar ve bölünmüş ekran bir sonraki açılışta geri gelir. Kapalıyken de Sorune çökerse sekmeleri geri yüklemeyi teklif eder. Gizli sekmeler hiçbir zaman kaydedilmez.</span>
                     </div>
-                    <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Açık sekmeleri yeniden aç"></button>
+                    <button type="button" class="switch" role="switch" data-key="restoreSession" aria-label="Önceki oturuma devam et"></button>
                 </div>
                 <div class="row">
                     <div class="row-text">
@@ -214,6 +235,21 @@
                         <button type="button" class="chip" id="default-browser-set">Varsayılan yap</button>
                     </div>
                 </div>
+            </section>
+
+            <section class="card" id="indirme">
+                <h2>İndirmeler</h2>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">İndirme klasörü</span>
+                        <span class="hint mono" id="download-folder"></span>
+                    </div>
+                    <div class="slider-group">
+                        <button type="button" class="chip" id="download-folder-reset" hidden>Varsayılana dön</button>
+                        <button type="button" class="chip" id="download-folder-pick">Değiştir</button>
+                    </div>
+                </div>
+                <p class="hint">Aynı adlı bir dosya varsa yenisi "ad (1)" olarak kaydedilir; hiçbir dosyanın üzerine yazılmaz. İndirme listesi için Ctrl+J.</p>
             </section>
 
             <section class="card" id="ice-aktar">

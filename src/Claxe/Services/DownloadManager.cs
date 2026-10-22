@@ -27,6 +27,17 @@ public sealed class DownloadRecord
 
     public bool IsActive => Status is DownloadStatus.InProgress or DownloadStatus.Paused;
 
+    /// <summary>Bytes per second while downloading (smoothed); null when unknown or not running.</summary>
+    public double? Speed { get; set; }
+
+    /// <summary>Seconds left at the current speed; null when the size or speed is unknown.</summary>
+    public double? RemainingSeconds => Status == DownloadStatus.InProgress && Speed > 0 && TotalBytes > ReceivedBytes
+        ? (TotalBytes!.Value - ReceivedBytes) / Speed.Value
+        : null;
+
+    /// <summary>WebView2 can really continue this one (paused, or interrupted but resumable).</summary>
+    public bool CanResume { get; set; }
+
     public bool FileExists => Status == DownloadStatus.Completed && File.Exists(FilePath);
 }
 
@@ -45,16 +56,49 @@ public sealed class DownloadManager
 
     private readonly List<DownloadRecord> _records; // oldest first
     private readonly Dictionary<string, CoreWebView2DownloadOperation> _live = [];
+    private readonly Dictionary<string, CoreWebView2> _sources = [];
+    private readonly Dictionary<string, (DateTime At, long Bytes)> _samples = [];
+    private readonly List<WeakReference<CoreWebView2>> _cores = [];
+    private string? _folder;
+    private string? _systemFolder;
 
     public DownloadManager()
     {
         _records = JsonStore.Load<List<DownloadRecord>>(FilePath) ?? [];
-        foreach (var record in _records.Where(r => r.IsActive))
+        // Downloads can't outlive the browser process: whatever was running is over now.
+        foreach (var record in _records)
         {
-            record.Status = DownloadStatus.Failed;
-            record.Error = L.T("Sorune kapandığında yarım kaldı");
+            if (record.IsActive)
+            {
+                record.Status = DownloadStatus.Failed;
+                record.Error = L.T("Sorune kapandığında yarım kaldı");
+            }
+            record.CanResume = false;
+            record.Speed = null;
         }
     }
+
+    /// <summary>The folder downloads go to (the user's choice, or Windows' Downloads folder).</summary>
+    public string? Folder => _folder ?? _systemFolder;
+
+    /// <summary>Null = Windows' own Downloads folder. Applies to every profile (normal and InPrivate).</summary>
+    public void SetFolder(string? folder)
+    {
+        _folder = folder is not null && Directory.Exists(folder) ? folder : null;
+        foreach (var weak in _cores.ToList())
+        {
+            if (!weak.TryGetTarget(out var core))
+            {
+                _cores.Remove(weak);
+                continue;
+            }
+            ApplyFolder(core);
+        }
+    }
+
+    /// <summary>True while this page has a download running (it is then never put to sleep).</summary>
+    public bool HasActiveDownloads(CoreWebView2? core)
+        => core is not null && _sources.Any(s => ReferenceEquals(s.Value, core) && Find(s.Key) is { IsActive: true });
 
     /// <summary>Any change, including progress (can fire many times per second).</summary>
     public event EventHandler? Changed;
@@ -83,7 +127,28 @@ public sealed class DownloadManager
         }
     }
 
-    public void Attach(CoreWebView2 core) => core.DownloadStarting += OnDownloadStarting;
+    public void Attach(CoreWebView2 core)
+    {
+        core.DownloadStarting += OnDownloadStarting;
+        _cores.Add(new WeakReference<CoreWebView2>(core));
+        ApplyFolder(core);
+    }
+
+    private void ApplyFolder(CoreWebView2 core)
+    {
+        try
+        {
+            var profile = core.Profile;
+            _systemFolder ??= profile.DefaultDownloadFolderPath;
+            var target = _folder ?? _systemFolder;
+            if (target is not null && !string.Equals(profile.DefaultDownloadFolderPath, target, StringComparison.OrdinalIgnoreCase))
+                profile.DefaultDownloadFolderPath = target;
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException)
+        {
+            Log.Info($"İndirme klasörü ayarlanamadı: {ex.Message}");
+        }
+    }
 
     public void Cancel(string? id)
     {
@@ -98,6 +163,8 @@ public sealed class DownloadManager
 
         operation.Pause();
         record.Status = DownloadStatus.Paused;
+        record.Speed = null;
+        record.CanResume = operation.CanResume;
         RaiseChanged(save: true);
     }
 
@@ -109,6 +176,7 @@ public sealed class DownloadManager
         operation.Resume();
         record.Status = DownloadStatus.InProgress;
         record.Error = null;
+        record.CanResume = false;
         RaiseChanged(save: true);
     }
 
@@ -152,6 +220,10 @@ public sealed class DownloadManager
         e.Handled = true;
 
         var operation = e.DownloadOperation;
+        // Never overwrite: an existing file, or another download heading for the same name.
+        if (File.Exists(e.ResultFilePath) || _records.Any(r => r.IsActive && string.Equals(r.FilePath, e.ResultFilePath, StringComparison.OrdinalIgnoreCase)))
+            e.ResultFilePath = UniquePath(e.ResultFilePath);
+
         var record = new DownloadRecord
         {
             Url = operation.Uri,
@@ -162,11 +234,14 @@ public sealed class DownloadManager
         };
         _records.Add(record);
         _live[record.Id] = operation;
+        if (sender is CoreWebView2 source)
+            _sources[record.Id] = source;
         HasSessionDownloads = true;
 
         operation.BytesReceivedChanged += (_, _) =>
         {
             record.ReceivedBytes = operation.BytesReceived;
+            UpdateSpeed(record);
             RaiseChanged(save: false);
         };
         operation.StateChanged += (_, _) => OnStateChanged(record, operation);
@@ -176,6 +251,12 @@ public sealed class DownloadManager
 
     private void OnStateChanged(DownloadRecord record, CoreWebView2DownloadOperation operation)
     {
+        record.Speed = null;
+        _samples.Remove(record.Id);
+        record.CanResume = operation.State == CoreWebView2DownloadState.Interrupted && operation.CanResume;
+        if (operation.State != CoreWebView2DownloadState.InProgress && !record.CanResume)
+            _sources.Remove(record.Id);
+
         switch (operation.State)
         {
             case CoreWebView2DownloadState.InProgress:
@@ -233,6 +314,38 @@ public sealed class DownloadManager
     };
 
     private DownloadRecord? Find(string? id) => _records.FirstOrDefault(r => r.Id == id);
+
+    /// <summary>Smoothed speed from samples at least half a second apart.</summary>
+    private void UpdateSpeed(DownloadRecord record)
+    {
+        var now = DateTime.UtcNow;
+        if (!_samples.TryGetValue(record.Id, out var last))
+        {
+            _samples[record.Id] = (now, record.ReceivedBytes);
+            return;
+        }
+
+        var seconds = (now - last.At).TotalSeconds;
+        if (seconds < 0.5)
+            return;
+
+        var instant = Math.Max(0, record.ReceivedBytes - last.Bytes) / seconds;
+        record.Speed = record.Speed is { } previous ? previous * 0.7 + instant * 0.3 : instant;
+        _samples[record.Id] = (now, record.ReceivedBytes);
+    }
+
+    private static string UniquePath(string path)
+    {
+        var folder = Path.GetDirectoryName(path) ?? "";
+        var name = Path.GetFileNameWithoutExtension(path);
+        var ext = Path.GetExtension(path);
+        for (var i = 1; ; i++)
+        {
+            var candidate = Path.Combine(folder, $"{name} ({i}){ext}");
+            if (!File.Exists(candidate))
+                return candidate;
+        }
+    }
 
     private void RaiseChanged(bool save)
     {

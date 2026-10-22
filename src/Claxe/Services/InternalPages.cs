@@ -25,6 +25,9 @@ public static class InternalPages
     /// <summary>File converter, shown in its own sidebar panel.</summary>
     public const string ConverterUrl = Origin + "converter.html";
 
+    /// <summary>Mini tools, shown in their own sidebar panel.</summary>
+    public const string ToolsUrl = Origin + "tools.html";
+
     /// <summary>"What's new" after an update.</summary>
     public const string WhatsNewUrl = Origin + "whatsnew.html";
 
@@ -55,6 +58,8 @@ public static class InternalPages
         ("whatsnew", WhatsNewUrl),
         ("donusturucu", ConverterUrl),
         ("converter", ConverterUrl),
+        ("araclar", ToolsUrl),
+        ("tools", ToolsUrl),
     ];
 
     public static bool IsInternal(string? url)
@@ -80,6 +85,9 @@ public static class InternalPages
 
         if (IsPage(url, ConverterUrl))
             return Scheme + "donusturucu";
+
+        if (IsPage(url, ToolsUrl))
+            return Scheme + "araclar";
 
         if (IsLibrary(url))
         {

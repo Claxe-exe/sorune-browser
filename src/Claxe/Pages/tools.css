@@ -1,0 +1,135 @@
+/* Mini tools panel. Builds on converter.css (same narrow panel look). */
+
+.tool-tabs {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.25);
+}
+.tool-tabs button {
+    height: 32px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.tool-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+.tool-tabs button[aria-selected="true"] {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #120e18;
+}
+
+.tool h2 { margin-bottom: 10px; }
+.tool h2.second { margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+
+.area, .field {
+    width: 100%;
+    border-radius: 11px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+.area { min-height: 150px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+.field { height: 34px; padding: 0 10px; }
+.area:focus, .field:focus { border-color: var(--accent); }
+.mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+select.field option { background: #1c1626; }
+
+.status { min-height: 18px; margin: 8px 0 0; font-size: 12px; color: var(--text-dim); }
+.status.ok { color: #4ade80; }
+.status.bad { color: #ff8a8f; }
+
+/* Colour */
+.color-top { display: flex; gap: 10px; align-items: center; }
+.swatch {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}
+.swatch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.values { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.value {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 11px;
+    background: rgba(0, 0, 0, 0.22);
+}
+.value .name { width: 40px; flex: none; font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; }
+.value code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+
+/* QR */
+.row-inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 10px; }
+.mini-label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; font-size: 11.5px; color: var(--text-dim); }
+.qr-box {
+    display: grid;
+    place-items: center;
+    margin-top: 12px;
+    min-height: 60px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.qr-box canvas { width: 100%; max-width: 260px; height: auto; border-radius: 8px; image-rendering: pixelated; }
+.qr-box canvas[width="0"] { display: none; }
+a.btn { display: inline-flex; align-items: center; color: #120e18; text-decoration: none; }
+a.btn[hidden] { display: none; }
+
+/* Time */
+.big-time {
+    margin: 4px 0 10px;
+    font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    font-size: 40px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+.big-time.running { color: var(--accent); text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent); }
+.big-time.done { color: #ff8a8f; }
+.tool .buttons { justify-content: center; }
+.laps { max-height: 140px; overflow-y: auto; margin: 10px 0 0; padding: 0 0 0 26px; font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--text-dim); }
+.laps li { padding: 2px 0; }
+.timer-set { display: flex; justify-content: center; gap: 10px; }
+.timer-set label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.timer-set .field { width: 74px; text-align: center; }
+
+/* Counter */
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
+.stat { padding: 10px; border-radius: 11px; background: rgba(0, 0, 0, 0.22); }
+.stat strong { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11.5px; color: var(--text-dim); }
+
+/* URL */
+.url-parts { display: grid; grid-template-columns: 74px 1fr; gap: 4px 10px; margin: 10px 0 0; font-size: 12px; }
+.url-parts dt { color: var(--accent); font-weight: 600; }
+.url-parts dd { margin: 0; overflow-wrap: anywhere; font-family: "Cascadia Mono", Consolas, monospace; color: var(--text-dim); }
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #120e18;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}

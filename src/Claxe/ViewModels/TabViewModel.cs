@@ -10,6 +10,13 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace Claxe.ViewModels;
 
+public enum SplitSide
+{
+    None,
+    Left,
+    Right,
+}
+
 public enum SecurityState
 {
     /// <summary>Claxe's own pages; nothing to show.</summary>
@@ -74,6 +81,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     }
 
     public event EventHandler<CoreWebView2NewWindowRequestedEventArgs>? NewWindowRequested;
+
+    /// <summary>The user clicked or tabbed into this page (picks the active half of a split screen).</summary>
+    public event EventHandler? ContentFocused;
     public event EventHandler? CloseRequested;
 
     /// <summary>A message posted by one of Claxe's own pages (never by a website).</summary>
@@ -98,6 +108,155 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     {
         get => _isPinned;
         set => SetProperty(ref _isPinned, value);
+    }
+
+    private int _volume = 100;
+    private string? _volumeScriptId;
+    private readonly List<CoreWebView2Frame> _frames = [];
+    private bool _isShown;
+    private SplitSide _splitSide;
+    private bool _hasPictureInPictureVideo;
+
+    /// <summary>This tab's own volume, 0..100 (independent of other tabs; mute is separate).</summary>
+    public int Volume
+    {
+        get => _volume;
+        set
+        {
+            if (!SetProperty(ref _volume, Math.Clamp(value, 0, 100)))
+                return;
+            OnPropertyChanged(nameof(HasCustomVolume));
+            _ = ApplyVolumeAsync();
+        }
+    }
+
+    public bool HasCustomVolume => _volume != 100;
+
+    /// <summary>Visible in the content area: the active tab, or the other half of a split screen.</summary>
+    public bool IsShown
+    {
+        get => _isShown;
+        set
+        {
+            if (!SetProperty(ref _isShown, value))
+                return;
+            if (value)
+            {
+                IsSuspended = false;
+                EnsureStarted();
+            }
+            if (Core is { } core)
+                core.MemoryUsageTargetLevel = value || IsActive ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+        }
+    }
+
+    /// <summary>Which half of the split screen shows this tab (None when not split).</summary>
+    public SplitSide SplitSide
+    {
+        get => _splitSide;
+        set
+        {
+            if (SetProperty(ref _splitSide, value))
+            {
+                OnPropertyChanged(nameof(IsInSplit));
+                OnPropertyChanged(nameof(ContentColumn));
+                OnPropertyChanged(nameof(ContentColumnSpan));
+            }
+        }
+    }
+
+    public bool IsInSplit => _splitSide != SplitSide.None;
+
+    /// <summary>Column in the content grid: [left pane][divider][right pane].</summary>
+    public int ContentColumn => _splitSide == SplitSide.Right ? 2 : 0;
+
+    public int ContentColumnSpan => _splitSide == SplitSide.None ? 3 : 1;
+
+    /// <summary>The page has a video that the browser can show in picture-in-picture.</summary>
+    public bool HasPictureInPictureVideo
+    {
+        get => _hasPictureInPictureVideo;
+        private set => SetProperty(ref _hasPictureInPictureVideo, value);
+    }
+
+    /// <summary>Re-checks the page for a picture-in-picture capable video (main frame only).</summary>
+    public async Task RefreshPictureInPictureAsync()
+    {
+        if (Core is not { } core || IsSuspended || InternalPages.IsInternal(Url))
+        {
+            HasPictureInPictureVideo = false;
+            return;
+        }
+
+        try
+        {
+            var result = await core.ExecuteScriptAsync(PictureInPicture.DetectScript);
+            HasPictureInPictureVideo = result == "true";
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            HasPictureInPictureVideo = false;
+        }
+    }
+
+    /// <summary>Opens (or closes) the page's main video in Chromium's picture-in-picture window.</summary>
+    public async Task<string?> TogglePictureInPictureAsync()
+    {
+        if (Core is not { } core)
+            return null;
+
+        try
+        {
+            // Runtime.evaluate with userGesture: the PiP API only works after a user action, and
+            // this call stands in for the click the user made on Sorune's button.
+            var json = await core.CallDevToolsProtocolMethodAsync("Runtime.evaluate", JsonSerializer.Serialize(new
+            {
+                expression = PictureInPicture.ToggleScript,
+                userGesture = true,
+                awaitPromise = true,
+                returnByValue = true,
+            }));
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty("result", out var result) && result.TryGetProperty("value", out var value)
+                ? value.GetString()
+                : null;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or JsonException)
+        {
+            Log.Info($"Resim içinde resim açılamadı: {ex.Message}");
+            return "error";
+        }
+    }
+
+    private async Task ApplyVolumeAsync()
+    {
+        if (Core is not { } core)
+            return; // applied when the page is created
+
+        try
+        {
+            if (_volumeScriptId is not null)
+                core.RemoveScriptToExecuteOnDocumentCreated(_volumeScriptId);
+            _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
+
+            var call = TabAudio.SetCall(_volume);
+            await core.ExecuteScriptAsync(call);
+            foreach (var frame in _frames.ToList())
+            {
+                try
+                {
+                    await frame.ExecuteScriptAsync(call);
+                }
+                catch (Exception ex) when (ex is COMException or InvalidOperationException)
+                {
+                    _frames.Remove(frame); // gone meanwhile
+                }
+            }
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+        {
+            Log.Info($"Sekme sesi ayarlanamadı: {ex.Message}");
+        }
     }
 
     private TabGroupViewModel? _group;
@@ -299,7 +458,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
             // Background tabs ask the browser to trim memory where it can.
             if (Core is { } core)
-                core.MemoryUsageTargetLevel = value ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+                core.MemoryUsageTargetLevel = value || IsShown ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
         }
     }
 
@@ -318,7 +477,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task TrySuspendAsync()
     {
-        if (IsActive || IsSuspended || Core is not { } core || core.IsDocumentPlayingAudio || InternalPages.IsInternal(Url))
+        if (IsActive || IsShown || IsSuspended || Core is not { } core || core.IsDocumentPlayingAudio || InternalPages.IsInternal(Url))
             return;
 
         try
@@ -457,8 +616,16 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         ConfigureSettings(core.Settings);
         InternalPages.Register(core);
         await InternalPages.InjectLanguageAsync(core);
+        _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
         if (_disposed)
             return;
+
+        core.FrameCreated += (_, e) =>
+        {
+            var frame = e.Frame;
+            _frames.Add(frame);
+            frame.Destroyed += (_, _) => _frames.Remove(frame);
+        };
 
         core.SourceChanged += (_, _) => OnSourceChanged(core);
         core.NavigationStarting += (_, _) =>
@@ -495,13 +662,14 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         core.ContainsFullScreenElementChanged += (_, _) => IsContentFullScreen = core.ContainsFullScreenElement;
         core.PermissionRequested += (_, e) => PermissionRequested?.Invoke(this, e);
         core.ProcessFailed += (_, e) => OnProcessFailed(environment, e);
-        if (!IsActive)
+        if (!IsActive && !IsShown)
             core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
         core.IsDocumentPlayingAudioChanged += (_, _) => IsPlayingAudio = core.IsDocumentPlayingAudio;
         core.IsMutedChanged += (_, _) => IsMuted = core.IsMuted;
         core.Find.MatchCountChanged += (_, _) => FindMatchCount = core.Find.MatchCount;
         core.Find.ActiveMatchIndexChanged += (_, _) => FindActiveIndex = core.Find.ActiveMatchIndex;
         core.ContextMenuRequested += (_, e) => PageContextMenuRequested?.Invoke(this, e);
+        webView.GotFocus += (_, _) => ContentFocused?.Invoke(this, EventArgs.Empty);
         webView.ZoomFactorChanged += (_, _) =>
             ZoomPercent = Math.Abs(webView.ZoomFactor - 1) < 0.001 ? null : $"%{Math.Round(webView.ZoomFactor * 100)}";
         CoreCreated?.Invoke(this, core);
@@ -570,6 +738,8 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         var dead = _webView;
         _initTask = null;
+        _volumeScriptId = null;
+        _frames.Clear();
         _pendingUrl = Url ?? InternalPages.NewTabUrl;
         WebView = null;
         IsLoading = false;
@@ -583,7 +753,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             Log.Info($"Çöken WebView bırakılırken: {ex.Message}");
         }
 
-        if (IsActive)
+        if (IsActive || IsShown)
             EnsureStarted();
     }
 

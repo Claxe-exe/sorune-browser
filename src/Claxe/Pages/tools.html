@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src https: data: blob:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Mini araçlar</title>
+    <link rel="stylesheet" href="converter.css">
+    <link rel="stylesheet" href="tools.css">
+</head>
+<body>
+    <div class="glow" aria-hidden="true"></div>
+
+    <header class="hero">
+        <div class="hero-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></svg>
+        </div>
+        <div>
+            <h1>Mini araçlar</h1>
+            <p>Hepsi çevrimdışı çalışır; yazdıkların bir yere gönderilmez.</p>
+        </div>
+    </header>
+
+    <nav class="tool-tabs" id="tabs" role="tablist" aria-label="Araçlar">
+        <button type="button" role="tab" data-tool="json">JSON</button>
+        <button type="button" role="tab" data-tool="color">Renk</button>
+        <button type="button" role="tab" data-tool="qr">QR</button>
+        <button type="button" role="tab" data-tool="time">Süre</button>
+        <button type="button" role="tab" data-tool="count">Sayaç</button>
+        <button type="button" role="tab" data-tool="url">URL</button>
+    </nav>
+
+    <!-- JSON -->
+    <section class="card tool" id="tool-json" hidden>
+        <h2>JSON biçimlendir ve doğrula</h2>
+        <textarea id="json-input" class="area mono" spellcheck="false" placeholder='{"ad": "Sorune"}'></textarea>
+        <p class="status" id="json-status"></p>
+        <div class="buttons">
+            <button type="button" class="btn primary" id="json-format">Biçimlendir</button>
+            <button type="button" class="btn" id="json-minify">Küçült</button>
+            <button type="button" class="btn ghost" id="json-copy">Kopyala</button>
+        </div>
+    </section>
+
+    <!-- Colour -->
+    <section class="card tool" id="tool-color" hidden>
+        <h2>Renk seçici</h2>
+        <div class="color-top">
+            <label class="swatch" id="color-swatch">
+                <input type="color" id="color-picker" value="#b583ff" aria-label="Renk seç">
+            </label>
+            <input type="text" id="color-input" class="field mono" spellcheck="false" placeholder="#b583ff, rgb(181 131 255), hsl(266 100% 76%)" aria-label="Renk değeri">
+        </div>
+        <p class="status" id="color-status"></p>
+        <div class="values" id="color-values"></div>
+    </section>
+
+    <!-- QR -->
+    <section class="card tool" id="tool-qr" hidden>
+        <h2>QR kod oluşturucu</h2>
+        <textarea id="qr-input" class="area" placeholder="Bağlantı ya da metin"></textarea>
+        <div class="row-inline">
+            <label class="mini-label">Hata düzeltme
+                <select id="qr-ecl" class="field">
+                    <option value="L">Düşük (en çok veri)</option>
+                    <option value="M" selected>Orta</option>
+                    <option value="Q">Yüksek</option>
+                    <option value="H">En yüksek</option>
+                </select>
+            </label>
+            <button type="button" class="btn ghost" id="qr-current">Açık sayfanın adresi</button>
+        </div>
+        <div class="qr-box"><canvas id="qr-canvas" width="0" height="0" aria-label="QR kod"></canvas></div>
+        <p class="status" id="qr-status"></p>
+        <div class="buttons">
+            <a class="btn primary" id="qr-download" download="qr.png" href="#" hidden>PNG olarak indir</a>
+            <button type="button" class="btn ghost" id="qr-copy" hidden>Görseli kopyala</button>
+        </div>
+    </section>
+
+    <!-- Stopwatch + timer -->
+    <section class="card tool" id="tool-time" hidden>
+        <h2>Kronometre</h2>
+        <div class="big-time" id="sw-display">00:00.00</div>
+        <div class="buttons">
+            <button type="button" class="btn primary" id="sw-start">Başlat</button>
+            <button type="button" class="btn" id="sw-lap" disabled>Tur</button>
+            <button type="button" class="btn ghost" id="sw-reset">Sıfırla</button>
+        </div>
+        <ol class="laps" id="sw-laps"></ol>
+
+        <h2 class="second">Zamanlayıcı</h2>
+        <div class="timer-set" id="timer-set">
+            <label><input type="number" id="timer-min" class="field" min="0" max="999" value="5"><span>dk</span></label>
+            <label><input type="number" id="timer-sec" class="field" min="0" max="59" value="0"><span>sn</span></label>
+        </div>
+        <div class="big-time" id="timer-display">05:00</div>
+        <div class="buttons">
+            <button type="button" class="btn primary" id="timer-start">Başlat</button>
+            <button type="button" class="btn ghost" id="timer-reset">Sıfırla</button>
+        </div>
+    </section>
+
+    <!-- Counter -->
+    <section class="card tool" id="tool-count" hidden>
+        <h2>Metin ve karakter sayacı</h2>
+        <textarea id="count-input" class="area" placeholder="Metni buraya yapıştır"></textarea>
+        <div class="stats" id="count-stats"></div>
+    </section>
+
+    <!-- URL -->
+    <section class="card tool" id="tool-url" hidden>
+        <h2>URL encode / decode</h2>
+        <textarea id="url-input" class="area mono" spellcheck="false" placeholder="https://ornek.com/?q=çay bardağı"></textarea>
+        <div class="buttons">
+            <button type="button" class="btn primary" id="url-encode">Encode</button>
+            <button type="button" class="btn" id="url-decode">Decode</button>
+            <button type="button" class="btn ghost" id="url-copy">Kopyala</button>
+        </div>
+        <label class="check"><input type="checkbox" id="url-full"> <span>Tam adres olarak (/, ?, &amp; korunur)</span></label>
+        <p class="status" id="url-status"></p>
+        <dl class="url-parts" id="url-parts"></dl>
+    </section>
+
+    <p class="toast" id="toast" hidden></p>
+
+    <script src="i18n.js"></script>
+    <script src="qr.js"></script>
+    <script src="tools.js"></script>
+</body>
+</html>

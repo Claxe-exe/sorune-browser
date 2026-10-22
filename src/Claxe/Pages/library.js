@@ -235,6 +235,14 @@ function formatSize(bytes) {
     return `${sizeFormat.format(value)} ${units[unit]}`;
 }
 
+function formatDuration(seconds) {
+    seconds = Math.max(1, Math.round(seconds));
+    if (seconds < 60) return t("{0} sn", seconds);
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return t("{0} dk", minutes);
+    return t("{0} sa {1} dk", Math.floor(minutes / 60), minutes % 60);
+}
+
 function downloadAction(action, id) {
     return () => send({ type: "download", action, id });
 }
@@ -250,10 +258,13 @@ function renderDownloads() {
             const bar = el("div", { class: "bar" + (known ? "" : " indeterminate") }, [el("span")]);
             bar.firstChild.style.width = known ? `${Math.min(100, (d.receivedBytes / d.totalBytes) * 100)}%` : "30%";
             children.push(bar);
-            children.push(el("span", {
-                class: "item-sub status",
-                text: `${d.status === "paused" ? t("Duraklatıldı") + " · " : ""}${formatSize(d.receivedBytes)} / ${known ? formatSize(d.totalBytes) : t("bilinmiyor")}`,
-            }));
+            const parts = [];
+            if (d.status === "paused") parts.push(t("Duraklatıldı"));
+            if (known) parts.push(`%${Math.floor((d.receivedBytes / d.totalBytes) * 100)}`);
+            parts.push(`${formatSize(d.receivedBytes)} / ${known ? formatSize(d.totalBytes) : t("bilinmiyor")}`);
+            if (d.status === "inProgress" && d.speed > 0) parts.push(`${formatSize(d.speed)}/s`);
+            if (d.remainingSeconds != null) parts.push(t("{0} kaldı", formatDuration(d.remainingSeconds)));
+            children.push(el("span", { class: "item-sub status", text: parts.join(" · ") }));
         } else {
             let status = "";
             let cls = "item-sub status";
@@ -265,7 +276,9 @@ function renderDownloads() {
 
         const actions = [];
         if (d.status === "inProgress") actions.push(["Duraklat", "pause"], ["İptal", "cancel"]);
-        if (d.status === "paused") actions.push(["Devam et", "resume"], ["İptal", "cancel"]);
+        // "Continue" only when WebView2 says the download can really resume.
+        if (d.status === "paused") actions.push(...(d.canResume ? [["Devam et", "resume"]] : []), ["İptal", "cancel"]);
+        if (d.status === "failed" && d.canResume) actions.push(["Devam et", "resume"]);
         if (d.status === "completed" && !missing) actions.push(["Aç", "open"], ["Klasörde göster", "showInFolder"]);
         if (!active) actions.push(["Listeden kaldır", "remove"]);
         children.push(el("div", { class: "actions" }, actions.map(([label, action]) =>

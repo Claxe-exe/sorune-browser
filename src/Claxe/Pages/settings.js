@@ -67,6 +67,10 @@ function render() {
 
     setSegmented("corner", s.cornerStyle);
     setSegmented("density", s.density);
+    setSegmented("sleep-after", String(s.sleepAfterMinutes));
+
+    $("download-folder").textContent = state.downloadFolder || t("Windows'un İndirilenler klasörü");
+    $("download-folder-reset").hidden = !s.downloadFolder;
 
     $("engine").replaceChildren(...state.searchEngines.map((e) =>
         el("button", { type: "button", "data-value": e.id, text: e.name })));
@@ -316,6 +320,13 @@ for (const id of ["corner", "density", "engine"]) {
 for (const sw of document.querySelectorAll(".switch")) {
     sw.addEventListener("click", () => update(sw.dataset.key, sw.getAttribute("aria-checked") !== "true"));
 }
+
+$("sleep-after").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button && button.getAttribute("aria-checked") !== "true") update("sleepAfterMinutes", Number(button.dataset.value));
+});
+$("download-folder-pick").addEventListener("click", () => send({ type: "pickDownloadFolder" }));
+$("download-folder-reset").addEventListener("click", () => send({ type: "resetDownloadFolder" }));
 
 const sendGlass = throttle((value) => update("chromeOpacity", Math.round((0.97 - value / 100) * 100) / 100), 80);
 $("glass").addEventListener("input", () => { dragging = "glass"; sendGlass(Number($("glass").value)); });

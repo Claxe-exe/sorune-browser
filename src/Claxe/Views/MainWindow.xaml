@@ -182,6 +182,16 @@
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <MenuItem Header="{controls:T 'Sesi kapat / aç'}" Command="{Binding ToggleMuteCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="{controls:T 'Ses düzeyi…'}" Click="TabVolume_Click" />
+                                            <MenuItem Header="{controls:T 'Şimdi uyut'}" Command="{Binding SleepTabCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator />
+                                            <MenuItem Header="{controls:T 'Sağda yan yana aç'}" Command="{Binding SplitRightCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="{controls:T 'Solda yan yana aç'}" Command="{Binding SplitLeftCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="{controls:T 'Bölünmüş ekranı kapat'}" Command="{Binding CloseSplitCommand}"
+                                                      Visibility="{Binding IsSplit, Converter={StaticResource BoolToVisibility}}" />
                                             <Separator />
                                             <MenuItem Header="{controls:T 'Yeni gruba ekle'}" Command="{Binding AddTabToNewGroupCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -265,16 +275,18 @@
                                         </Grid.ColumnDefinitions>
 
                                         <!-- Plays sound: click to mute / unmute -->
+                                        <!-- Plays sound / own volume: click for the volume slider, right click mutes -->
                                         <Button x:Name="AudioButton"
                                                 Grid.Column="2"
                                                 Style="{StaticResource TabCloseButtonStyle}"
                                                 FontSize="11"
                                                 VerticalAlignment="Center"
                                                 Content="&#xE767;"
-                                                ToolTip="{controls:T 'Sekmenin sesini kapat'}"
+                                                ToolTip="{controls:T 'Ses düzeyi (sağ tık: sessize al)'}"
                                                 Visibility="Collapsed"
-                                                Command="{Binding DataContext.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
+                                                Click="AudioButton_Click"
+                                                MouseRightButtonUp="AudioButton_MouseRightButtonUp"
+                                                ContextMenuOpening="AudioButton_ContextMenuOpening" />
 
                                         <Grid Width="16" Height="16" VerticalAlignment="Center">
                                             <Image x:Name="FaviconImage"
@@ -303,6 +315,10 @@
                                         </Grid>
 
                                         <DockPanel x:Name="TitlePanel" Grid.Column="1" Margin="9,0,4,1">
+                                            <TextBlock x:Name="SplitBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Text="&#xE8A0;"
+                                                       FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource AccentBrush}" Visibility="Collapsed"
+                                                       ToolTip="{controls:T 'Bölünmüş ekranda'}" />
                                             <Border x:Name="PrivateBadge" DockPanel.Dock="Left" Margin="0,0,6,0" Padding="5,1"
                                                     CornerRadius="5" VerticalAlignment="Center"
                                                     Background="{DynamicResource AccentSoftBrush}" Visibility="Collapsed">
@@ -388,10 +404,17 @@
                                     <DataTrigger Binding="{Binding IsPlayingAudio}" Value="True">
                                         <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasCustomVolume}" Value="True">
+                                        <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="AudioButton" Property="Content" Value="&#xE993;" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsMuted}" Value="True">
                                         <Setter TargetName="AudioButton" Property="Visibility" Value="Visible" />
                                         <Setter TargetName="AudioButton" Property="Content" Value="&#xE74F;" />
-                                        <Setter TargetName="AudioButton" Property="ToolTip" Value="{controls:T 'Sekmenin sesini aç'}" />
+                                        <Setter TargetName="AudioButton" Property="ToolTip" Value="{controls:T 'Sessiz (tıkla: ses düzeyi, sağ tık: sesi aç)'}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsInSplit}" Value="True">
+                                        <Setter TargetName="SplitBadge" Property="Visibility" Value="Visible" />
                                     </DataTrigger>
 
                                     <!-- Pinned: icon only (last, so it wins over hover/active) -->
@@ -474,6 +497,26 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0,0,0">
+                        <!-- Picture-in-picture: only while the page has a video that supports it -->
+                        <Button Style="{StaticResource IconButtonStyle}" Margin="0,0,2,0" Content="&#xE8A7;"
+                                ToolTip="{controls:T 'Videoyu resim içinde resim yap'}"
+                                Command="{Binding TogglePictureInPictureCommand}"
+                                Visibility="{Binding ActiveTab.HasPictureInPictureVideo, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
+                        <!-- Split screen: opens one with a new tab, or closes the current one -->
+                        <Button Margin="0,0,2,0" Click="SplitButton_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                                    <Setter Property="Content" Value="&#xE8A0;" />
+                                    <Setter Property="ToolTip" Value="{controls:T 'Bölünmüş ekran'}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSplit}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="ToolTip" Value="{controls:T 'Bölünmüş ekranı kapat'}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <!-- Update downloaded: one click saves everything, installs and restarts -->
                         <Button x:Name="UpdateButton"
                                 Height="30" Margin="0,0,6,0" Padding="10,0"
@@ -713,6 +756,31 @@
                                 Content="&#xE710;" FontSize="12"
                                 ToolTip="{controls:T 'Panelleri düzenle'}"
                                 Command="{Binding ManagePanelsCommand}" />
+                        <!-- Built-in mini tools -->
+                        <Grid DockPanel.Dock="Bottom" Margin="0,2,0,0">
+                            <Border Width="3" Height="18" CornerRadius="1.5" HorizontalAlignment="Left"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Visibility="{Binding ToolsPanel.IsOpen, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Width="38" Height="38"
+                                    ToolTip="{controls:T 'Mini araçlar'}"
+                                    Command="{Binding TogglePanelCommand}"
+                                    CommandParameter="{Binding ToolsPanel}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ToolsPanel.IsOpen}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Border Width="24" Height="24" CornerRadius="7" BorderThickness="1"
+                                        BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource AccentSoftBrush}">
+                                    <TextBlock Text="&#xE90F;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                               Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Button>
+                        </Grid>
                         <!-- Built-in file converter -->
                         <Grid DockPanel.Dock="Bottom" Margin="0,2,0,6">
                             <Border Width="3" Height="18" CornerRadius="1.5" HorizontalAlignment="Left"
@@ -845,19 +913,75 @@
                               Background="Transparent" Visibility="Collapsed"
                               DragCompleted="PanelSplitter_DragCompleted" />
 
-                <ItemsControl x:Name="ContentHost" Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False">
+                <!-- Pages: [left pane][divider][right pane]; without a split the shown page spans all three. -->
+                <ItemsControl x:Name="ContentHost" Grid.Column="3" ItemsSource="{Binding HostedTabs}" Focusable="False"
+                              SizeChanged="ContentHost_SizeChanged">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <Grid />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{Binding SplitLeftWidth}" />
+                                    <ColumnDefinition Width="{Binding SplitDividerWidth}" />
+                                    <ColumnDefinition Width="{Binding SplitRightWidth}" />
+                                </Grid.ColumnDefinitions>
+                            </Grid>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Grid.Column" Value="{Binding ContentColumn}" />
+                            <Setter Property="Grid.ColumnSpan" Value="{Binding ContentColumnSpan}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:TabViewModel}">
-                            <ContentPresenter Content="{Binding WebView}"
-                                              Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}" />
+                            <DockPanel Visibility="{Binding IsShown, Converter={StaticResource BoolToVisibility}}">
+                                <!-- Split pane header: click to make this half active; swap; leave the split -->
+                                <Border x:Name="PaneHeader" DockPanel.Dock="Top" Height="30" Visibility="Collapsed"
+                                        Background="{DynamicResource GlassBrush}" BorderThickness="0,0,0,2" BorderBrush="Transparent"
+                                        Cursor="Hand" MouseLeftButtonDown="PaneHeader_MouseLeftButtonDown">
+                                    <DockPanel Margin="10,0,4,0">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="26" Height="26" FontSize="10"
+                                                Content="&#xE711;" ToolTip="{controls:T 'Bölünmüş ekranı kapat (sekmeler açık kalır)'}"
+                                                Command="{Binding DataContext.CloseSplitCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButtonStyle}" Width="26" Height="26" FontSize="11"
+                                                Content="&#xE8AB;" ToolTip="{controls:T 'Bölmelerin yerini değiştir'}"
+                                                Command="{Binding DataContext.SwapSplitCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                        <Grid Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center">
+                                            <Image Source="{Binding Favicon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Grid>
+                                        <TextBlock x:Name="PaneTitle" Text="{Binding Title}" VerticalAlignment="Center" FontSize="12"
+                                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </DockPanel>
+                                </Border>
+                                <ContentPresenter Content="{Binding WebView}" />
+                            </DockPanel>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsInSplit}" Value="True">
+                                    <Setter TargetName="PaneHeader" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsInSplit}" Value="True" />
+                                        <Condition Binding="{Binding IsActive}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter TargetName="PaneHeader" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                    <Setter TargetName="PaneTitle" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                </MultiDataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- Split divider: sits in the gap between the panes (no web page above it), drag to resize -->
+                <Border x:Name="SplitDivider" Grid.Column="3" Width="6" HorizontalAlignment="Left"
+                        Background="Transparent" Cursor="SizeWE"
+                        Visibility="{Binding IsSplitVisible, Converter={StaticResource BoolToVisibility}}"
+                        MouseLeftButtonDown="SplitDivider_MouseLeftButtonDown"
+                        MouseMove="SplitDivider_MouseMove"
+                        MouseLeftButtonUp="SplitDivider_MouseLeftButtonUp">
+                    <Rectangle Width="2" RadiusX="1" RadiusY="1" Margin="0,40" Fill="{DynamicResource AccentBrush}" Opacity="0.55" />
+                </Border>
             </Grid>
 
             <!-- ============ Address suggestions ============ -->
@@ -898,6 +1022,96 @@
                 </Border>
             </Popup>
 
+            <!-- ============ Command palette (Ctrl+K) ============ -->
+            <Popup x:Name="PalettePopup"
+                   PlacementTarget="{Binding ElementName=ContentGrid}"
+                   Placement="Relative"
+                   AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade"
+                   Closed="PalettePopup_Closed">
+                <Border Width="620" Margin="16" Padding="10" CornerRadius="18"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="6" BlurRadius="30" Opacity="0.55" Color="Black" />
+                    </Border.Effect>
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Height="44" Padding="14,0" CornerRadius="12"
+                                Background="{DynamicResource InsetBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,0,12,0"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" IsHitTestVisible="False"
+                                           Text="{controls:T 'Komut, sekme ya da sayfa ara…'}" Foreground="{DynamicResource TextSecondaryBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=PaletteBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBox x:Name="PaletteBox" Grid.Column="1" Style="{StaticResource AddressTextBoxStyle}" FontSize="14"
+                                         TextChanged="PaletteBox_TextChanged" PreviewKeyDown="PaletteBox_PreviewKeyDown" />
+                                <Border Grid.Column="2" Padding="7,2" CornerRadius="6" VerticalAlignment="Center"
+                                        Background="{DynamicResource ControlHoverBrush}">
+                                    <TextBlock Text="Esc" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ListBox x:Name="PaletteList" Margin="0,8,0,0" MaxHeight="420"
+                                 ItemsSource="{Binding PaletteItems}" SelectedIndex="{Binding PaletteIndex}"
+                                 Background="Transparent" BorderThickness="0" Focusable="False"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingPanel.IsVirtualizing="True">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Focusable" Value="False" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Row" Padding="10,8" CornerRadius="10" Background="Transparent" Cursor="Hand"
+                                                        PreviewMouseLeftButtonUp="PaletteRow_MouseLeftButtonUp">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PaletteItem}">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Width="28" Text="{Binding Glyph}" VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{DynamicResource AccentBrush}" />
+                                        <TextBlock DockPanel.Dock="Right" Margin="12,0,0,0" MaxWidth="260" VerticalAlignment="Center"
+                                                   Text="{Binding Subtitle}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Title}" FontSize="13.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </Popup>
+
             <!-- ============ Find in page ============ -->
             <Popup x:Name="FindPopup"
                    PlacementTarget="{Binding ElementName=AddressPill}"
@@ -921,6 +1135,52 @@
                         <TextBox x:Name="FindBox" Style="{StaticResource AddressTextBoxStyle}" FontSize="13"
                                  TextChanged="FindBox_TextChanged" PreviewKeyDown="FindBox_PreviewKeyDown" />
                     </DockPanel>
+                </Border>
+            </Popup>
+
+            <!-- ============ Crash recovery offer (only after a crash with "continue previous session" off) ============ -->
+            <Popup PlacementTarget="{Binding ElementName=AddressPill}" Placement="Bottom" VerticalOffset="10"
+                   AllowsTransparency="True" StaysOpen="True" PopupAnimation="Fade">
+                <Popup.Style>
+                    <Style TargetType="Popup">
+                        <Setter Property="IsOpen" Value="True" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding RecoveryOffer}" Value="{x:Null}">
+                                <Setter Property="IsOpen" Value="False" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                <Setter Property="IsOpen" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Popup.Style>
+                <Border Margin="12" Width="380" Padding="18" CornerRadius="16"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="4" BlurRadius="24" Opacity="0.5" Color="Black" />
+                    </Border.Effect>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="36" Height="36" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="&#xE777;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" MaxWidth="290">
+                                <TextBlock Text="{controls:T 'Sorune beklenmedik şekilde kapandı'}" FontWeight="SemiBold" FontSize="14"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                                <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12.5" TextWrapping="Wrap">
+                                    <Run Text="{controls:T 'Önceki oturumdaki sekmeler:'}" />
+                                    <Run Text="{Binding RecoveryTabCount, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                            <Button Content="{controls:T 'Hayır, teşekkürler'}" Style="{StaticResource GhostButtonStyle}" Command="{Binding DismissRecoveryCommand}" />
+                            <Button Content="{controls:T 'Sekmeleri geri yükle'}" Margin="8,0,0,0" Style="{StaticResource AccentButtonStyle}" Command="{Binding AcceptRecoveryCommand}" />
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
             </Popup>
 

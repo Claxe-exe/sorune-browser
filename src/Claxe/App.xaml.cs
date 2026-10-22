@@ -33,6 +33,7 @@ public partial class App : Application
 
         var settings = SettingsStore.Load();
         L.Load(settings.Language);
+        SessionStore.MarkRunning();
 
         if (!BrowserEnvironment.IsRuntimeAvailable(out var version))
         {
@@ -88,6 +89,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SessionStore.MarkCleanExit();
         _instance?.Dispose();
         if (_restartRequested && Environment.ProcessPath is { } exe)
             Process.Start(new ProcessStartInfo(exe, $"{RestartAfterArgument} {Environment.ProcessId}") { UseShellExecute = false });

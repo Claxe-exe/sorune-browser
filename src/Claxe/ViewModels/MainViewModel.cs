@@ -16,8 +16,6 @@ namespace Claxe.ViewModels;
 public sealed class MainViewModel : ObservableObject
 {
     private const int MaxClosedTabs = 25;
-    private static readonly TimeSpan SuspendAfter = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan SuspendAfterInPerformanceMode = TimeSpan.FromMinutes(3);
 
     private static readonly HashSet<string> AppearanceKeys =
         ["theme", "wallpaper", "accentColor", "chromeOpacity", "cornerStyle", "density", "animationsEnabled", "performanceMode"];
@@ -48,6 +46,8 @@ public sealed class MainViewModel : ObservableObject
         _settings = settings;
         _settingsController = new SettingsController(settings, _permissions, _panelStore);
         _settingsController.Changed += OnSettingChanged;
+        _settingsController.DownloadFolderInUse = () => _downloads.Folder;
+        _downloads.SetFolder(settings.DownloadFolder);
         Mascot = new MascotViewModel(settings.MascotEnabled);
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -58,6 +58,9 @@ public sealed class MainViewModel : ObservableObject
         };
         _suspendTimer.Tick += (_, _) => SuspendIdleTabs();
         _suspendTimer.Start();
+        // Only the active tab is asked whether it has a video for picture-in-picture.
+        _pipTimer.Tick += (_, _) => _ = ActiveTab?.RefreshPictureInPictureAsync();
+        _pipTimer.Start();
 
         // Progress fires many times a second; the toolbar and pages refresh at most 4x per second.
         _downloadsTimer.Tick += (_, _) =>
@@ -91,6 +94,8 @@ public sealed class MainViewModel : ObservableObject
         });
         ConverterPanel = new PanelViewModel(new WebPanel { Id = "sorune-converter", Name = L.T("Dönüştürücü"), Url = InternalPages.ConverterUrl });
         HostedPanels.Add(ConverterPanel);
+        ToolsPanel = new PanelViewModel(new WebPanel { Id = "sorune-tools", Name = L.T("Mini araçlar"), Url = InternalPages.ToolsUrl });
+        HostedPanels.Add(ToolsPanel);
 
         UpdateService.StateChanged += (_, _) =>
             System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
@@ -150,6 +155,9 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Built-in file converter, pinned to the bottom of the sidebar.</summary>
     public PanelViewModel ConverterPanel { get; }
 
+    /// <summary>Built-in mini tools (JSON, colours, QR, timers, counters, URL encoding).</summary>
+    public PanelViewModel ToolsPanel { get; }
+
     public MascotViewModel Mascot { get; }
 
     /// <summary>Blurred wallpaper behind the tab strip and toolbar.</summary>
@@ -198,6 +206,9 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>"Restart now" after changing the language.</summary>
     public event EventHandler? RestartRequested;
 
+    /// <summary>Shows a folder picker starting at the given folder; null when cancelled.</summary>
+    public Func<string?, string?>? PickFolder { get; set; }
+
     /// <summary>Asked before opening a downloaded program or script; the view shows the question.</summary>
     public Func<string, bool> ConfirmOpenRiskyFile { get; set; } = _ => false;
 
@@ -225,6 +236,8 @@ public sealed class MainViewModel : ObservableObject
             Mascot.NoteActivity();
 
             OnPropertyChanged();
+            RaiseSplitLayout();
+            _ = value.RefreshPictureInPictureAsync();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(IsContentFullScreen));
             OnPropertyChanged(nameof(IsActiveTabLoading));
@@ -298,33 +311,20 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public void Start(IReadOnlyList<string> args)
     {
-        if (_settings.RestoreSession && SessionStore.Load() is { Tabs.Count: > 0 } session)
+        // The session is always kept on disk (as crash insurance); the setting decides whether it
+        // comes back by itself. After a crash with the setting off, Sorune offers it instead.
+        var session = SessionStore.Load();
+        if (session is { Tabs.Count: > 0 })
         {
-            var groups = session.Groups
-                .Where(g => !string.IsNullOrEmpty(g.Id))
-                .GroupBy(g => g.Id).Select(g => g.First())
-                .ToDictionary(g => g.Id, g => new TabGroupViewModel(g.Id, g.Name, g.Color, g.IsCollapsed));
-            foreach (var saved in session.Tabs.Where(t => AddressResolver.IsNavigable(t.Url)))
-            {
-                var tab = CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
-                if (!saved.IsPinned && saved.GroupId is { } id && groups.TryGetValue(id, out var group))
-                {
-                    if (!Groups.Contains(group))
-                        Groups.Add(group);
-                    tab.Group = group;
-                }
-            }
-            RefreshGroups();
-
-            if (Tabs.Count > 0)
-            {
-                ActiveTab = Tabs[Math.Clamp(session.ActiveIndex, 0, Tabs.Count - 1)];
-                Log.Info($"Oturum geri yüklendi: {Tabs.Count} sekme.");
-            }
+            if (_settings.RestoreSession)
+                RestoreSession(session);
+            else if (SessionStore.PreviousRunCrashed)
+                RecoveryOffer = session;
         }
 
         if (OpenExternal(args) == 0 && Tabs.Count == 0)
             NewTab();
+        ScheduleSave();
 
         // First start of a new version (not the very first start): show what changed, once.
         var version = UpdateService.CurrentVersion;
@@ -337,6 +337,81 @@ public sealed class MainViewModel : ObservableObject
                 OpenInternal(InternalPages.WhatsNewUrl);
         }
     }
+
+    /// <summary>Recreates saved tabs (with groups, pins and the active tab) at the end of the strip.</summary>
+    private void RestoreSession(SessionState session)
+    {
+        var groups = session.Groups
+            .Where(g => !string.IsNullOrEmpty(g.Id))
+            .GroupBy(g => g.Id).Select(g => g.First())
+            .ToDictionary(g => g.Id, g => new TabGroupViewModel(g.Id, g.Name, g.Color, g.IsCollapsed));
+        var restored = new List<TabViewModel?>();
+        foreach (var saved in session.Tabs)
+        {
+            if (!AddressResolver.IsNavigable(saved.Url))
+            {
+                restored.Add(null);
+                continue;
+            }
+
+            var tab = CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
+            tab.Volume = Math.Clamp(saved.Volume, 0, 100);
+            if (!saved.IsPinned && saved.GroupId is { } id && groups.TryGetValue(id, out var group))
+            {
+                if (!Groups.Contains(group))
+                    Groups.Add(group);
+                tab.Group = group;
+            }
+            restored.Add(tab);
+        }
+        RefreshGroups();
+
+        TabViewModel? At(int index) => index >= 0 && index < restored.Count ? restored[index] : null;
+        if ((At(session.ActiveIndex) ?? restored.LastOrDefault(t => t is not null)) is { } active)
+        {
+            ActiveTab = active;
+            Log.Info($"Oturum geri yüklendi: {restored.Count(t => t is not null)} sekme.");
+        }
+
+        if (At(session.SplitLeft) is { } left && At(session.SplitRight) is { } right && left != right)
+        {
+            SplitRatio = Math.Clamp(session.SplitRatio, 0.2, 0.8);
+            SetSplit(left, right);
+        }
+    }
+
+    // ---------------------------------------------------------------- crash recovery
+
+    private SessionState? _recoveryOffer;
+
+    /// <summary>Tabs from a run that crashed while "continue previous session" was off; null when none.</summary>
+    public SessionState? RecoveryOffer
+    {
+        get => _recoveryOffer;
+        private set
+        {
+            if (SetProperty(ref _recoveryOffer, value))
+                OnPropertyChanged(nameof(RecoveryTabCount));
+        }
+    }
+
+    public int RecoveryTabCount => _recoveryOffer?.Tabs.Count ?? 0;
+
+    public ICommand AcceptRecoveryCommand => new RelayCommand(() =>
+    {
+        if (RecoveryOffer is not { } session)
+            return;
+
+        RecoveryOffer = null;
+        // The empty new tab opened at start is replaced by the recovered tabs.
+        var blank = Tabs.Count == 1 && Tabs[0].IsNewTabPage ? Tabs[0] : null;
+        RestoreSession(session);
+        if (blank is not null && Tabs.Count > 1)
+            CloseTab(blank);
+        SoundService.Play(UiSound.TabOpen);
+    });
+
+    public ICommand DismissRecoveryCommand => new RelayCommand(() => RecoveryOffer = null);
 
     /// <summary>Opens links or files handed over by Windows or a second Claxe launch. Returns how many opened.</summary>
     public int OpenExternal(IEnumerable<string> args)
@@ -492,6 +567,296 @@ public sealed class MainViewModel : ObservableObject
             ScheduleSave();
         }
     });
+
+    // ---------------------------------------------------------------- split screen
+
+    private TabViewModel? _splitLeft;
+    private TabViewModel? _splitRight;
+    private double _splitRatio = 0.5;
+
+    public TabViewModel? SplitLeft => _splitLeft;
+    public TabViewModel? SplitRight => _splitRight;
+
+    public bool IsSplit => _splitLeft is not null && _splitRight is not null;
+
+    /// <summary>The split pair is on screen (one of its tabs is the active tab).</summary>
+    public bool IsSplitVisible => IsSplit && (ActiveTab == _splitLeft || ActiveTab == _splitRight);
+
+    /// <summary>Share of the content width taken by the left pane (0.15..0.85).</summary>
+    public double SplitRatio
+    {
+        get => _splitRatio;
+        set
+        {
+            if (SetProperty(ref _splitRatio, Math.Clamp(value, 0.15, 0.85)))
+            {
+                RaiseSplitLayout();
+                ScheduleSave();
+            }
+        }
+    }
+
+    public System.Windows.GridLength SplitLeftWidth => IsSplitVisible
+        ? new System.Windows.GridLength(_splitRatio, System.Windows.GridUnitType.Star)
+        : new System.Windows.GridLength(1, System.Windows.GridUnitType.Star);
+
+    public System.Windows.GridLength SplitDividerWidth => new(IsSplitVisible ? 6 : 0);
+
+    public System.Windows.GridLength SplitRightWidth => IsSplitVisible
+        ? new System.Windows.GridLength(1 - _splitRatio, System.Windows.GridUnitType.Star)
+        : new System.Windows.GridLength(0);
+
+    public ICommand SplitRightCommand => new RelayCommand(p => SplitWith(p as TabViewModel, SplitSide.Right));
+    public ICommand SplitLeftCommand => new RelayCommand(p => SplitWith(p as TabViewModel, SplitSide.Left));
+    public ICommand CloseSplitCommand => new RelayCommand(CloseSplit);
+    public ICommand SwapSplitCommand => new RelayCommand(SwapSplit);
+
+    /// <summary>
+    /// Shows <paramref name="tab"/> on the given side, next to the active tab. On the active tab
+    /// itself, the other side gets a new tab.
+    /// </summary>
+    public void SplitWith(TabViewModel? tab, SplitSide side)
+    {
+        tab ??= ActiveTab;
+        if (tab is null || side == SplitSide.None)
+            return;
+
+        var partner = ReferenceEquals(tab, ActiveTab) ? null : ActiveTab;
+        if (partner is null)
+        {
+            partner = CreateTab(InternalPages.NewTabUrl, Tabs.IndexOf(tab) + 1, group: tab.Group);
+            SoundService.Play(UiSound.TabOpen);
+        }
+
+        if (side == SplitSide.Right)
+            SetSplit(partner, tab);
+        else
+            SetSplit(tab, partner);
+        ActiveTab = tab.IsNewTabPage || !partner.IsNewTabPage ? tab : partner;
+        if (ActiveTab!.IsNewTabPage)
+            FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SplitWithNewTab()
+    {
+        if (ActiveTab is { } tab)
+            SplitWith(tab, SplitSide.Right);
+    }
+
+    private void SetSplit(TabViewModel left, TabViewModel right)
+    {
+        ClearSplitSides();
+        _splitLeft = left;
+        _splitRight = right;
+        left.SplitSide = SplitSide.Left;
+        right.SplitSide = SplitSide.Right;
+        RaiseSplitLayout();
+        ScheduleSave();
+    }
+
+    /// <summary>Back to one page; both tabs stay open in the strip.</summary>
+    public void CloseSplit()
+    {
+        if (!IsSplit)
+            return;
+
+        ClearSplitSides();
+        RaiseSplitLayout();
+        ScheduleSave();
+    }
+
+    public void SwapSplit()
+    {
+        if (_splitLeft is { } left && _splitRight is { } right)
+            SetSplit(right, left);
+    }
+
+    private void ClearSplitSides()
+    {
+        if (_splitLeft is not null)
+            _splitLeft.SplitSide = SplitSide.None;
+        if (_splitRight is not null)
+            _splitRight.SplitSide = SplitSide.None;
+        _splitLeft = _splitRight = null;
+    }
+
+    private void RaiseSplitLayout()
+    {
+        UpdateShownTabs();
+        OnPropertyChanged(nameof(IsSplit));
+        OnPropertyChanged(nameof(IsSplitVisible));
+        OnPropertyChanged(nameof(SplitLeftWidth));
+        OnPropertyChanged(nameof(SplitDividerWidth));
+        OnPropertyChanged(nameof(SplitRightWidth));
+    }
+
+    /// <summary>The active tab is shown; with a visible split, its partner too.</summary>
+    private void UpdateShownTabs()
+    {
+        var split = IsSplitVisible;
+        foreach (var tab in HostedTabs)
+            tab.IsShown = ReferenceEquals(tab, ActiveTab) || (split && (ReferenceEquals(tab, _splitLeft) || ReferenceEquals(tab, _splitRight)));
+    }
+
+    /// <summary>A click inside one half of the split makes that half the active tab (address bar follows).</summary>
+    private void OnContentFocused(object? sender, EventArgs e)
+    {
+        if (sender is TabViewModel { IsInSplit: true } tab && !ReferenceEquals(tab, ActiveTab) && Tabs.Contains(tab))
+            ActiveTab = tab;
+    }
+
+    // ---------------------------------------------------------------- command palette
+
+    private int _paletteIndex;
+
+    public ObservableCollection<PaletteItem> PaletteItems { get; } = [];
+
+    /// <summary>Highlighted row; Enter runs it.</summary>
+    public int PaletteIndex
+    {
+        get => _paletteIndex;
+        set => SetProperty(ref _paletteIndex, PaletteItems.Count == 0 ? -1 : Math.Clamp(value, 0, PaletteItems.Count - 1));
+    }
+
+    /// <summary>Ctrl+K: the view opens the palette.</summary>
+    public event EventHandler? PaletteRequested;
+
+    /// <summary>Opening the volume popup for a tab (from the palette or menus).</summary>
+    public event EventHandler<TabViewModel>? VolumeEditRequested;
+
+    /// <summary>Opening the find bar from the palette.</summary>
+    public event EventHandler? FindRequested;
+
+    /// <summary>Toggling fullscreen from the palette.</summary>
+    public event EventHandler? FullScreenRequested;
+
+    public void OpenPalette() => PaletteRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Filters as the user types: every word must appear in the title, subtitle or keywords.</summary>
+    public void UpdatePalette(string query)
+    {
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+        var words = query.Trim().ToLower(culture).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        bool Matches(PaletteItem item)
+        {
+            var text = $"{item.Title} {item.Subtitle} {item.Keywords}".ToLower(culture);
+            return words.All(text.Contains);
+        }
+
+        var results = new List<PaletteItem>();
+        var commands = PaletteCommands().Where(Matches).ToList();
+        if (words.Length == 0)
+        {
+            results.AddRange(commands);
+        }
+        else
+        {
+            // Titles starting with the query first, then open tabs, then the rest.
+            var first = words[0];
+            results.AddRange(commands.Where(c => c.Title.ToLower(culture).StartsWith(first, StringComparison.Ordinal)));
+            results.AddRange(PaletteTabs().Where(Matches));
+            results.AddRange(commands.Where(c => !results.Contains(c)));
+            results.AddRange(_bookmarks.Items.Select(b => new PaletteItem("", b.Title, b.Url, () => OpenUrl(b.Url), L.T("yer imi")))
+                .Where(Matches).Take(5));
+            var seen = results.Select(r => r.Subtitle).ToHashSet();
+            results.AddRange(_history.Suggest(query.Trim(), 5)
+                .Where(h => seen.Add(h.Url))
+                .Select(h => new PaletteItem("", string.IsNullOrWhiteSpace(h.Title) ? h.Url : h.Title, h.Url, () => OpenUrl(h.Url))));
+        }
+
+        PaletteItems.Clear();
+        foreach (var item in results.Take(60))
+            PaletteItems.Add(item);
+        PaletteIndex = 0;
+    }
+
+    public void RunPaletteItem(int index)
+    {
+        if (index < 0 || index >= PaletteItems.Count)
+            return;
+
+        var item = PaletteItems[index];
+        PaletteItems.Clear();
+        item.Run();
+    }
+
+    private void OpenUrl(string url)
+    {
+        if (ActiveTab is { IsNewTabPage: true } tab)
+            tab.Navigate(url);
+        else
+            ActiveTab = CreateTab(url, Tabs.Count);
+        FocusContentRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private IEnumerable<PaletteItem> PaletteTabs()
+        => Tabs.Select(t => new PaletteItem(t.IsInSplit ? "" : "", t.Title, InternalPages.ToDisplayAddress(t.Url) is { Length: > 0 } a ? a : L.T("Yeni Sekme"),
+            () => ActiveTab = t, L.T("sekmeye geç")));
+
+    private IEnumerable<PaletteItem> PaletteCommands()
+    {
+        PaletteItem Cmd(string glyph, string title, string shortcut, Action run, string keywords = "")
+            => new(glyph, L.T(title), shortcut, run, keywords);
+
+        var tab = ActiveTab;
+        yield return Cmd("", "Yeni sekme", "Ctrl+T", NewTab, "new tab aç");
+        yield return Cmd("", "Yeni gizli sekme", "Ctrl+Shift+N", NewPrivateTab, "private inprivate incognito");
+        if (tab is not null)
+        {
+            yield return Cmd("", "Sayfayı yenile", "F5", tab.Reload, "reload refresh");
+            yield return Cmd("", "Sekmeyi kapat", "Ctrl+W", () => CloseTab(tab), "close");
+            yield return Cmd("", tab.IsPinned ? "Sabitlemeyi kaldır" : "Sekmeyi sabitle", "", () => TogglePinCommand.Execute(tab), "pin");
+            yield return Cmd(tab.IsMuted ? "" : "", tab.IsMuted ? "Sesi aç" : "Sesi kapat", "", tab.ToggleMute, "mute sound ses");
+            yield return Cmd("", "Sekmenin ses düzeyi", L.T("şu an %{0}", tab.Volume), () => VolumeEditRequested?.Invoke(this, tab), "volume ses düzey");
+        }
+        yield return Cmd("", "Kapatılan sekmeyi geri aç", "Ctrl+Shift+T", ReopenClosedTab, "reopen undo");
+        if (IsSplit)
+        {
+            yield return Cmd("", "Bölünmüş ekranı kapat", "", CloseSplit, "split screen kapat close");
+            yield return Cmd("", "Bölmelerin yerini değiştir", "", SwapSplit, "split swap");
+        }
+        else
+        {
+            yield return Cmd("", "Bölünmüş ekran: yeni sekmeyle", "", SplitWithNewTab, "split screen yan yana böl");
+            foreach (var other in Tabs.Where(t => t != tab).Take(8))
+                yield return Cmd("", L.T("Yan yana aç: {0}", other.Title), "", () => SplitWith(other, SplitSide.Right), "split screen yan yana böl");
+        }
+        if (tab?.HasPictureInPictureVideo == true)
+            yield return Cmd("", "Videoyu resim içinde resim yap", "", () => _ = TogglePictureInPictureAsync(), "picture in picture pip video");
+        yield return Cmd("", "Diğer sekmeleri uyut", "", SleepOtherTabs, "sleep suspend uyku");
+        yield return Cmd("", "Sayfada bul", "Ctrl+F", () => FindRequested?.Invoke(this, EventArgs.Empty), "find search ara");
+        yield return Cmd("", "Tam ekran", "F11", () => FullScreenRequested?.Invoke(this, EventArgs.Empty), "fullscreen");
+        if (CanBookmark)
+            yield return Cmd("", IsActiveTabBookmarked ? "Yer iminden kaldır" : "Yer imlerine ekle", "Ctrl+D", ToggleBookmark, "bookmark");
+        if (tab is not null)
+            yield return Cmd("", "Sekmeyi yeni gruba ekle", "", () => AddToNewGroup(tab), "group grup");
+        yield return Cmd("", "Geçmiş", "Ctrl+H", OpenHistory, "history");
+        yield return Cmd("", "İndirmeler", "Ctrl+J", OpenDownloads, "downloads");
+        yield return Cmd("", "Yer imleri", "Ctrl+Shift+O", OpenBookmarks, "bookmarks");
+        yield return Cmd("", "Ayarlar", "Ctrl+,", () => OpenSettings(), "settings");
+        yield return Cmd("", "Tarama verilerini temizle", "Ctrl+Shift+Del", () => OpenSettings("gizlilik"), "clear data privacy");
+        yield return Cmd("", "Dosya dönüştürücü", "", () => TogglePanel(ConverterPanel), "converter pdf word");
+        yield return Cmd("", "Mini araçlar", "", () => TogglePanel(ToolsPanel), "tools json qr renk color sayaç url");
+        yield return Cmd("", "Yenilikler", "", () => OpenInternal(InternalPages.WhatsNewUrl), "what's new changelog");
+    }
+
+    // ---------------------------------------------------------------- picture-in-picture
+
+    private readonly DispatcherTimer _pipTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+
+    public ICommand TogglePictureInPictureCommand => new RelayCommand(() => _ = TogglePictureInPictureAsync());
+
+    public async Task TogglePictureInPictureAsync()
+    {
+        if (ActiveTab is not { } tab)
+            return;
+
+        var result = await tab.TogglePictureInPictureAsync();
+        Log.Info($"Resim içinde resim: {result}");
+        if (result?.StartsWith("error", StringComparison.Ordinal) == true || result == "unsupported")
+            Mascot.OnPageLoaded(success: false);
+        await tab.RefreshPictureInPictureAsync();
+    }
 
     // ---------------------------------------------------------------- tab groups
 
@@ -651,7 +1016,11 @@ public sealed class MainViewModel : ObservableObject
         _isShuttingDown = true;
         _saveTimer.Stop();
         _suspendTimer.Stop();
-        SaveSession();
+        _pipTimer.Stop();
+        if (_settings.RestoreSession)
+            SaveSession();
+        else
+            SessionStore.Delete(); // normal exit: nothing to recover
         _history.Flush();
 
         PendingPermission?.Decide(false, remember: false);
@@ -721,9 +1090,17 @@ public sealed class MainViewModel : ObservableObject
                 _closedTabs.RemoveAt(0);
         }
 
-        // Pick the neighbour before removing so the strip doesn't jump.
+        // A closing half of the split screen ends the split (the other tab stays).
+        TabViewModel? partner = null;
+        if (tab.IsInSplit)
+        {
+            partner = ReferenceEquals(tab, _splitLeft) ? _splitRight : _splitLeft;
+            CloseSplit();
+        }
+
+        // Pick the neighbour (or the split partner) before removing so the strip doesn't jump.
         if (ReferenceEquals(tab, ActiveTab) && Tabs.Count > 1)
-            ActiveTab = Tabs[index + 1 < Tabs.Count ? index + 1 : index - 1];
+            ActiveTab = partner ?? Tabs[index + 1 < Tabs.Count ? index + 1 : index - 1];
 
         DenyPermissionsOf(tab);
         Tabs.Remove(tab);
@@ -861,6 +1238,7 @@ public sealed class MainViewModel : ObservableObject
         tab.CloseRequested += OnTabCloseRequested;
         tab.PermissionRequested += OnPermissionRequested;
         tab.CoreCreated += OnCoreCreated;
+        tab.ContentFocused += OnContentFocused;
         return tab;
     }
 
@@ -874,6 +1252,7 @@ public sealed class MainViewModel : ObservableObject
         tab.CloseRequested -= OnTabCloseRequested;
         tab.PermissionRequested -= OnPermissionRequested;
         tab.CoreCreated -= OnCoreCreated;
+        tab.ContentFocused -= OnContentFocused;
         tab.NewWindowRequested -= OnNewWindowRequested;
         tab.InternalPageMessage -= OnInternalPageMessage;
         tab.NavigationFinished -= OnNavigationFinished;
@@ -1020,11 +1399,44 @@ public sealed class MainViewModel : ObservableObject
         FocusContentRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Background tabs left alone for a while are frozen (sooner in performance mode).</summary>
+    /// <summary>
+    /// Background tabs left alone for the configured time are frozen (at most 3 minutes in
+    /// performance mode). WebView2's TrySuspend keeps the page in memory as it is, so typed
+    /// form text survives; the page just stops running scripts and timers until it is shown.
+    /// </summary>
     private void SuspendIdleTabs()
     {
-        var limit = _settings.PerformanceMode ? SuspendAfterInPerformanceMode : SuspendAfter;
-        foreach (var tab in Tabs.Where(t => !t.IsActive && !t.IsSuspended && DateTime.UtcNow - t.LastActiveAt > limit).ToList())
+        if (_settings.SleepAfterMinutes <= 0)
+            return;
+
+        var minutes = _settings.PerformanceMode ? Math.Min(_settings.SleepAfterMinutes, 3) : _settings.SleepAfterMinutes;
+        var limit = TimeSpan.FromMinutes(minutes);
+        foreach (var tab in Tabs.Where(t => CanSleep(t) && DateTime.UtcNow - t.LastActiveAt > limit).ToList())
+            _ = tab.TrySuspendAsync();
+    }
+
+    /// <summary>Not shown, not pinned (unless allowed), not downloading. Audio is checked by the tab itself.</summary>
+    private bool CanSleep(TabViewModel tab)
+        => !tab.IsActive && !tab.IsShown && !tab.IsSuspended
+           && (_settings.SleepPinnedTabs || !tab.IsPinned)
+           && !_downloads.HasActiveDownloads(tab.Core);
+
+    public ICommand SleepTabCommand => new RelayCommand(p =>
+    {
+        if (p is TabViewModel tab)
+            SleepTab(tab);
+    });
+
+    /// <summary>Puts a background tab to sleep right away (the active one can't sleep).</summary>
+    public void SleepTab(TabViewModel tab)
+    {
+        if (!tab.IsActive && !tab.IsShown && !_downloads.HasActiveDownloads(tab.Core))
+            _ = tab.TrySuspendAsync();
+    }
+
+    public void SleepOtherTabs()
+    {
+        foreach (var tab in Tabs.Where(t => !t.IsActive && !t.IsShown && !t.IsSuspended && !_downloads.HasActiveDownloads(t.Core)).ToList())
             _ = tab.TrySuspendAsync();
     }
 
@@ -1043,7 +1455,7 @@ public sealed class MainViewModel : ObservableObject
             var tab = CreatePage(url);
             // Links that open a new window from a panel go to a normal tab.
             tab.NewWindowRequested += OnPanelNewWindowRequested;
-            if (ReferenceEquals(panel, ConverterPanel))
+            if (ReferenceEquals(panel, ConverterPanel) || ReferenceEquals(panel, ToolsPanel))
                 tab.InternalPageMessage += OnInternalPageMessage;
             return tab;
         });
@@ -1180,6 +1592,14 @@ public sealed class MainViewModel : ObservableObject
                 tab.PostToInternalPage(BuildNewTabConfig());
                 break;
 
+            case "tools:currentUrl":
+                // Only real web pages; Sorune's own pages have nothing worth a QR code.
+                var current = ActiveTab?.Url is { } activeUrl && !InternalPages.IsInternal(activeUrl) && AddressResolver.IsNavigable(activeUrl)
+                    ? activeUrl
+                    : null;
+                tab.PostToInternalPage(new { type = "toolsCurrentUrl", url = current });
+                break;
+
             case "whatsnew:open":
                 switch (Text("target"))
                 {
@@ -1239,6 +1659,15 @@ public sealed class MainViewModel : ObservableObject
 
             case "pickWallpaper":
                 WallpaperPickRequested?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "pickDownloadFolder":
+                if (PickFolder?.Invoke(_downloads.Folder) is { } folder)
+                    _settingsController.SetDownloadFolder(folder);
+                break;
+
+            case "resetDownloadFolder":
+                _settingsController.SetDownloadFolder(null);
                 break;
 
             case "removeCustomWallpaper":
@@ -1537,17 +1966,15 @@ public sealed class MainViewModel : ObservableObject
             case "sidebarPosition":
                 OnPropertyChanged(nameof(IsSidebarOnRight));
                 break;
+            case "downloadFolder":
+                _downloads.SetFolder(_settings.DownloadFolder);
+                break;
             case "restoreSession":
                 SessionCookieStore.Enabled = _settings.RestoreSession;
-                if (_settings.RestoreSession)
-                {
-                    ScheduleSave();
-                }
-                else
-                {
-                    SessionStore.Delete();
+                // The tab list stays on disk as crash insurance; saved cookies go right away.
+                if (!_settings.RestoreSession)
                     SessionCookieStore.Delete();
-                }
+                ScheduleSave();
                 break;
         }
 
@@ -1588,20 +2015,22 @@ public sealed class MainViewModel : ObservableObject
 
     // ---------------------------------------------------------------- session
 
+    /// <summary>Changes are written at most once a second (debounced), not on every event.</summary>
     private void ScheduleSave()
     {
-        if (_isShuttingDown || !_settings.RestoreSession)
+        if (_isShuttingDown)
             return;
 
         _saveTimer.Stop();
         _saveTimer.Start();
     }
 
+    /// <summary>
+    /// Always written, also with "continue previous session" off, so a crash can be recovered;
+    /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
+    /// </summary>
     private void SaveSession()
     {
-        if (!_settings.RestoreSession)
-            return;
-
         // InPrivate tabs are never written to disk.
         var saved = Tabs.Where(t => !t.IsPrivate).ToList();
         var state = new SessionState
@@ -1612,9 +2041,13 @@ public sealed class MainViewModel : ObservableObject
                 Title = t.Title,
                 IsPinned = t.IsPinned,
                 GroupId = t.Group?.Id,
+                Volume = t.Volume,
             }).ToList(),
             ActiveIndex = ActiveTab is null ? 0 : Math.Max(0, saved.IndexOf(ActiveTab)),
             Groups = Groups.Select(g => new SessionGroup { Id = g.Id, Name = g.Name, Color = g.ColorKey, IsCollapsed = g.IsCollapsed }).ToList(),
+            SplitLeft = SplitLeft is { } left ? saved.IndexOf(left) : -1,
+            SplitRight = SplitRight is { } right ? saved.IndexOf(right) : -1,
+            SplitRatio = SplitRatio,
         };
         SessionStore.Save(state);
     }
