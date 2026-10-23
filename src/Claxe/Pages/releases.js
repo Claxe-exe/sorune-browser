@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "0.9.1",
+        date: "2026-10-23",
+        name: ["Daha az bellek", "Less memory"],
+        items: [
+            ["**Kullanılmayan panelleri boşalt:** WhatsApp, Discord gibi paneller kapatılınca da arka planda açık kalıp her biri 100–300 MB bellek kullanıyordu. Ayarlar › Kenar çubuğu'ndan seçtiğin süre (15 dk – 2 sa) boyunca açılmayan panel artık boşaltılıyor.", "**Unload unused panels:** panels like WhatsApp and Discord stayed open in the background after closing, each using 100–300 MB. A panel not opened for the time you pick in Settings › Sidebar (15 min – 2 hr) is now unloaded."],
+        ],
+    },
+    {
         version: "0.9.0",
         date: "2026-10-23",
         name: ["Sayfa çevirisi", "Page translation"],

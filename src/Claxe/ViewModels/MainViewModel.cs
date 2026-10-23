@@ -65,7 +65,11 @@ public sealed class MainViewModel : ObservableObject
             _saveTimer.Stop();
             SaveSession();
         };
-        _suspendTimer.Tick += (_, _) => SuspendIdleTabs();
+        _suspendTimer.Tick += (_, _) =>
+        {
+            SuspendIdleTabs();
+            UnloadIdlePanels();
+        };
         _suspendTimer.Start();
         // Only the active tab is asked whether it has a video for picture-in-picture.
         _pipTimer.Tick += (_, _) =>
@@ -1832,6 +1836,26 @@ public sealed class MainViewModel : ObservableObject
     /// performance mode). WebView2's TrySuspend keeps the page in memory as it is, so typed
     /// form text survives; the page just stops running scripts and timers until it is shown.
     /// </summary>
+    /// <summary>
+    /// A loaded panel (WhatsApp, Discord…) keeps its whole page in memory even while closed, so
+    /// it can notify. With the setting on, panels closed for longer are unloaded; they load again
+    /// when opened. Panels playing sound are left alone.
+    /// </summary>
+    private void UnloadIdlePanels()
+    {
+        if (_settings.PanelUnloadMinutes <= 0)
+            return;
+
+        var limit = TimeSpan.FromMinutes(_settings.PanelUnloadMinutes);
+        foreach (var panel in Panels.Concat(ExtensionPanels)
+                     .Where(p => p.IsLoaded && !p.IsOpen && p.Tab?.IsPlayingAudio != true && DateTime.UtcNow - p.LastClosedAt > limit)
+                     .ToList())
+        {
+            Log.Info($"Kullanılmayan panel boşaltıldı: {panel.Name}");
+            UnloadPanel(panel);
+        }
+    }
+
     private void SuspendIdleTabs()
     {
         if (_settings.SleepAfterMinutes <= 0)

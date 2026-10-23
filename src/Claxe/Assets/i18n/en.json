@@ -900,5 +900,10 @@
   "Başka dildeki bir sayfaya sağ tıkla ve \"Sayfayı Türkçeye çevir\"i seç: Google Çeviri sayfayı yerinde çevirir, girişin ve sayfanın düzeni bozulmaz. Adres çubuğunda hangi dilden çevrildiği yazar; tıklayınca orijinale dönersin.": "Right-click a page in another language and choose \"Translate page to English\": Google Translate translates it in place, keeping your sign-in and the page layout. The address bar shows which language it came from; click it to go back to the original.",
   "Yenilikler artık doğru sürümü gösteriyor": "What's new now shows the right version",
   "Bu sayfa önceden her güncellemede aynı kartları gösteriyordu. Artık yalnızca senin sürümünden sonra gelenleri gösteriyor; küçük güncellemeler aşağıda liste halinde.": "This page used to show the same cards after every update. Now it shows only what came after your version; smaller updates are listed below.",
-  "Tüm yama notları": "All patch notes"
+  "Tüm yama notları": "All patch notes",
+
+  "Kullanılmayan panelleri boşalt": "Unload unused panels",
+  "Kapatılan paneller (WhatsApp, Discord…) bildirim gelsin diye arka planda açık kalır ve her biri 100–300 MB bellek kullanır. Bu kadar süre açılmayan panel boşaltılır; tıklayınca yeniden yüklenir ama boşaltılmışken bildirim gelmez.": "Closed panels (WhatsApp, Discord…) stay open in the background so notifications arrive, and each uses 100–300 MB of memory. A panel not opened for this long is unloaded; it loads again when you click it, but sends no notifications while unloaded.",
+  "15 dk": "15 min",
+  "2 sa": "2 hr"
 }

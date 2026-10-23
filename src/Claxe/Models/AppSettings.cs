@@ -109,6 +109,9 @@ public sealed class AppSettings
     /// <summary>Background tabs untouched this long go to sleep; 0 = never.</summary>
     public int SleepAfterMinutes { get; set; } = 10;
 
+    /// <summary>Closed web panels left alone this long are unloaded to free memory (0 = keep them, for notifications).</summary>
+    public int PanelUnloadMinutes { get; set; }
+
     /// <summary>Pinned tabs may sleep too (off: pinned tabs always stay awake).</summary>
     public bool SleepPinnedTabs { get; set; }
 

@@ -69,6 +69,7 @@ function render() {
     setSegmented("corner", s.cornerStyle);
     setSegmented("density", s.density);
     setSegmented("sleep-after", String(s.sleepAfterMinutes));
+    setSegmented("panel-unload", String(s.panelUnloadMinutes));
     renderPersonal(s);
 
     $("download-folder").textContent = state.downloadFolder || t("Windows'un İndirilenler klasörü");
@@ -562,6 +563,10 @@ for (const sw of document.querySelectorAll(".switch")) {
 $("sleep-after").addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (button && button.getAttribute("aria-checked") !== "true") update("sleepAfterMinutes", Number(button.dataset.value));
+});
+$("panel-unload").addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button && button.getAttribute("aria-checked") !== "true") update("panelUnloadMinutes", Number(button.dataset.value));
 });
 $("download-folder-pick").addEventListener("click", () => send({ type: "pickDownloadFolder" }));
 $("download-folder-reset").addEventListener("click", () => send({ type: "resetDownloadFolder" }));

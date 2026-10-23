@@ -371,6 +371,19 @@
                         <button type="button" data-value="right">Sağ</button>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Kullanılmayan panelleri boşalt</span>
+                        <span class="hint">Kapatılan paneller (WhatsApp, Discord…) bildirim gelsin diye arka planda açık kalır ve her biri 100–300 MB bellek kullanır. Bu kadar süre açılmayan panel boşaltılır; tıklayınca yeniden yüklenir ama boşaltılmışken bildirim gelmez.</span>
+                    </div>
+                    <div class="segmented" id="panel-unload" role="radiogroup" aria-label="Kullanılmayan panelleri boşalt">
+                        <button type="button" data-value="0">Hiç</button>
+                        <button type="button" data-value="15">15 dk</button>
+                        <button type="button" data-value="30">30 dk</button>
+                        <button type="button" data-value="60">1 sa</button>
+                        <button type="button" data-value="120">2 sa</button>
+                    </div>
+                </div>
                 <div class="panel-list" id="panels"></div>
                 <form class="panel-add" id="panel-form" autocomplete="off">
                     <input type="text" id="panel-name" maxlength="30" placeholder="Ad (isteğe bağlı)" aria-label="Panel adı">

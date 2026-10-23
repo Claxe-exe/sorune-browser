@@ -63,6 +63,9 @@ public sealed class PanelViewModel : ObservableObject, IDisposable
 
     public bool IsLoaded => _tab is not null;
 
+    /// <summary>When the panel was last closed (UTC); idle loaded panels are unloaded after a while.</summary>
+    public DateTime LastClosedAt { get; private set; } = DateTime.UtcNow;
+
     public bool IsOpen
     {
         get => _isOpen;
@@ -71,6 +74,8 @@ public sealed class PanelViewModel : ObservableObject, IDisposable
             if (!SetProperty(ref _isOpen, value))
                 return;
 
+            if (!value)
+                LastClosedAt = DateTime.UtcNow;
             if (_tab is not null)
             {
                 _tab.IsActive = value;
