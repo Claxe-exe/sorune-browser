@@ -529,6 +529,7 @@ public sealed class MainViewModel : ObservableObject
         };
         greet.Start();
 
+
         // First start of a new version (not the very first start): show what changed, once.
         var version = UpdateService.CurrentVersion;
         if (_settings.LastSeenVersion != version)
@@ -1114,6 +1115,8 @@ public sealed class MainViewModel : ObservableObject
             yield return tab.IsTranslated
                 ? Cmd("\uE8C1", "Orijinali göster", "", () => ShowOriginal(tab), "translate çevir original orijinal")
                 : Cmd("\uE8C1", TranslateMenuTitle, "", () => _ = TranslateTabAsync(tab), "translate çevir google çeviri");
+        if (tab is { Core: not null } && !InternalPages.IsInternal(tab.Url))
+            yield return Cmd("\uE8C1", "Ekranı çevir (resimler dahil)", "Ctrl+Shift+E", () => _ = TranslateScreenAsync(tab), "translate screen lens webtoon manga resim image ekran çevir");
         if (tab?.IsReadable == true)
             yield return Cmd("", "Okuma modu", "", () => _ = OpenReaderAsync(), "reader read okuma");
         yield return Cmd("", "Karşılama turunu aç", "", () => OpenInternal(InternalPages.WelcomeUrl), "welcome tour karşılama");
@@ -2749,6 +2752,48 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public void ShowOriginal(TabViewModel? tab) => _ = tab?.ShowOriginalAsync();
+
+    private bool _screenTranslating;
+
+    /// <summary>Text in pictures too (Google Lens), laid over the page; see <see cref="ScreenTranslator"/>.</summary>
+    public async Task TranslateScreenAsync(TabViewModel? tab)
+    {
+        if (tab?.Core is not { } core || InternalPages.IsInternal(tab.Url) || tab.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            Mascot.Say(L.T("Bu sayfa çevrilemez."));
+            return;
+        }
+        if (_screenTranslating)
+            return;
+
+        _screenTranslating = true;
+        Mascot.Say(L.T("Ekranı çeviriyorum…"));
+        try
+        {
+            if (await ScreenTranslator.TranslateVisibleAsync(core, L.Language) is { } note)
+            {
+                Log.Info($"Ekran çevirisi: {note}");
+                Mascot.Say(note);
+            }
+            else
+                Mascot.Say(L.T("Çevirdim! Aşağı kaydırınca yine bas."), happy: true);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or IOException or NotSupportedException or FormatException)
+        {
+            Log.Error("Ekran çevirisi hatası", ex);
+            Mascot.Say(L.T("Ekranı çeviremedim."));
+        }
+        finally
+        {
+            _screenTranslating = false;
+        }
+    }
+
+    public static void RemoveScreenTranslation(TabViewModel? tab)
+    {
+        if (tab?.Core is { } core)
+            _ = core.ExecuteScriptAsync(ScreenTranslator.RemoveOverlaysScript);
+    }
 
     public ICommand ShowOriginalCommand => new RelayCommand(() => ShowOriginal(ActiveTab));
 

@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "0.9.2",
+        date: "2026-10-23",
+        name: ["Ekran çevirisi (deneme)", "Screen translation (preview)"],
+        items: [
+            ["**Ekranı çevir (resimler dahil):** sağ tık ya da Ctrl+Shift+E. Görünen ekran Google Lens'e gönderilir; resimlerdeki yazılar dahil çeviri sayfanın üstüne, yazıların yerine konur. Yabancı webtoon okumak için: her ekranda bir kez bas, aşağı kaydır, tekrar bas. Sağ alttaki düğme çeviriyi kaldırır. Deneme sürümü: Google Lens sayfası değişirse çalışmayabilir.", "**Translate screen (including pictures):** right click or Ctrl+Shift+E. The visible screen goes to Google Lens; the translation, text in pictures included, is laid over the page in place. For foreign webtoons: press once per screen, scroll, press again. The button at the bottom right removes it. Preview: may stop working if Google changes the Lens page."],
+        ],
+    },
+    {
         version: "0.9.1",
         date: "2026-10-23",
         name: ["Daha az bellek", "Less memory"],

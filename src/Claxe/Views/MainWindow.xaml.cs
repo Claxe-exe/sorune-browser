@@ -192,6 +192,7 @@ public partial class MainWindow : Window
             case Key.K when ctrlShift: OpenPalette(); break;
             case Key.Escape when mods == ModifierKeys.Shift: _viewModel.OpenTaskManager(); break;
             case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
+            case Key.E when ctrlShift: _ = _viewModel.TranslateScreenAsync(_viewModel.ActiveTab); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
             case Key.D when ctrl: _viewModel.ToggleBookmark(); break;
@@ -1443,6 +1444,20 @@ public partial class MainWindow : Window
                     _ = _viewModel.TranslateTabAsync(tab);
             };
             menu.Items.Add(translate);
+
+            // Everything on screen, text in pictures too (Google Lens), laid over the page.
+            var screen = new MenuItem
+            {
+                Header = L.T("Ekranı çevir (resimler dahil)"),
+                InputGestureText = "Ctrl+Shift+E",
+                Icon = new TextBlock { Text = "\uE7B3", FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 13 },
+            };
+            screen.Click += (_, _) =>
+            {
+                Complete(null);
+                _ = _viewModel.TranslateScreenAsync(tab);
+            };
+            menu.Items.Add(screen);
             menu.Items.Add(new Separator());
         }
 

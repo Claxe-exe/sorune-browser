@@ -905,5 +905,15 @@
   "Kullanılmayan panelleri boşalt": "Unload unused panels",
   "Kapatılan paneller (WhatsApp, Discord…) bildirim gelsin diye arka planda açık kalır ve her biri 100–300 MB bellek kullanır. Bu kadar süre açılmayan panel boşaltılır; tıklayınca yeniden yüklenir ama boşaltılmışken bildirim gelmez.": "Closed panels (WhatsApp, Discord…) stay open in the background so notifications arrive, and each uses 100–300 MB of memory. A panel not opened for this long is unloaded; it loads again when you click it, but sends no notifications while unloaded.",
   "15 dk": "15 min",
-  "2 sa": "2 hr"
+  "2 sa": "2 hr",
+
+  "Ekranı çevir (resimler dahil)": "Translate screen (including pictures)",
+  "Ekranı çeviriyorum…": "Translating the screen…",
+  "Çevirdim! Aşağı kaydırınca yine bas.": "Done! Press again after scrolling down.",
+  "Ekranı çeviremedim.": "I couldn't translate the screen.",
+  "Ekran çevirisini kaldır": "Remove screen translation",
+  "Google Lens'e ulaşılamadı, sonra tekrar dene.": "Couldn't reach Google Lens, try again later.",
+  "Bu ekranda çevrilecek yazı bulamadım.": "I found no text to translate on this screen.",
+  "Google önce bir onay sayfası gösteriyor: google.com'u Sorune'de bir kez açıp seçimini yap, sonra tekrar dene.": "Google shows a consent page first: open google.com in Sorune once, make your choice, then try again.",
+  "Google Lens zamanında yanıt vermedi, tekrar dene.": "Google Lens didn't answer in time, try again."
 }

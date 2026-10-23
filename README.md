@@ -39,6 +39,7 @@
 
 | | |
 |---|---|
+| 🖼️ **Ekran çevirisi** | Sağ tık › "Ekranı çevir (resimler dahil)" ya da Ctrl+Shift+E: Google Lens, resimlerdeki yazılar dahil ekranı çevirir, çeviri sayfanın üstüne konur. Webtoon okumak için birebir (deneme). |
 | 🌐 **Sayfa çevirisi** | Sağ tık › "Sayfayı Türkçeye çevir": Google Çeviri sayfayı yerinde çevirir, giriş ve düzen bozulmaz. Adres çubuğundaki "İngilizce → Türkçe" düğmesi orijinale döndürür. |
 | 📜 **Doğru yenilikler** | Güncellemeden sonra açılan sayfa yalnızca senin sürümünden bu yana gelenleri gösteriyor. |
 
@@ -229,7 +230,7 @@ kaldırmak verileri silmez).
 | `WebView2\` | Chromium profili (kalıcı çerezler, önbellek) | WebView2 |
 
 Microsoft Defender SmartScreen (tehlikeli site ve indirme uyarıları) varsayılan olarak açıktır; Ayarlar › Gizlilik ve
-veriler'den kapatılabilir. Sayfa çevirisi yalnızca sen istediğinde, sayfadaki görünen yazıyı Google Çeviri'ye gönderir (form alanları ve
+veriler'den kapatılabilir. Ekran çevirisi yalnızca sen istediğinde, görünen ekranın görüntüsünü Google Lens'e gönderir. Sayfa çevirisi yalnızca sen istediğinde, sayfadaki görünen yazıyı Google Çeviri'ye gönderir (form alanları ve
 düzenlenebilir alanlar hariç). Adres çubuğundaki arama önerileri için yazdıkların seçili arama motoruna gönderilir (gizli sekmelerde asla); Ayarlar ›
 Arama'dan kapatılabilir. Hava durumu widget'ı yalnızca yazdığın şehir adını [Open-Meteo](https://open-meteo.com)'ya gönderir. Dönüştürücü
 dosyaları bilgisayarda çevirir; hiçbir dosya bir sunucuya yüklenmez.
