@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "0.9.4",
+        date: "2026-10-23",
+        name: ["Ekran çevirisi düzeltmesi 2", "Screen translation fix 2"],
+        items: [
+            ["**Düzeltme:** ekran çevirisi Lens sayfasındaki resmi ve \"Resimdeki metni çevir\" düğmesini bazı durumlarda bulamıyordu.", "**Fix:** screen translation sometimes couldn't find the picture or the \"Translate text in image\" button on the Lens page."],
+        ],
+    },
+    {
         version: "0.9.3",
         date: "2026-10-23",
         name: ["Ekran çevirisi düzeltmesi", "Screen translation fix"],

@@ -43,7 +43,9 @@ public static class ScreenTranslator
             const imgs = [...document.querySelectorAll("img")].map((i) => Math.round(i.getBoundingClientRect().width)).sort((a, b) => b - a);
             const buttons = [...document.querySelectorAll("button, [role=button]")]
                 .map((b) => b.getAttribute("aria-label") || "").filter((l) => /çevir|translat/i.test(l));
-            return `viewport ${innerWidth}x${innerHeight}, ${document.visibilityState}, img ${imgs.length} (en geniş ${imgs.slice(0, 3).join("/")}), düğmeler [${buttons.join(" | ")}]`;
+            const canvases = [...document.querySelectorAll("canvas")].map((c) => `${c.width}x${c.height}`).slice(0, 4);
+            return `viewport ${innerWidth}x${innerHeight}, ${document.visibilityState}, img ${imgs.length} (en geniş ${imgs.slice(0, 3).join("/")}), `
+                + `düğmeler [${buttons.join(" | ")}], basıldı ${Boolean(window.__soruneLensClicked)}, canvas [${canvases.join(" ")}], boyalı ${window.__soruneLensPainted ?? "-"}`;
         })()
         """;
 
@@ -51,15 +53,20 @@ public static class ScreenTranslator
     private const string LensStepScript = """
         (() => {
             if (/consent\./.test(location.host)) return { state: "consent" };
-            const image = [...document.querySelectorAll("img")].find((i) => i.getBoundingClientRect().width > 300 && i.src.startsWith("data:"));
+            // The uploaded picture: the widest image at the top of the page.
+            const image = [...document.querySelectorAll("img")]
+                .filter((i) => i.getBoundingClientRect().width > 300 && i.getBoundingClientRect().top < 900)
+                .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
             if (!image) return { state: "loading" };
             const box = image.getBoundingClientRect();
-            const canvas = [...document.querySelectorAll("canvas")].find((c) => c.width > 300 && Math.abs(c.getBoundingClientRect().width - box.width) < 4);
+            const canvases = [...document.querySelectorAll("canvas")].filter((c) => c.width > 300);
+            const canvas = canvases.find((c) => Math.abs(c.getBoundingClientRect().width - box.width) < 12)
+                || canvases.sort((a, b) => b.width - a.width)[0];
             if (!window.__soruneLensClicked) {
-                const inside = (el) => { const r = el.getBoundingClientRect(); return r.x >= box.x - 4 && r.y >= box.y - 4 && r.right <= box.right + 4 && r.bottom <= box.bottom + 4; };
+                // "Translate text in image" (not the transliteration tool, which also says "çevir").
                 const button = [...document.querySelectorAll("button, [role=button]")].find((b) => {
                     const label = (b.getAttribute("aria-label") || b.textContent || "").toLowerCase();
-                    return /çevir|translat|übersetz|tradu/.test(label) && !/harf|translit/.test(label) && inside(b);
+                    return /çevir|translat|übersetz|tradu/.test(label) && !/harf|translit/.test(label);
                 });
                 if (!button) return { state: "loading" };
                 button.click();
