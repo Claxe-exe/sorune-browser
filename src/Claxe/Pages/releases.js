@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "0.9.3",
+        date: "2026-10-23",
+        name: ["Ekran çevirisi düzeltmesi", "Screen translation fix"],
+        items: [
+            ["**Düzeltme:** ekran çevirisi \"Google Lens zamanında yanıt vermedi\" diyordu; Lens'i çalıştıran görünmez pencere çok küçüktü. Artık tam boy.", "**Fix:** screen translation said \"Google Lens didn't answer in time\"; the hidden window running Lens was too small. It's full size now."],
+        ],
+    },
+    {
         version: "0.9.2",
         date: "2026-10-23",
         name: ["Ekran çevirisi (deneme)", "Screen translation (preview)"],

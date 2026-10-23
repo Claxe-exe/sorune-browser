@@ -37,6 +37,16 @@ public static class ScreenTranslator
         document.querySelectorAll("[data-sorune-lens]").forEach((el) => el.remove()); true
         """;
 
+    /// <summary>What the Lens page looked like when it got stuck, for the log.</summary>
+    private const string DiagnoseScript = """
+        (() => {
+            const imgs = [...document.querySelectorAll("img")].map((i) => Math.round(i.getBoundingClientRect().width)).sort((a, b) => b - a);
+            const buttons = [...document.querySelectorAll("button, [role=button]")]
+                .map((b) => b.getAttribute("aria-label") || "").filter((l) => /çevir|translat/i.test(l));
+            return `viewport ${innerWidth}x${innerHeight}, ${document.visibilityState}, img ${imgs.length} (en geniş ${imgs.slice(0, 3).join("/")}), düğmeler [${buttons.join(" | ")}]`;
+        })()
+        """;
+
     /// <summary>Runs in the Lens result page: presses "translate text in image", then hands back the painted canvas.</summary>
     private const string LensStepScript = """
         (() => {
@@ -159,7 +169,16 @@ public static class ScreenTranslator
             }
             // Where it got stuck (only the address's host and path: the rest is Lens's session).
             var at = Uri.TryCreate(core.Source, UriKind.Absolute, out var source) ? source.Host + source.AbsolutePath : "?";
-            Log.Info($"Ekran çevirisi zaman aşımı: son durum {state ?? "sayfa yüklenmedi"}, adres {at}");
+            string details;
+            try
+            {
+                details = JsonSerializer.Deserialize<string>(await core.ExecuteScriptAsync(DiagnoseScript)) ?? "";
+            }
+            catch (Exception ex) when (ex is COMException or InvalidOperationException or JsonException)
+            {
+                details = ex.Message;
+            }
+            Log.Info($"Ekran çevirisi zaman aşımı: son durum {state ?? "sayfa yüklenmedi"}, adres {at}, {details}");
             return (null, L.T("Google Lens zamanında yanıt vermedi, tekrar dene."));
         }
         finally
@@ -169,18 +188,19 @@ public static class ScreenTranslator
     }
 
     /// <summary>
-    /// A 1×1 pixel window in the screen corner with a full-size browser inside. Chromium only
-    /// paints pages it considers visible, and a window that is off-screen or covered counts as
-    /// hidden; a single uncovered pixel keeps Lens drawing while staying out of sight.
+    /// A full-size window pushed past the bottom-right corner of the screen, so only its top-left
+    /// pixel is on screen. Chromium only paints pages it considers visible, and a window that is
+    /// fully off-screen or covered counts as hidden; one uncovered pixel keeps Lens drawing, and
+    /// the page still gets a real 1280×900 viewport to lay out in.
     /// </summary>
     private static Window CreateHelperWindow(out WebView2 webView)
     {
-        webView = new WebView2 { Width = 1280, Height = 900, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        webView = new WebView2();
         var area = SystemParameters.WorkArea;
         return new Window
         {
-            Width = 1,
-            Height = 1,
+            Width = 1280,
+            Height = 900,
             Left = area.Right - 1,
             Top = area.Bottom - 1,
             WindowStyle = WindowStyle.None,
@@ -190,7 +210,7 @@ public static class ScreenTranslator
             Topmost = true,
             Focusable = false,
             Title = "Sorune Lens",
-            Content = new System.Windows.Controls.Canvas { Children = { webView } },
+            Content = webView,
         };
     }
 
