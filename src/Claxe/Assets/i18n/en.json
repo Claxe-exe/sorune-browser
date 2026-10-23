@@ -915,5 +915,8 @@
   "Google Lens'e ulaşılamadı, sonra tekrar dene.": "Couldn't reach Google Lens, try again later.",
   "Bu ekranda çevrilecek yazı bulamadım.": "I found no text to translate on this screen.",
   "Google önce bir onay sayfası gösteriyor: google.com'u Sorune'de bir kez açıp seçimini yap, sonra tekrar dene.": "Google shows a consent page first: open google.com in Sorune once, make your choice, then try again.",
-  "Google Lens zamanında yanıt vermedi, tekrar dene.": "Google Lens didn't answer in time, try again."
+  "Google Lens zamanında yanıt vermedi, tekrar dene.": "Google Lens didn't answer in time, try again.",
+
+  "Çevrilen resim okunamadı, tekrar dene.": "Couldn't read the translated picture, try again.",
+  "Google Çeviri zamanında yanıt vermedi, tekrar dene.": "Google Translate didn't answer in time, try again."
 }

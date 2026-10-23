@@ -1,6 +1,5 @@
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
@@ -12,17 +11,18 @@ namespace Claxe.Services;
 
 /// <summary>
 /// "Translate screen": text inside pictures too, like reading a foreign webtoon. The visible
-/// part of the page is captured, Google Lens translates it (in a tiny helper window, in the
-/// user's own browser profile) and the patches Lens paints over the text are laid on top of
-/// the page at the same place. They are anchored to the page, so they scroll with it; press
-/// again further down for the next screen.
+/// part of the page is captured and translated by Google Translate's image mode (in a helper
+/// window off the screen, in the user's own browser profile). Translate returns the same
+/// picture with the text replaced; comparing it with the capture leaves only the changed
+/// parts (speech bubbles, captions), which are laid over the page at the same place. They are
+/// anchored to the page, so they scroll with it; press again further down for the next screen.
 ///
-/// Lens has no public API: this drives its web page. If Google changes that page, this fails
-/// with a message instead of doing anything odd.
+/// Translate has no public API for this: it drives the web page. If Google changes that page,
+/// this fails with a message instead of doing anything odd.
 /// </summary>
 public static class ScreenTranslator
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(25);
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     /// <summary>Earlier patches are hidden while capturing, so they aren't sent to Google again.</summary>
     private const string HideOverlaysScript = """
@@ -37,55 +37,42 @@ public static class ScreenTranslator
         document.querySelectorAll("[data-sorune-lens]").forEach((el) => el.remove()); true
         """;
 
-    /// <summary>What the Lens page looked like when it got stuck, for the log.</summary>
-    private const string DiagnoseScript = """
-        (() => {
-            const imgs = [...document.querySelectorAll("img")].map((i) => Math.round(i.getBoundingClientRect().width)).sort((a, b) => b - a);
-            const buttons = [...document.querySelectorAll("button, [role=button]")]
-                .map((b) => b.getAttribute("aria-label") || "").filter((l) => /çevir|translat/i.test(l));
-            const canvases = [...document.querySelectorAll("canvas")].map((c) => `${c.width}x${c.height}`).slice(0, 4);
-            return `viewport ${innerWidth}x${innerHeight}, ${document.visibilityState}, img ${imgs.length} (en geniş ${imgs.slice(0, 3).join("/")}), `
-                + `düğmeler [${buttons.join(" | ")}], basıldı ${Boolean(window.__soruneLensClicked)}, canvas [${canvases.join(" ")}], boyalı ${window.__soruneLensPainted ?? "-"}`;
-        })()
+    /// <summary>Puts the capture into Translate's image picker (as if the file had been chosen).</summary>
+    private const string UploadScript = """
+        ((b64) => {
+            const input = [...document.querySelectorAll("input[type=file]")].find((i) => /image\/jpeg/.test(i.accept));
+            if (!input) return "waiting";
+            const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([bytes], "screen.jpg", { type: "image/jpeg" }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+            return "sent";
+        })
         """;
 
-    /// <summary>Runs in the Lens result page: presses "translate text in image", then hands back the painted canvas.</summary>
-    private const string LensStepScript = """
-        (() => {
+    /// <summary>
+    /// Waits for the translated picture (a blob: image of the uploaded size, shown once the
+    /// "download translation" button is there) and reads it as a data: URL.
+    /// </summary>
+    private const string ResultScript = """
+        ((width) => {
             if (/consent\./.test(location.host)) return { state: "consent" };
-            // The uploaded picture: the widest image at the top of the page.
-            const image = [...document.querySelectorAll("img")]
-                .filter((i) => i.getBoundingClientRect().width > 300 && i.getBoundingClientRect().top < 900)
-                .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
-            if (!image) return { state: "loading" };
-            const box = image.getBoundingClientRect();
-            const canvases = [...document.querySelectorAll("canvas")].filter((c) => c.width > 300);
-            const canvas = canvases.find((c) => Math.abs(c.getBoundingClientRect().width - box.width) < 12)
-                || canvases.sort((a, b) => b.width - a.width)[0];
-            if (!window.__soruneLensClicked) {
-                // "Translate text in image" (not the transliteration tool, which also says "çevir").
-                const button = [...document.querySelectorAll("button, [role=button]")].find((b) => {
-                    const label = (b.getAttribute("aria-label") || b.textContent || "").toLowerCase();
-                    return /çevir|translat|übersetz|tradu/.test(label) && !/harf|translit/.test(label);
-                });
-                if (!button) return { state: "loading" };
-                button.click();
-                window.__soruneLensClicked = Date.now();
-                return { state: "translating" };
+            const ready = [...document.querySelectorAll("button, [role=button]")]
+                .some((b) => /indir|download|herunterladen|télécharger|descargar/i.test(b.getAttribute("aria-label") || b.textContent || ""));
+            const image = [...document.querySelectorAll("img")].find((i) => i.src.startsWith("blob:") && i.naturalWidth === width);
+            if (!ready || !image) return { state: "waiting" };
+            if (!window.__soruneShot) {
+                window.__soruneShot = "pending";
+                fetch(image.src).then((r) => r.blob())
+                    .then((blob) => new Promise((done) => { const reader = new FileReader(); reader.onload = () => done(reader.result); reader.readAsDataURL(blob); }))
+                    .then((url) => window.__soruneShot = url, () => window.__soruneShot = "error");
+                return { state: "reading" };
             }
-            if (!canvas) return { state: "translating" };
-            const ctx = canvas.getContext("2d");
-            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            let painted = 0;
-            for (let i = 3; i < data.length; i += 64) if (data[i] > 8) painted++;
-            // Done once the painting stops changing; nothing painted after a while means no text.
-            const last = window.__soruneLensPainted;
-            window.__soruneLensPainted = painted;
-            const waited = Date.now() - window.__soruneLensClicked;
-            if (painted > 0 && painted === last && waited > 1200) return { state: "done", image: canvas.toDataURL("image/png") };
-            if (painted === 0 && waited > 9000) return { state: "empty" };
-            return { state: "translating" };
-        })()
+            if (window.__soruneShot === "pending") return { state: "reading" };
+            if (window.__soruneShot === "error") return { state: "error" };
+            return { state: "done", image: window.__soruneShot };
+        })
         """;
 
     /// <summary>
@@ -107,29 +94,35 @@ public static class ScreenTranslator
             await page.ExecuteScriptAsync(ShowOverlaysScript);
         }
 
-        string? overlayUrl;
+        var original = Decode(screen);
+        string? translatedUrl;
         try
         {
-            (overlayUrl, var note) = await RunLensAsync(screen, language);
+            (translatedUrl, var note) = await RunTranslateAsync(screen, original.PixelWidth, language);
             if (note is not null)
                 return note;
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or JsonException or TaskCanceledException)
         {
             Log.Info($"Ekran çevirisi başarısız: {ex.Message}");
-            return L.T("Google Lens'e ulaşılamadı, sonra tekrar dene.");
+            return L.T("Google Çeviri'ye ulaşılamadı, sonra tekrar dene.");
         }
 
-        if (overlayUrl is null || DecodePatch(overlayUrl) is not { } patch)
+        if (translatedUrl is null)
+            return L.T("Bu ekranda çevrilecek yazı bulamadım.");
+
+        var comma = translatedUrl.IndexOf(',');
+        var translated = Decode(Convert.FromBase64String(translatedUrl[(comma + 1)..]));
+        if (ChangedParts(original, translated) is not { } patch)
             return L.T("Bu ekranda çevrilecek yazı bulamadım.");
 
         await page.ExecuteScriptAsync(PlaceScript(patch));
         return null;
     }
 
-    // ---------------------------------------------------------------- Lens
+    // ---------------------------------------------------------------- Google Translate
 
-    private static async Task<(string? Image, string? Note)> RunLensAsync(byte[] jpeg, string language)
+    private static async Task<(string? Image, string? Note)> RunTranslateAsync(byte[] jpeg, int width, string language)
     {
         var window = CreateHelperWindow(out var webView);
         try
@@ -138,55 +131,43 @@ public static class ScreenTranslator
             await webView.EnsureCoreWebView2Async(await BrowserEnvironment.GetAsync());
             var core = webView.CoreWebView2;
             core.Settings.AreDefaultScriptDialogsEnabled = false;
-            core.Settings.IsStatusBarEnabled = false;
+            core.Navigate($"https://translate.google.com/?sl=auto&tl={Uri.EscapeDataString(language)}&op=images");
 
-            var boundary = "----SoruneLens" + Guid.NewGuid().ToString("N");
-            var body = new MemoryStream();
-            void Write(string text) => body.Write(Encoding.UTF8.GetBytes(text));
-            Write($"--{boundary}\r\nContent-Disposition: form-data; name=\"encoded_image\"; filename=\"screen.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n");
-            body.Write(jpeg);
-            Write($"\r\n--{boundary}--\r\n");
-            body.Position = 0;
-
-            var stamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var request = core.Environment.CreateWebResourceRequest(
-                $"https://lens.google.com/v3/upload?hl={Uri.EscapeDataString(language)}&re=df&st={stamp}&ep=gsbubb",
-                "POST", body, $"Content-Type: multipart/form-data; boundary={boundary}");
-            core.NavigateWithWebResourceRequest(request);
-
-            var deadline = DateTime.UtcNow + Timeout;
+            var upload = $"{UploadScript}({JsonSerializer.Serialize(Convert.ToBase64String(jpeg))})";
+            var sent = false;
             string? state = null;
+            var deadline = DateTime.UtcNow + Timeout;
             while (DateTime.UtcNow < deadline)
             {
                 await Task.Delay(400);
                 if (core.Source?.Contains("google.", StringComparison.OrdinalIgnoreCase) != true)
                     continue;
 
-                using var result = JsonDocument.Parse(await core.ExecuteScriptAsync(LensStepScript));
+                if (!sent)
+                {
+                    sent = JsonSerializer.Deserialize<string>(await core.ExecuteScriptAsync(upload)) == "sent";
+                    state = sent ? "sent" : "no picker";
+                    continue;
+                }
+
+                using var result = JsonDocument.Parse(await core.ExecuteScriptAsync($"{ResultScript}({width})"));
                 state = result.RootElement.TryGetProperty("state", out var s) ? s.GetString() : null;
                 switch (state)
                 {
                     case "done":
                         return (result.RootElement.GetProperty("image").GetString(), null);
-                    case "empty":
-                        return (null, null);
+                    case "error":
+                        return (null, L.T("Çevrilen resim okunamadı, tekrar dene."));
                     case "consent":
                         return (null, L.T("Google önce bir onay sayfası gösteriyor: google.com'u Sorune'de bir kez açıp seçimini yap, sonra tekrar dene."));
                 }
             }
-            // Where it got stuck (only the address's host and path: the rest is Lens's session).
+
+            // Where it got stuck (only the address's host and path).
             var at = Uri.TryCreate(core.Source, UriKind.Absolute, out var source) ? source.Host + source.AbsolutePath : "?";
-            string details;
-            try
-            {
-                details = JsonSerializer.Deserialize<string>(await core.ExecuteScriptAsync(DiagnoseScript)) ?? "";
-            }
-            catch (Exception ex) when (ex is COMException or InvalidOperationException or JsonException)
-            {
-                details = ex.Message;
-            }
-            Log.Info($"Ekran çevirisi zaman aşımı: son durum {state ?? "sayfa yüklenmedi"}, adres {at}, {details}");
-            return (null, L.T("Google Lens zamanında yanıt vermedi, tekrar dene."));
+            Log.Info($"Ekran çevirisi zaman aşımı: son durum {state ?? "sayfa yüklenmedi"}, adres {at}");
+            // Translate shows no result for a picture without text; after a long wait that is the likely reason.
+            return (null, sent ? null : L.T("Google Çeviri zamanında yanıt vermedi, tekrar dene."));
         }
         finally
         {
@@ -195,80 +176,125 @@ public static class ScreenTranslator
     }
 
     /// <summary>
-    /// A full-size window pushed past the bottom-right corner of the screen, so only its top-left
-    /// pixel is on screen. Chromium only paints pages it considers visible, and a window that is
-    /// fully off-screen or covered counts as hidden; one uncovered pixel keeps Lens drawing, and
-    /// the page still gets a real 1280×900 viewport to lay out in.
+    /// A browser window placed beyond every monitor, so it never shows up (not even on a second
+    /// screen). Translate's image mode works from the network, so the page needn't be painted.
     /// </summary>
     private static Window CreateHelperWindow(out WebView2 webView)
     {
         webView = new WebView2();
-        var area = SystemParameters.WorkArea;
         return new Window
         {
             Width = 1280,
             Height = 900,
-            Left = area.Right - 1,
-            Top = area.Bottom - 1,
+            Left = SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth + 200,
+            Top = SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight + 200,
             WindowStyle = WindowStyle.None,
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             ShowActivated = false,
-            Topmost = true,
             Focusable = false,
-            Title = "Sorune Lens",
+            Title = "Sorune Translate",
             Content = webView,
         };
     }
 
-    // ---------------------------------------------------------------- placing the patches
+    // ---------------------------------------------------------------- what changed
 
     private sealed record Patch(int OverlayWidth, int OverlayHeight, int X, int Y, int Width, int Height, string Rgba);
 
-    /// <summary>Crops the painted part of Lens's canvas (transparent elsewhere) to RGBA for the page.</summary>
-    private static Patch? DecodePatch(string dataUrl)
+    private static BitmapSource Decode(byte[] bytes)
     {
-        var comma = dataUrl.IndexOf(',');
-        if (comma < 0)
-            return null;
-
-        var decoder = BitmapDecoder.Create(new MemoryStream(Convert.FromBase64String(dataUrl[(comma + 1)..])), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        var decoder = BitmapDecoder.Create(new MemoryStream(bytes), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         var bitmap = new FormatConvertedBitmap(decoder.Frames[0], PixelFormats.Bgra32, null, 0);
-        int width = bitmap.PixelWidth, height = bitmap.PixelHeight, stride = width * 4;
-        var pixels = new byte[stride * height];
-        bitmap.CopyPixels(pixels, stride, 0);
+        bitmap.Freeze();
+        return bitmap;
+    }
 
-        int left = width, top = height, right = -1, bottom = -1;
-        for (var y = 0; y < height; y++)
+    private const int Block = 8;
+
+    /// <summary>
+    /// Compares the capture with Translate's picture in 8×8 blocks; blocks that differ more than
+    /// JPEG noise (plus two blocks around them, so no trace of the old letters is left) are kept from the
+    /// translation, everything else is transparent. Null when nothing changed.
+    /// </summary>
+    private static Patch? ChangedParts(BitmapSource original, BitmapSource translated)
+    {
+        if (translated.PixelWidth != original.PixelWidth || translated.PixelHeight != original.PixelHeight)
+            translated = new TransformedBitmap(translated, new ScaleTransform(
+                (double)original.PixelWidth / translated.PixelWidth, (double)original.PixelHeight / translated.PixelHeight));
+
+        int width = original.PixelWidth, height = original.PixelHeight, stride = width * 4;
+        var a = new byte[stride * height];
+        var b = new byte[stride * height];
+        original.CopyPixels(a, stride, 0);
+        new FormatConvertedBitmap(translated, PixelFormats.Bgra32, null, 0).CopyPixels(b, stride, 0);
+
+        int columns = (width + Block - 1) / Block, rows = (height + Block - 1) / Block;
+        var changed = new bool[columns, rows];
+        for (var by = 0; by < rows; by++)
         {
-            for (var x = 0; x < width; x++)
+            for (var bx = 0; bx < columns; bx++)
             {
-                if (pixels[y * stride + x * 4 + 3] <= 8)
+                long sum = 0;
+                var count = 0;
+                for (var y = by * Block; y < Math.Min(height, (by + 1) * Block); y++)
+                {
+                    for (var x = bx * Block; x < Math.Min(width, (bx + 1) * Block); x++)
+                    {
+                        var i = y * stride + x * 4;
+                        sum += Math.Abs(a[i] - b[i]) + Math.Abs(a[i + 1] - b[i + 1]) + Math.Abs(a[i + 2] - b[i + 2]);
+                        count++;
+                    }
+                }
+                changed[bx, by] = sum / Math.Max(1, count) > 24;
+            }
+        }
+
+        var keep = new bool[columns, rows];
+        int left = columns, top = rows, right = -1, bottom = -1;
+        for (var by = 0; by < rows; by++)
+        {
+            for (var bx = 0; bx < columns; bx++)
+            {
+                if (!changed[bx, by])
                     continue;
-                left = Math.Min(left, x);
-                right = Math.Max(right, x);
-                top = Math.Min(top, y);
-                bottom = Math.Max(bottom, y);
+                for (var dy = -2; dy <= 2; dy++)
+                {
+                    for (var dx = -2; dx <= 2; dx++)
+                    {
+                        int nx = bx + dx, ny = by + dy;
+                        if (nx < 0 || ny < 0 || nx >= columns || ny >= rows)
+                            continue;
+                        keep[nx, ny] = true;
+                        left = Math.Min(left, nx);
+                        right = Math.Max(right, nx);
+                        top = Math.Min(top, ny);
+                        bottom = Math.Max(bottom, ny);
+                    }
+                }
             }
         }
         if (right < 0)
             return null;
 
-        int w = right - left + 1, h = bottom - top + 1;
-        var rgba = new byte[w * h * 4];
-        for (var y = 0; y < h; y++)
+        int px = left * Block, py = top * Block;
+        int pw = Math.Min(width, (right + 1) * Block) - px, ph = Math.Min(height, (bottom + 1) * Block) - py;
+        var rgba = new byte[pw * ph * 4];
+        for (var y = 0; y < ph; y++)
         {
-            for (var x = 0; x < w; x++)
+            for (var x = 0; x < pw; x++)
             {
-                var from = (top + y) * stride + (left + x) * 4;
-                var to = (y * w + x) * 4;
-                rgba[to] = pixels[from + 2];
-                rgba[to + 1] = pixels[from + 1];
-                rgba[to + 2] = pixels[from];
-                rgba[to + 3] = pixels[from + 3];
+                if (!keep[(px + x) / Block, (py + y) / Block])
+                    continue;
+                var from = (py + y) * stride + (px + x) * 4;
+                var to = (y * pw + x) * 4;
+                rgba[to] = b[from + 2];
+                rgba[to + 1] = b[from + 1];
+                rgba[to + 2] = b[from];
+                rgba[to + 3] = 255;
             }
         }
-        return new Patch(width, height, left, top, w, h, Convert.ToBase64String(rgba));
+        return new Patch(width, height, px, py, pw, ph, Convert.ToBase64String(rgba));
     }
 
     /// <summary>

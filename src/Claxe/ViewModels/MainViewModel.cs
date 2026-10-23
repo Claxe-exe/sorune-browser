@@ -530,6 +530,7 @@ public sealed class MainViewModel : ObservableObject
         greet.Start();
 
 
+
         // First start of a new version (not the very first start): show what changed, once.
         var version = UpdateService.CurrentVersion;
         if (_settings.LastSeenVersion != version)

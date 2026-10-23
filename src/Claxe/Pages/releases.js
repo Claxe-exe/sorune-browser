@@ -5,6 +5,15 @@
 
 window.RELEASES = [
     {
+        version: "0.9.5",
+        date: "2026-10-23",
+        name: ["Ekran çevirisi çalışıyor", "Screen translation works"],
+        items: [
+            ["**Ekran çevirisi** artık Google Çeviri'nin resim çevirisini kullanıyor: daha hızlı (birkaç saniye) ve güvenilir. Yalnızca yazıların değiştiği yerler (balonlar, yazılar) sayfanın üstüne konuyor.", "**Screen translation** now uses Google Translate's image translation: faster (a few seconds) and reliable. Only the parts where text changed (bubbles, captions) are laid over the page."],
+            ["**Düzeltme:** çeviri sırasında ikinci ekranda açılan pencere artık hiçbir ekranda görünmüyor.", "**Fix:** the window that showed up on a second screen during translation no longer appears on any screen."],
+        ],
+    },
+    {
         version: "0.9.4",
         date: "2026-10-23",
         name: ["Ekran çevirisi düzeltmesi 2", "Screen translation fix 2"],
