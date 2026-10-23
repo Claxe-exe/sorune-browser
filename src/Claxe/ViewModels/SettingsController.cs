@@ -120,6 +120,18 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
 
     public UserThemeStore UserThemes { get; } = new();
 
+    public void SetAutoScreenTranslate(bool value)
+    {
+        settings.AutoScreenTranslate = value;
+        Commit("autoScreenTranslate");
+    }
+
+    public void SetAutoScreenTranslateSeconds(int seconds)
+    {
+        settings.AutoScreenTranslateSeconds = Math.Clamp(seconds, 3, 20);
+        Commit("autoScreenTranslateSeconds");
+    }
+
     public void SetVerticalTabs(bool value)
     {
         settings.VerticalTabs = value;

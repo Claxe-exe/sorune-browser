@@ -65,6 +65,8 @@ public sealed class MainViewModel : ObservableObject
             _saveTimer.Stop();
             SaveSession();
         };
+        _autoTranslateTimer.Tick += async (_, _) => await AutoTranslateTickAsync();
+        UpdateAutoTranslateTimer();
         _suspendTimer.Tick += (_, _) =>
         {
             SuspendIdleTabs();
@@ -2626,6 +2628,10 @@ public sealed class MainViewModel : ObservableObject
             case "downloadFolder":
                 _downloads.SetFolder(_settings.DownloadFolder);
                 break;
+            case "autoScreenTranslate":
+            case "autoScreenTranslateSeconds":
+                UpdateAutoTranslateTimer();
+                break;
             case "smartScreenEnabled":
                 BrowserEnvironment.SmartScreen = _settings.SmartScreenEnabled;
                 // Applies from each page's next navigation.
@@ -2756,27 +2762,34 @@ public sealed class MainViewModel : ObservableObject
 
     private bool _screenTranslating;
 
-    /// <summary>Text in pictures too (Google Lens), laid over the page; see <see cref="ScreenTranslator"/>.</summary>
-    public async Task TranslateScreenAsync(TabViewModel? tab)
+    /// <summary>
+    /// Text in pictures too (Google Translate's image mode), laid over the page; see
+    /// <see cref="ScreenTranslator"/>. Quiet (automatic) runs only speak up about real problems.
+    /// </summary>
+    public async Task TranslateScreenAsync(TabViewModel? tab, bool quiet = false)
     {
         if (tab?.Core is not { } core || InternalPages.IsInternal(tab.Url) || tab.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) != true)
         {
-            Mascot.Say(L.T("Bu sayfa çevrilemez."));
+            if (!quiet)
+                Mascot.Say(L.T("Bu sayfa çevrilemez."));
             return;
         }
         if (_screenTranslating)
             return;
 
         _screenTranslating = true;
-        Mascot.Say(L.T("Ekranı çeviriyorum…"));
+        if (!quiet)
+            Mascot.Say(L.T("Ekranı çeviriyorum…"));
         try
         {
             if (await ScreenTranslator.TranslateVisibleAsync(core, L.Language) is { } note)
             {
                 Log.Info($"Ekran çevirisi: {note}");
-                Mascot.Say(note);
+                // "No text here" is normal while reading automatically (a picture without words).
+                if (!quiet || note != L.T("Bu ekranda çevrilecek yazı bulamadım."))
+                    Mascot.Say(note);
             }
-            else
+            else if (!quiet)
                 Mascot.Say(L.T("Çevirdim! Aşağı kaydırınca yine bas."), happy: true);
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or IOException or NotSupportedException or FormatException)
@@ -2787,6 +2800,69 @@ public sealed class MainViewModel : ObservableObject
         finally
         {
             _screenTranslating = false;
+        }
+    }
+
+    // ---------------------------------------------------------------- automatic screen translation
+
+    private readonly DispatcherTimer _autoTranslateTimer = new();
+    private readonly Dictionary<string, string> _autoTranslatedView = [];
+
+    /// <summary>Set by the window: nothing is captured while it is minimized.</summary>
+    public bool IsWindowMinimized { get; set; }
+
+    public bool AutoScreenTranslate
+    {
+        get => _settings.AutoScreenTranslate;
+        set => _settingsController.SetAutoScreenTranslate(value);
+    }
+
+    public int AutoScreenTranslateSeconds
+    {
+        get => _settings.AutoScreenTranslateSeconds;
+        set => _settingsController.SetAutoScreenTranslateSeconds(value);
+    }
+
+    private void UpdateAutoTranslateTimer()
+    {
+        _autoTranslateTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.AutoScreenTranslateSeconds, 3, 20));
+        if (_settings.AutoScreenTranslate)
+            _autoTranslateTimer.Start();
+        else
+            _autoTranslateTimer.Stop();
+        OnPropertyChanged(nameof(AutoScreenTranslate));
+        OnPropertyChanged(nameof(AutoScreenTranslateSeconds));
+    }
+
+    /// <summary>
+    /// Every few seconds: when the page in front stands still on a screen it hasn't translated
+    /// yet (scrolled, new page, pictures loaded), that screen is translated. A screen that stayed
+    /// the same is never sent to Google twice.
+    /// </summary>
+    private async Task AutoTranslateTickAsync()
+    {
+        if (!_settings.AutoScreenTranslate || _screenTranslating || IsWindowMinimized
+            || ActiveTab is not { Core: { } core } tab || tab.IsSuspended
+            || InternalPages.IsInternal(tab.Url) || tab.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) != true)
+            return;
+
+        try
+        {
+            var before = await ScreenTranslator.ViewSignatureAsync(core);
+            await Task.Delay(600);
+            if (!ReferenceEquals(ActiveTab, tab) || _screenTranslating)
+                return;
+            var after = await ScreenTranslator.ViewSignatureAsync(core);
+            // Still moving, or this exact screen is already done.
+            if (before != after || _autoTranslatedView.GetValueOrDefault(tab.Id) == after)
+                return;
+
+            _autoTranslatedView[tab.Id] = after;
+            await TranslateScreenAsync(tab, quiet: true);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            // The tab closed or navigated meanwhile; the next tick tries again.
         }
     }
 

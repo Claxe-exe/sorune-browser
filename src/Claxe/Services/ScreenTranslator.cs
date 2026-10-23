@@ -24,10 +24,29 @@ public static class ScreenTranslator
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>Earlier patches are hidden while capturing, so they aren't sent to Google again.</summary>
+    /// <summary>
+    /// Earlier patches are hidden while capturing, so they aren't sent to Google again. Returns
+    /// where the screen was, so the patches land there even if the page scrolls meanwhile.
+    /// </summary>
     private const string HideOverlaysScript = """
-        document.querySelectorAll("[data-sorune-lens]").forEach((el) => el.style.visibility = "hidden"); true
+        document.querySelectorAll("[data-sorune-lens]").forEach((el) => el.style.visibility = "hidden");
+        ({ x: scrollX, y: scrollY, w: innerWidth, h: innerHeight })
         """;
+
+    /// <summary>
+    /// What the screen shows, in short: address, scroll position, size, picture count and where
+    /// the element in the middle sits (that also moves on sites that scroll inside a box).
+    /// The same answer twice means nothing moved.
+    /// </summary>
+    private const string ViewScript = """
+        (() => {
+            const middle = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+            const top = middle ? Math.round(middle.getBoundingClientRect().top) : 0;
+            return `${location.href}|${Math.round(scrollX)}|${Math.round(scrollY)}|${innerWidth}x${innerHeight}|${document.images.length}|${top}`;
+        })()
+        """;
+
+    public static async Task<string> ViewSignatureAsync(CoreWebView2 page) => await page.ExecuteScriptAsync(ViewScript);
 
     private const string ShowOverlaysScript = """
         document.querySelectorAll("[data-sorune-lens]").forEach((el) => el.style.visibility = ""); true
@@ -82,9 +101,10 @@ public static class ScreenTranslator
     public static async Task<string?> TranslateVisibleAsync(CoreWebView2 page, string language)
     {
         byte[] screen;
+        View view;
         try
         {
-            await page.ExecuteScriptAsync(HideOverlaysScript);
+            view = JsonSerializer.Deserialize<View>(await page.ExecuteScriptAsync(HideOverlaysScript), JsonOptions) ?? new View(0, 0, 0, 0);
             using var stream = new MemoryStream();
             await page.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Jpeg, stream);
             screen = stream.ToArray();
@@ -116,7 +136,7 @@ public static class ScreenTranslator
         if (ChangedParts(original, translated) is not { } patch)
             return L.T("Bu ekranda çevrilecek yazı bulamadım.");
 
-        await page.ExecuteScriptAsync(PlaceScript(patch));
+        await page.ExecuteScriptAsync(PlaceScript(patch, view));
         return null;
     }
 
@@ -201,6 +221,11 @@ public static class ScreenTranslator
     // ---------------------------------------------------------------- what changed
 
     private sealed record Patch(int OverlayWidth, int OverlayHeight, int X, int Y, int Width, int Height, string Rgba);
+
+    /// <summary>The screen in page coordinates (CSS pixels) at the moment of the capture.</summary>
+    private sealed record View(double X, double Y, double W, double H);
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private static BitmapSource Decode(byte[] bytes)
     {
@@ -299,20 +324,27 @@ public static class ScreenTranslator
 
     /// <summary>
     /// Draws the patch on a canvas pinned to the document where the screen was (so it scrolls
-    /// with the page). Pixels go in as ImageData: no image URL, so the site's CSP can't block it.
+    /// with the page). Patches from an earlier translation of the same screen are replaced.
+    /// Pixels go in as ImageData: no image URL, so the site's CSP can't block it.
     /// </summary>
-    private static string PlaceScript(Patch patch)
+    private static string PlaceScript(Patch patch, View view)
         => $$"""
-            ((ow, oh, px, py, pw, ph, b64) => {
+            ((ow, oh, px, py, pw, ph, b64, vx, vy, vw, vh) => {
+                if (!vw || !vh) { vx = scrollX; vy = scrollY; vw = innerWidth; vh = innerHeight; }
+                for (const old of document.querySelectorAll("canvas[data-sorune-lens]")) {
+                    const left = parseFloat(old.style.left), top = parseFloat(old.style.top);
+                    if (left >= vx - 1 && top >= vy - 1 && left + parseFloat(old.style.width) <= vx + vw + 1
+                        && top + parseFloat(old.style.height) <= vy + vh + 1) old.remove();
+                }
                 const bytes = Uint8ClampedArray.from(atob(b64), (c) => c.charCodeAt(0));
                 const canvas = document.createElement("canvas");
                 canvas.width = pw;
                 canvas.height = ph;
                 canvas.getContext("2d").putImageData(new ImageData(bytes, pw, ph), 0, 0);
-                const sx = innerWidth / ow, sy = innerHeight / oh;
+                const sx = vw / ow, sy = vh / oh;
                 canvas.dataset.soruneLens = "";
                 Object.assign(canvas.style, {
-                    position: "absolute", left: (scrollX + px * sx) + "px", top: (scrollY + py * sy) + "px",
+                    position: "absolute", left: (vx + px * sx) + "px", top: (vy + py * sy) + "px",
                     width: (pw * sx) + "px", height: (ph * sy) + "px", zIndex: "2147483646",
                     pointerEvents: "none", margin: "0", padding: "0", border: "0", maxWidth: "none",
                 });
@@ -334,6 +366,9 @@ public static class ScreenTranslator
                     document.documentElement.appendChild(bar);
                 }
                 return true;
-            })({{patch.OverlayWidth}}, {{patch.OverlayHeight}}, {{patch.X}}, {{patch.Y}}, {{patch.Width}}, {{patch.Height}}, "{{patch.Rgba}}")
+            })({{patch.OverlayWidth}}, {{patch.OverlayHeight}}, {{patch.X}}, {{patch.Y}}, {{patch.Width}}, {{patch.Height}}, "{{patch.Rgba}}",
+               {{Num(view.X)}}, {{Num(view.Y)}}, {{Num(view.W)}}, {{Num(view.H)}})
             """;
+
+    private static string Num(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

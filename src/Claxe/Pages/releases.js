@@ -5,6 +5,16 @@
 
 window.RELEASES = [
     {
+        version: "0.9.6",
+        date: "2026-10-23",
+        name: ["Üç nokta menüsü, otomatik ekran çevirisi", "Three-dot menu, automatic screen translation"],
+        items: [
+            ["**Üç nokta menüsü:** ekran görüntüsü, bölünmüş ekran ve profiller araç çubuğunda tek bir düğmede toplandı; sayfa çevirisi ve ekran çevirisi de orada.", "**Three-dot menu:** screenshot, split screen and profiles are now one toolbar button; page and screen translation are there too."],
+            ["**Otomatik ekran çevirisi:** üç nokta menüsünden aç, çubukla 3–20 saniye arası bir süre seç. Sayfa durduğunda ve ekran değiştiğinde (kaydırınca, yeni bölüm, resimler yüklenince) kendiliğinden çevirir; aynı ekranı iki kez göndermez.", "**Automatic screen translation:** turn it on in the three-dot menu and pick 3–20 seconds with the slider. When the page stands still on a new screen (scrolled, new chapter, pictures loaded), it translates by itself; the same screen is never sent twice."],
+            ["**Düzeltme:** ekran çevirisi sürerken kaydırınca çeviri artık doğru yere konuyor; aynı ekran tekrar çevrilince eski çeviri üst üste binmiyor.", "**Fix:** scrolling while a screen is being translated no longer misplaces the translation, and translating a screen again replaces the old one instead of stacking."],
+        ],
+    },
+    {
         version: "0.9.5",
         date: "2026-10-23",
         name: ["Ekran çevirisi çalışıyor", "Screen translation works"],

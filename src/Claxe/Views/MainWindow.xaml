@@ -597,30 +597,14 @@
                                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}" />
                             </Grid>
                         </Button>
-                        <!-- Screenshot -->
-                        <Button Style="{StaticResource IconButtonStyle}" Margin="0,0,2,0" Content="&#xE722;"
-                                ToolTip="{controls:T 'Ekran görüntüsü'}" Click="ScreenshotButton_Click" />
+
                         <!-- Reader mode: only on pages that look like an article -->
                         <Button Margin="0,0,2,0" Content="&#xE736;"
                                 ToolTip="{controls:T 'Okuma modu'}"
                                 Command="{Binding OpenReaderCommand}"
                                 Visibility="{Binding ActiveTab.IsReadable, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
                                 Style="{StaticResource IconButtonStyle}" />
-                        <!-- Split screen: opens one with a new tab, or closes the current one -->
-                        <Button Margin="0,0,2,0" Click="SplitButton_Click">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
-                                    <Setter Property="Content" Value="&#xE8A0;" />
-                                    <Setter Property="ToolTip" Value="{controls:T 'Bölünmüş ekran'}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSplit}" Value="True">
-                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            <Setter Property="ToolTip" Value="{controls:T 'Bölünmüş ekranı kapat'}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+
                         <!-- Update downloaded: one click saves everything, installs and restarts -->
                         <Button x:Name="UpdateButton"
                                 Height="30" Margin="0,0,6,0" Padding="10,0"
@@ -677,16 +661,23 @@
                                 </Rectangle>
                             </Grid>
                         </Button>
-                        <!-- Profile: which profile this window is; click to open another -->
-                        <Button x:Name="ProfileButton" Style="{StaticResource IconButtonStyle}" Margin="0,0,2,0"
-                                ToolTip="{Binding CurrentProfile.Name}" Click="ProfileButton_Click">
-                            <Border Width="22" Height="22" CornerRadius="11" Background="{Binding ProfileBrush}">
-                                <Border.Effect>
-                                    <DropShadowEffect ShadowDepth="0" BlurRadius="8" Opacity="0.5" Color="Black" />
-                                </Border.Effect>
-                                <TextBlock Text="{Binding CurrentProfile.Emoji}" FontFamily="Segoe UI Emoji" FontSize="11.5"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
+                        <!-- More: screenshot, split screen, profiles, translation and automatic translation -->
+                        <Button x:Name="MoreButton" Margin="0,0,2,0" Click="MoreButton_Click"
+                                ToolTip="{controls:T 'Diğer araçlar'}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                                    <Setter Property="Content" Value="&#xE712;" />
+                                    <Style.Triggers>
+                                        <!-- Lit while something from the menu is on -->
+                                        <DataTrigger Binding="{Binding IsSplit}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding AutoScreenTranslate}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
                         </Button>
                         <Button Style="{StaticResource IconButtonStyle}" Content="&#xE713;"
                                 ToolTip="{controls:T 'Ayarlar (Ctrl+,)'}" Command="{Binding OpenSettingsCommand}" />

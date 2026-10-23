@@ -918,5 +918,10 @@
   "Google Lens zamanında yanıt vermedi, tekrar dene.": "Google Lens didn't answer in time, try again.",
 
   "Çevrilen resim okunamadı, tekrar dene.": "Couldn't read the translated picture, try again.",
-  "Google Çeviri zamanında yanıt vermedi, tekrar dene.": "Google Translate didn't answer in time, try again."
+  "Google Çeviri zamanında yanıt vermedi, tekrar dene.": "Google Translate didn't answer in time, try again.",
+
+  "Diğer araçlar": "More tools",
+  "Otomatik ekran çevirisi": "Automatic screen translation",
+  "Her {0} saniyede": "Every {0} seconds",
+  "Otomatik çevirinin ekrana ne sıklıkla bakacağı (3–20 saniye)": "How often automatic translation checks the screen (3–20 seconds)"
 }

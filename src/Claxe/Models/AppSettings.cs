@@ -8,6 +8,12 @@ public sealed class AppSettings
     /// <summary>Id from <see cref="Services.SearchEngines"/>.</summary>
     public string SearchEngine { get; set; } = "google";
 
+    /// <summary>Translate the screen by itself every few seconds (when it changed), from the toolbar menu.</summary>
+    public bool AutoScreenTranslate { get; set; }
+
+    /// <summary>How often automatic screen translation looks (3–20 seconds).</summary>
+    public int AutoScreenTranslateSeconds { get; set; } = 10;
+
     /// <summary>SmartScreen warning pages for sites and downloads Microsoft reports as unsafe.</summary>
     public bool SmartScreenEnabled { get; set; } = true;
 

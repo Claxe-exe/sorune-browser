@@ -127,7 +127,11 @@ public partial class MainWindow : Window
 
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseDown += (_, _) => _viewModel.Mascot.NoteActivity();
-        StateChanged += (_, _) => UpdateWindowStateVisuals();
+        StateChanged += (_, _) =>
+        {
+            UpdateWindowStateVisuals();
+            _viewModel.IsWindowMinimized = WindowState == WindowState.Minimized;
+        };
         SizeChanged += (_, _) => UpdateMascotVisibility();
         Closing += OnClosing;
         UpdateWindowStateVisuals();
@@ -373,17 +377,6 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------- screenshots
 
-    private void ScreenshotButton_Click(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = PlacementMode.Bottom };
-        foreach (var (label, mode) in new[] { (L.T("Görünen alan"), "visible"), (L.T("Tam sayfa"), "full"), (L.T("Bölge seç"), "region") })
-        {
-            var item = new MenuItem { Header = label };
-            item.Click += async (_, _) => await TakeScreenshotAsync(mode);
-            menu.Items.Add(item);
-        }
-        menu.IsOpen = true;
-    }
 
     public async Task TakeScreenshotAsync(string mode)
     {
@@ -514,13 +507,6 @@ public partial class MainWindow : Window
 
     private bool _draggingDivider;
 
-    private void SplitButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.IsSplit)
-            _viewModel.CloseSplit();
-        else
-            _viewModel.SplitWithNewTab();
-    }
 
     private void PaneHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -1503,9 +1489,95 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The profile menu: every profile (open ones marked), then "manage profiles".</summary>
-    private void ProfileButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// The three-dot menu: screenshot, split screen, profiles, page and screen translation, and
+    /// automatic screen translation with its interval (3–20 seconds).
+    /// </summary>
+    private void MoreButton_Click(object sender, RoutedEventArgs e)
     {
-        var menu = new ContextMenu { PlacementTarget = ProfileButton, Placement = PlacementMode.Bottom };
+        var menu = new ContextMenu { PlacementTarget = MoreButton, Placement = PlacementMode.Bottom };
+        MenuItem Item(string header, string glyph, Action click, string? gesture = null, bool enabled = true)
+        {
+            var item = new MenuItem
+            {
+                Header = header,
+                InputGestureText = gesture ?? "",
+                IsEnabled = enabled,
+                Icon = new TextBlock { Text = glyph, FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 13 },
+            };
+            item.Click += (_, _) => click();
+            menu.Items.Add(item);
+            return item;
+        }
+
+        var tab = _viewModel.ActiveTab;
+        var web = tab?.Core is not null && !InternalPages.IsInternal(tab.Url) && tab.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true;
+
+        Item(L.T("Ekran görüntüsü: görünen alan"), "\uE722", () => _ = TakeScreenshotAsync("visible"), enabled: tab?.Core is not null);
+        Item(L.T("Ekran görüntüsü: tam sayfa"), "\uE722", () => _ = TakeScreenshotAsync("full"), enabled: tab?.Core is not null);
+        Item(L.T("Ekran görüntüsü: bölge seç"), "\uE722", () => _ = TakeScreenshotAsync("region"), enabled: tab?.Core is not null);
+        menu.Items.Add(new Separator());
+        if (_viewModel.IsSplit)
+            Item(L.T("Bölünmüş ekranı kapat"), "\uE8A0", _viewModel.CloseSplit);
+        else
+            Item(L.T("Bölünmüş ekran"), "\uE8A0", _viewModel.SplitWithNewTab);
+        menu.Items.Add(new Separator());
+
+        if (tab is { IsTranslated: true })
+            Item(L.T("Orijinali göster"), "\uE8C1", () => _viewModel.ShowOriginal(tab));
+        else
+            Item(MainViewModel.TranslateMenuTitle, "\uE8C1", () => _ = _viewModel.TranslateTabAsync(tab), enabled: web);
+        Item(L.T("Ekranı çevir (resimler dahil)"), "\uE7B3", () => _ = _viewModel.TranslateScreenAsync(tab), "Ctrl+Shift+E", web);
+
+        var auto = new MenuItem
+        {
+            Header = L.T("Otomatik ekran çevirisi"),
+            IsCheckable = true,
+            IsChecked = _viewModel.AutoScreenTranslate,
+            StaysOpenOnClick = true,
+        };
+        auto.Click += (_, _) => _viewModel.AutoScreenTranslate = auto.IsChecked;
+        menu.Items.Add(auto);
+
+        // How often it looks: a slider inside the menu (the menu stays open while dragging).
+        var label = new TextBlock { Width = 118, VerticalAlignment = VerticalAlignment.Center, FontSize = 12.5 };
+        void ShowSeconds(int seconds) => label.Text = L.T("Her {0} saniyede", seconds);
+        ShowSeconds(_viewModel.AutoScreenTranslateSeconds);
+        var slider = new Slider
+        {
+            Minimum = 3,
+            Maximum = 20,
+            Value = _viewModel.AutoScreenTranslateSeconds,
+            IsSnapToTickEnabled = true,
+            TickFrequency = 1,
+            Width = 140,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = L.T("Otomatik çevirinin ekrana ne sıklıkla bakacağı (3–20 saniye)"),
+        };
+        slider.ValueChanged += (_, args) => ShowSeconds((int)args.NewValue);
+        // Saved when the thumb is let go, not on every step of the drag.
+        slider.PreviewMouseUp += (_, _) => _viewModel.AutoScreenTranslateSeconds = (int)slider.Value;
+        slider.KeyUp += (_, _) => _viewModel.AutoScreenTranslateSeconds = (int)slider.Value;
+        menu.Items.Add(new MenuItem
+        {
+            Header = new StackPanel { Orientation = Orientation.Horizontal, Children = { label, slider } },
+            StaysOpenOnClick = true,
+            Focusable = false,
+        });
+        menu.Closed += (_, _) =>
+        {
+            if ((int)slider.Value != _viewModel.AutoScreenTranslateSeconds)
+                _viewModel.AutoScreenTranslateSeconds = (int)slider.Value;
+        };
+
+        menu.Items.Add(new Separator());
+        AddProfileItems(menu);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Profiles: this window's one ticked; another one opens in its own window.</summary>
+    private void AddProfileItems(ContextMenu menu)
+    {
         foreach (var profile in ProfileService.List())
         {
             var current = profile.Id == ProfileService.CurrentId;
@@ -1529,11 +1601,9 @@ public partial class MainWindow : Window
             menu.Items.Add(item);
         }
 
-        menu.Items.Add(new Separator());
         var manage = new MenuItem { Header = L.T("Profil ekle / yönet…") };
         manage.Click += (_, _) => _viewModel.OpenSettings("profiller");
         menu.Items.Add(manage);
-        menu.IsOpen = true;
     }
 
     /// <summary>Opens a link in the preview window, centred over the page area (about 70% of it).</summary>
