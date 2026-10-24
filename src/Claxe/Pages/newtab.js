@@ -325,10 +325,29 @@ function hexToRgb(hex) {
     return m ? `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}` : null;
 }
 
+const FONTS = {
+    system: "\"Segoe UI Variable Display\", \"Segoe UI\", sans-serif",
+    orbitron: "'Orbitron', \"Segoe UI\", sans-serif",
+    bebas: "'Bebas Neue', \"Segoe UI\", sans-serif",
+    pacifico: "'Pacifico', cursive",
+    pixel: "'Press Start 2P', monospace",
+    righteous: "'Righteous', \"Segoe UI\", sans-serif",
+    script: "'Dancing Script', cursive",
+};
+
 function applyConfig(config) {
     const theme = config.theme || {};
     const look = config.look || {};
     const root = document.documentElement.style;
+
+    root.setProperty("--clock-font", FONTS[look.clockFont] || FONTS.system);
+    root.setProperty("--label-font", look.labelFont && look.labelFont !== "system" ? FONTS[look.labelFont] || "inherit" : "inherit");
+    // The pixel font is wide: a smaller clock keeps it on one line.
+    $("clock").classList.toggle("pixel", look.clockFont === "pixel");
+    document.body.classList.toggle("custom-cards", typeof look.cards === "number");
+    if (typeof look.cards === "number") root.setProperty("--card-alpha", String(look.cards));
+    else root.removeProperty("--card-alpha");
+    document.body.classList.toggle("hide-greeting", look.showGreeting === false);
 
     // The user's own new tab look (settings → New tab).
     document.body.classList.toggle("align-center", look.align === "center");

@@ -5,6 +5,16 @@
 
 window.RELEASES = [
     {
+        version: "0.9.9",
+        date: "2026-10-24",
+        name: ["Yeni sekmede yazı tipleri", "New tab fonts"],
+        items: [
+            ["**Yazı tipleri:** Ayarlar › Yeni sekme'den saat ve kısayol adları için Orbitron, Bebas, Pacifico, Piksel, Righteous ya da El yazısı seç (telefondaki gibi).", "**Fonts:** pick Orbitron, Bebas, Pacifico, Pixel, Righteous or Handwriting for the clock and shortcut names in Settings › New tab (as on the phone)."],
+            ["**Kart koyuluğu:** kısayol ve widget kartlarının ne kadar koyu olacağını çubukla ayarla; duvar kâğıdı daha çok görünsün.", "**Card darkness:** set how dark the shortcut and widget cards are with a slider, so more of the wallpaper shows."],
+            ["**Selamlama:** saatin üstündeki \"Günaydın\" yazısı kapatılabiliyor.", "**Greeting:** the \"Good morning\" above the clock can be turned off."],
+        ],
+    },
+    {
         version: "0.9.8",
         date: "2026-10-24",
         name: ["Güvenli DNS düzeltmesi", "Secure DNS fix"],

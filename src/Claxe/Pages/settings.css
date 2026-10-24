@@ -768,3 +768,12 @@ body.no-motion * { transition: none !important; }
 }
 .dns-list button span { font-size: 12px; color: var(--text-dim); }
 .dns-list button[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+/* New tab fonts: each choice shown in its own font */
+.segmented.fonts { flex-wrap: wrap; justify-content: flex-end; }
+.font-orbitron { font-family: "Orbitron", sans-serif; }
+.font-bebas { font-family: "Bebas Neue", sans-serif; font-size: 15px; letter-spacing: 0.04em; }
+.font-pacifico { font-family: "Pacifico", cursive; }
+.font-pixel { font-family: "Press Start 2P", monospace; font-size: 9px; }
+.font-righteous { font-family: "Righteous", sans-serif; }
+.font-script { font-family: "Dancing Script", cursive; font-size: 15px; }

@@ -12,6 +12,9 @@ namespace Claxe.ViewModels;
 /// </summary>
 public sealed class SettingsController(AppSettings settings, PermissionStore permissions, PanelStore panels)
 {
+    /// <summary>Fonts bundled for the new tab (Pages/fonts, SIL Open Font License).</summary>
+    private static readonly string[] NewTabFonts = ["system", "orbitron", "bebas", "pacifico", "pixel", "righteous", "script"];
+
     private const long MaxWallpaperBytes = 30 * 1024 * 1024;
     private static readonly string[] WallpaperExtensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp"];
     private static readonly string[] CornerStyles = ["sharp", "soft", "round"];
@@ -71,6 +74,10 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "newTabShowSearch" => SetBool(value, v => settings.NewTabShowSearch = v),
             "newTabShowShortcuts" => SetBool(value, v => settings.NewTabShowShortcuts = v),
             "newTabShowWidgets" => SetBool(value, v => settings.NewTabShowWidgets = v),
+            "newTabClockFont" => Set(StringOrNull(value), v => NewTabFonts.Contains(v), v => settings.NewTabClockFont = v!),
+            "newTabLabelFont" => Set(StringOrNull(value), v => NewTabFonts.Contains(v), v => settings.NewTabLabelFont = v!),
+            "newTabCards" => Set(NumberOrNull(value), v => v is null or (>= 0 and <= 0.9), v => settings.NewTabCards = v),
+            "newTabShowGreeting" => SetBool(value, v => settings.NewTabShowGreeting = v),
             "pageFrameEnabled" => SetBool(value, v => settings.PageFrameEnabled = v),
             _ => false,
         };

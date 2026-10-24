@@ -101,6 +101,16 @@ public sealed class AppSettings
     public bool NewTabShowShortcuts { get; set; } = true;
     public bool NewTabShowWidgets { get; set; } = true;
 
+    /// <summary>Fonts of the new tab clock and shortcut names: "system" or one of the bundled fonts.</summary>
+    public string NewTabClockFont { get; set; } = "system";
+
+    public string NewTabLabelFont { get; set; } = "system";
+
+    /// <summary>How dark the shortcut and widget cards are (0–0.9); null = the theme's own.</summary>
+    public double? NewTabCards { get; set; }
+
+    public bool NewTabShowGreeting { get; set; } = true;
+
     /// <summary>Tabs as a list on the left instead of the strip at the top (off unless chosen).</summary>
     public bool VerticalTabs { get; set; }
 

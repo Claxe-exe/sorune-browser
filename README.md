@@ -39,6 +39,7 @@
 
 | | |
 |---|---|
+| 🔤 **Yeni sekme yazı tipleri** | Saat ve kısayollar için 6 yazı tipi, kart koyuluğu, selamlamayı kapatma (telefondaki gibi). |
 | 🛡️ **Güvenli DNS** | Engelli siteler için: Sorune adresleri operatöre değil, seçtiğin hizmete (Cloudflare, Google, AdGuard, OpenDNS, DNS.SB) şifreli sorar. Bilgisayarın geri kalanı etkilenmez. |
 | ⋯ **Üç nokta menüsü** | Ekran görüntüsü, bölünmüş ekran, profiller, sayfa ve ekran çevirisi tek düğmede. **Otomatik ekran çevirisi**: 3–20 saniye arası seçilen sürede, ekran değişince kendiliğinden çevirir. |
 | 🖼️ **Ekran çevirisi** | Sağ tık › "Ekranı çevir (resimler dahil)" ya da Ctrl+Shift+E: Google Çeviri, resimlerdeki yazılar dahil ekranı çevirir, çeviri sayfanın üstüne konur. Webtoon okumak için birebir. |

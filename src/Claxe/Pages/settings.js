@@ -376,6 +376,11 @@ function renderPersonal(s) {
     $("nt-dim-reset").disabled = s.newTabDim == null;
     if (dragging !== "nt-blur") $("nt-blur").value = s.newTabBlur;
     $("nt-blur-value").textContent = s.newTabBlur ? `${s.newTabBlur} px` : t("Keskin");
+    setSegmented("nt-clock-font", s.newTabClockFont);
+    setSegmented("nt-label-font", s.newTabLabelFont);
+    if (dragging !== "nt-cards") $("nt-cards").value = Math.round((s.newTabCards ?? 0.42) * 100);
+    $("nt-cards-value").textContent = s.newTabCards == null ? t("Temanınki") : `%${Math.round(s.newTabCards * 100)}`;
+    $("nt-cards-reset").disabled = s.newTabCards == null;
     if (dragging !== "vtabs-width") $("vtabs-width").value = s.verticalTabsWidth;
     $("vtabs-width-value").textContent = `${s.verticalTabsWidth} px`;
     $("vtabs-width-row").hidden = !s.verticalTabs;
@@ -406,7 +411,7 @@ function renderPersonal(s) {
 
 $("force-dark-restart").addEventListener("click", () => send({ type: "restartApp" }));
 $("secure-dns-restart").addEventListener("click", () => send({ type: "restartApp" }));
-for (const [id, key] of [["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
+for (const [id, key] of [["nt-clock-font", "newTabClockFont"], ["nt-label-font", "newTabLabelFont"], ["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
     $(id).addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (button) update(key, button.dataset.value);
@@ -420,6 +425,8 @@ function bindRange(id, send) {
 }
 bindRange("nt-dim", (v) => update("newTabDim", v / 100));
 bindRange("nt-blur", (v) => update("newTabBlur", v));
+bindRange("nt-cards", (v) => update("newTabCards", v / 100));
+$("nt-cards-reset").addEventListener("click", () => update("newTabCards", null));
 bindRange("vtabs-width", (v) => update("verticalTabsWidth", v));
 bindRange("mascot-peek", (v) => update("mascotPeek", v / 100));
 $("nt-dim-reset").addEventListener("click", () => update("newTabDim", null));

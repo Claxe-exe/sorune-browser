@@ -2723,6 +2723,10 @@ public sealed class MainViewModel : ObservableObject
                 showSearch = _settings.NewTabShowSearch,
                 showShortcuts = _settings.NewTabShowShortcuts,
                 showWidgets = _settings.NewTabShowWidgets,
+                clockFont = _settings.NewTabClockFont,
+                labelFont = _settings.NewTabLabelFont,
+                cards = _settings.NewTabCards,
+                showGreeting = _settings.NewTabShowGreeting,
             },
         };
     }

@@ -113,7 +113,7 @@ html, body {
 
 .clock {
     margin: 0;
-    font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    font-family: var(--clock-font, "Segoe UI Variable Display", "Segoe UI", sans-serif);
     font-size: clamp(64px, 9vw, 112px);
     font-weight: 200;
     line-height: 1;
@@ -385,7 +385,7 @@ body:not(.motion) * { transition: none !important; }
     padding: 12px 14px 14px;
     border-radius: 18px;
     border: 1px solid var(--glass-border);
-    background: rgba(var(--overlay), 0.42);
+    background: rgba(var(--overlay), var(--card-alpha, 0.42));
     backdrop-filter: blur(18px) saturate(140%);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
     transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
@@ -680,3 +680,9 @@ body.align-center .greeting, body.align-center .date { margin-left: 0; }
 body.align-center .shortcuts { justify-content: center; }
 body.align-center .widgets { margin-left: auto; margin-right: auto; text-align: left; }
 body.align-center:not(.custom-dim) .shade { background: radial-gradient(ellipse at center, rgba(var(--overlay), 0.72), rgba(var(--overlay), 0.35)); }
+
+/* The user's own fonts and card darkness (settings › New tab) */
+.clock.pixel { font-size: clamp(34px, 4.6vw, 60px); line-height: 1.35; }
+.tile-name { font-family: var(--label-font, inherit); }
+body.custom-cards .tile-icon { background: rgba(var(--overlay), var(--card-alpha)); }
+body.hide-greeting .greeting { visibility: hidden; }

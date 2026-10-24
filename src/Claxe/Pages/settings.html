@@ -4,8 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; img-src https: data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+          content="default-src 'none'; img-src https: data:; style-src 'self'; font-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
     <title>Ayarlar</title>
+    <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="settings.css">
 </head>
 <body>
@@ -207,6 +208,48 @@
                         <button type="button" data-value="left">Sol</button>
                         <button type="button" data-value="center">Orta</button>
                     </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Saat yazı tipi</span>
+                    </div>
+                    <div class="segmented fonts" id="nt-clock-font" role="radiogroup" aria-label="Saat yazı tipi">
+                        <button type="button" data-value="system">Sistem</button>
+                        <button type="button" data-value="orbitron" class="font-orbitron">Orbitron</button>
+                        <button type="button" data-value="bebas" class="font-bebas">Bebas</button>
+                        <button type="button" data-value="pacifico" class="font-pacifico">Pacifico</button>
+                        <button type="button" data-value="pixel" class="font-pixel">Piksel</button>
+                        <button type="button" data-value="righteous" class="font-righteous">Righteous</button>
+                        <button type="button" data-value="script" class="font-script">El yazısı</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Kısayol yazı tipi</span>
+                    </div>
+                    <div class="segmented fonts" id="nt-label-font" role="radiogroup" aria-label="Kısayol yazı tipi">
+                        <button type="button" data-value="system">Sistem</button>
+                        <button type="button" data-value="orbitron" class="font-orbitron">Orbitron</button>
+                        <button type="button" data-value="bebas" class="font-bebas">Bebas</button>
+                        <button type="button" data-value="pacifico" class="font-pacifico">Pacifico</button>
+                        <button type="button" data-value="pixel" class="font-pixel">Piksel</button>
+                        <button type="button" data-value="righteous" class="font-righteous">Righteous</button>
+                        <button type="button" data-value="script" class="font-script">El yazısı</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Kart koyuluğu</span>
+                        <span class="hint" id="nt-cards-value"></span>
+                    </div>
+                    <div class="slider-group">
+                        <input type="range" id="nt-cards" min="0" max="90" step="5" aria-label="Kart koyuluğu">
+                        <button type="button" class="chip" id="nt-cards-reset">Temanınki</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Selamlama</span><span class="hint">Saatin üstündeki "Günaydın" yazısı.</span></div>
+                    <button type="button" class="switch" role="switch" data-key="newTabShowGreeting" aria-label="Selamlama"></button>
                 </div>
                 <div class="row">
                     <div class="row-text"><span class="label">Arama kutusu</span></div>
