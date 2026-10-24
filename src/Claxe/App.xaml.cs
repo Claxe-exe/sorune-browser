@@ -54,6 +54,12 @@ public partial class App : Application
         SoundService.Volume = settings.SoundVolume;
         SoundService.Pack = settings.SoundPack;
         BrowserEnvironment.ForceDark = settings.ForceDarkSites;
+        SecureDns.Current = SecureDns.Find(settings.DnsProvider);
+        if (settings.SecureDns)
+        {
+            try { BrowserEnvironment.SecureDnsPort = SecureDns.Start(); }
+            catch (Exception ex) { Log.Error("Güvenli DNS başlatılamadı", ex); }
+        }
         BrowserEnvironment.SmartScreen = settings.SmartScreenEnabled;
         ThemeService.Apply(settings);
 

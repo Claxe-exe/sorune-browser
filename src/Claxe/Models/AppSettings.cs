@@ -17,6 +17,12 @@ public sealed class AppSettings
     /// <summary>SmartScreen warning pages for sites and downloads Microsoft reports as unsafe.</summary>
     public bool SmartScreenEnabled { get; set; } = true;
 
+    /// <summary>Sites' names are looked up over DNS-over-HTTPS (gets past DNS blocks; applied after a restart).</summary>
+    public bool SecureDns { get; set; }
+
+    /// <summary>The DNS-over-HTTPS service, an id from <see cref="Services.SecureDns.Providers"/>.</summary>
+    public string DnsProvider { get; set; } = "cloudflare";
+
     /// <summary>Ask the search engine for suggestions while typing in the address bar (not in InPrivate tabs).</summary>
     public bool SearchSuggestions { get; set; } = true;
 

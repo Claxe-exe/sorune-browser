@@ -923,5 +923,14 @@
   "Diğer araçlar": "More tools",
   "Otomatik ekran çevirisi": "Automatic screen translation",
   "Her {0} saniyede": "Every {0} seconds",
-  "Otomatik çevirinin ekrana ne sıklıkla bakacağı (3–20 saniye)": "How often automatic translation checks the screen (3–20 seconds)"
+  "Otomatik çevirinin ekrana ne sıklıkla bakacağı (3–20 saniye)": "How often automatic translation checks the screen (3–20 seconds)",
+  "Güvenli DNS (engelli siteler)": "Secure DNS (blocked sites)",
+  "Türkiye'deki erişim engellerinin çoğu DNS ile yapılır. Açınca Sorune site adreslerini operatöre değil, seçtiğin hizmete şifreli olarak sorar ve bu engeller kalkar. Bilgisayarın geri kalanı etkilenmez. Yeniden başlatınca uygulanır.": "Most site blocks work through DNS. When on, Sorune looks site addresses up with the service you choose, encrypted, instead of asking your provider, and those blocks fall away. The rest of the computer is not affected. Applied after a restart.",
+  "Güvenli DNS": "Secure DNS",
+  "DNS hizmeti": "DNS service",
+  "Hızlı, Türkiye'de sunucusu var (önerilen)": "Fast, has servers in Türkiye (recommended)",
+  "Hızlı ve kararlı": "Fast and stable",
+  "Reklam ve izleyicileri de engeller": "Also blocks ads and trackers",
+  "Cisco'nun, kararlı": "Cisco's, stable",
+  "Kayıt tutmaz, gizliliğe odaklı": "Keeps no logs, privacy-focused"
 }

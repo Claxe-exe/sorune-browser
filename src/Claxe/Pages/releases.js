@@ -5,6 +5,15 @@
 
 window.RELEASES = [
     {
+        version: "0.9.7",
+        date: "2026-10-24",
+        name: ["Güvenli DNS", "Secure DNS"],
+        items: [
+            ["**Güvenli DNS (engelli siteler):** Ayarlar › Gizlilik ve veriler. Açınca Sorune site adreslerini operatöre değil, seçtiğin hizmete şifreli olarak sorar; DNS ile yapılan erişim engelleri kalkar. Bilgisayarın geri kalanı etkilenmez. Yeniden başlatınca uygulanır.", "**Secure DNS (blocked sites):** Settings › Privacy and data. When on, Sorune looks site addresses up with the service you choose, encrypted, instead of asking your provider, so DNS-based blocks fall away. The rest of the computer is not affected. Applied after a restart."],
+            ["**Beş hizmet:** Cloudflare (önerilen), Google, AdGuard (reklamları da engeller), OpenDNS ve DNS.SB (kayıt tutmaz).", "**Five services:** Cloudflare (recommended), Google, AdGuard (also blocks ads), OpenDNS and DNS.SB (keeps no logs)."],
+        ],
+    },
+    {
         version: "0.9.6",
         date: "2026-10-23",
         name: ["Üç nokta menüsü, otomatik ekran çevirisi", "Three-dot menu, automatic screen translation"],

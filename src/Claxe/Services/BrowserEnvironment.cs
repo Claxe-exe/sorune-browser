@@ -10,6 +10,9 @@ public static class BrowserEnvironment
     /// <summary>Set once at startup from the settings: Chromium's auto-dark for every site.</summary>
     public static bool ForceDark { get; set; }
 
+    /// <summary>Set once at startup: the port of <see cref="SecureDns"/>, which every HTTPS connection then goes through.</summary>
+    public static int? SecureDnsPort { get; set; }
+
     /// <summary>Microsoft Defender SmartScreen warnings on dangerous sites and downloads.</summary>
     public static bool SmartScreen { get; set; } = true;
 
@@ -53,6 +56,15 @@ public static class BrowserEnvironment
                 Language = L.Locale,
                 // Unpacked extensions the user installs from Settings → Extensions.
                 AreBrowserExtensionsEnabled = true,
-                AdditionalBrowserArguments = ForceDark ? "--enable-features=WebContentsForceDark" : null,
+                AdditionalBrowserArguments = Arguments(),
             });
+
+    private static string? Arguments()
+    {
+        var arguments = new List<string>();
+        if (ForceDark) arguments.Add("--enable-features=WebContentsForceDark");
+        // HTTPS only: plain HTTP sites keep going direct.
+        if (SecureDnsPort is { } port) arguments.Add($"--proxy-server=https=127.0.0.1:{port}");
+        return arguments.Count == 0 ? null : string.Join(' ', arguments);
+    }
 }

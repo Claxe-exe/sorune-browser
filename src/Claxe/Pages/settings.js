@@ -362,6 +362,11 @@ function renderPermissions() {
 function renderPersonal(s) {
     setSegmented("site-scheme", s.siteColorScheme);
     $("force-dark-restart").hidden = s.forceDarkSites === state.forceDarkActive;
+    $("secure-dns-restart").hidden = Boolean(s.secureDns) === state.secureDnsActive;
+    $("dns-providers").hidden = !s.secureDns;
+    $("dns-providers").replaceChildren(...(state.dnsProviders || []).map((p) =>
+        el("button", { type: "button", role: "radio", "aria-checked": String(p.id === s.dnsProvider), onclick: () => update("dnsProvider", p.id) },
+            [el("strong", { text: p.name }), el("span", { text: p.note })])));
     setSegmented("nt-effect", s.newTabEffect);
     setSegmented("nt-align", s.newTabAlign);
     setSegmented("sound-pack", s.soundPack);
@@ -400,6 +405,7 @@ function renderPersonal(s) {
 }
 
 $("force-dark-restart").addEventListener("click", () => send({ type: "restartApp" }));
+$("secure-dns-restart").addEventListener("click", () => send({ type: "restartApp" }));
 for (const [id, key] of [["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
     $(id).addEventListener("click", (event) => {
         const button = event.target.closest("button");

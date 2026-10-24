@@ -554,6 +554,17 @@
                     </div>
                     <button type="button" class="switch" role="switch" data-key="smartScreenEnabled" aria-label="SmartScreen uyarıları"></button>
                 </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Güvenli DNS (engelli siteler)</span>
+                        <span class="hint">Türkiye'deki erişim engellerinin çoğu DNS ile yapılır. Açınca Sorune site adreslerini operatöre değil, seçtiğin hizmete şifreli olarak sorar ve bu engeller kalkar. Bilgisayarın geri kalanı etkilenmez. Yeniden başlatınca uygulanır.</span>
+                    </div>
+                    <div class="slider-group">
+                        <button type="button" class="chip" id="secure-dns-restart" hidden>Şimdi yeniden başlat</button>
+                        <button type="button" class="switch" role="switch" data-key="secureDns" aria-label="Güvenli DNS"></button>
+                    </div>
+                </div>
+                <div class="dns-list" id="dns-providers" role="radiogroup" aria-label="DNS hizmeti"></div>
 
                 <div class="clear-box">
                     <span class="label">Tarama verilerini temizle</span>

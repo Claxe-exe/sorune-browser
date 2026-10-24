@@ -37,6 +37,12 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "density" => Set(StringOrNull(value), v => Densities.Contains(v), v => settings.Density = v!),
             "searchSuggestions" => SetBool(value, v => settings.SearchSuggestions = v),
             "smartScreenEnabled" => SetBool(value, v => settings.SmartScreenEnabled = v),
+            "secureDns" => SetBool(value, v => settings.SecureDns = v),
+            "dnsProvider" => Set(StringOrNull(value), v => SecureDns.Providers.Any(p => p.Id == v), v =>
+            {
+                settings.DnsProvider = v!;
+                SecureDns.Current = SecureDns.Find(v);
+            }),
             "searchEngine" => Set(StringOrNull(value), v => SearchEngines.All.Any(e => e.Id == v), v => settings.SearchEngine = v!),
             "soundVolume" => Set(NumberOrNull(value), v => v is >= 0 and <= 1, v => settings.SoundVolume = v!.Value),
             "animationsEnabled" => SetBool(value, v => settings.AnimationsEnabled = v),
@@ -295,6 +301,8 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             maxPanels = PanelStore.MaxPanels,
             activeLanguage = L.Language,
             forceDarkActive = BrowserEnvironment.ForceDark,
+            secureDnsActive = BrowserEnvironment.SecureDnsPort is not null,
+            dnsProviders = SecureDns.Providers.Select(p => new { p.Id, p.Name, p.Note }),
             downloadFolder = DownloadFolderInUse?.Invoke(),
             mascotUrl = CustomMascotPath is null ? null : InternalPages.WallpapersOrigin + Uri.EscapeDataString(settings.MascotCustom!),
             wallpaperPalette = ColorExtractor.Palette(ThemeService.WallpaperPath),
