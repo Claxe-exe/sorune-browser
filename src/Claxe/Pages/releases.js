@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "0.9.8",
+        date: "2026-10-24",
+        name: ["Güvenli DNS düzeltmesi", "Secure DNS fix"],
+        items: [
+            ["**Güvenli DNS:** seçili hizmete ulaşılamazsa diğerleri sırayla deneniyor; hiçbiri cevap vermezse son doğru adres kullanılıyor. Engelli sitelerde operatörün engel sayfasına düşüp takılmıyor.", "**Secure DNS:** if the chosen service cannot be reached the others are tried in turn; if none answers, the last good address is used. Blocked sites no longer get stuck on the provider's block page."],
+        ],
+    },
+    {
         version: "0.9.7",
         date: "2026-10-24",
         name: ["Güvenli DNS", "Secure DNS"],

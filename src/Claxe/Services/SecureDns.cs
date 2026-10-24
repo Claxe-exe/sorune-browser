@@ -125,18 +125,32 @@ public static class SecureDns
         return (value[..colon].Trim('[', ']'), port);
     }
 
-    /// <summary>DNS-over-HTTPS first; Windows' own DNS only if the chosen service cannot be reached.</summary>
+    /// <summary>
+    /// DNS-over-HTTPS: the chosen service, then the others if it cannot be reached. If none answers,
+    /// an older answer is still better than the operator's, which for a blocked site is the block
+    /// page. Windows' own DNS is the very last resort and is never remembered.
+    /// </summary>
     private static async Task<IPAddress> Resolve(string host)
     {
         if (IPAddress.TryParse(host, out var literal)) return literal;
-        if (Cache.TryGetValue(host, out var cached) && cached.Until > DateTime.UtcNow) return cached.Address;
-        (IPAddress Address, int Ttl)? found = null;
-        try { found = await Lookup(host, Current.Url); }
-        catch { /* falls back below */ }
-        var address = found?.Address ?? (await Dns.GetHostAddressesAsync(host))
-            .OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1).First();
-        Cache[host] = (address, DateTime.UtcNow.AddSeconds(found?.Ttl ?? 60));
-        return address;
+        var hasCached = Cache.TryGetValue(host, out var cached);
+        if (hasCached && cached.Until > DateTime.UtcNow) return cached.Address;
+        foreach (var service in Providers.OrderBy(p => p == Current ? 0 : 1))
+        {
+            (IPAddress Address, int Ttl)? found;
+            try { found = await Lookup(host, service.Url); }
+            catch (Exception ex)
+            {
+                Log.Info($"Güvenli DNS: {service.Name} cevap vermedi ({ex.GetType().Name}).");
+                continue;
+            }
+            // A working service with no address for the name: asking the others would not help.
+            if (found is not { } answer) break;
+            Cache[host] = (answer.Address, DateTime.UtcNow.AddSeconds(Math.Max(answer.Ttl, 300)));
+            return answer.Address;
+        }
+        if (hasCached) return cached.Address;
+        return (await Dns.GetHostAddressesAsync(host)).OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1).First();
     }
 
     /// <summary>Asks a service (RFC 8484, the standard every one of them speaks): A first, then AAAA.</summary>
