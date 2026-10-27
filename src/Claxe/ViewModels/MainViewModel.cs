@@ -22,21 +22,21 @@ public sealed class MainViewModel : ObservableObject
 
     private readonly AppSettings _settings;
     private readonly SettingsController _settingsController;
-    private readonly ShortcutStore _shortcuts = new();
-    private readonly HistoryStore _history = new();
-    private readonly BookmarkStore _bookmarks = new();
-    private readonly DownloadManager _downloads = new();
-    private readonly PermissionStore _permissions = new();
-    private readonly PanelStore _panelStore = new();
+    // Shared by every window of the profile (see BrowserWindows).
+    private readonly ShortcutStore _shortcuts = SharedStores.Shortcuts;
+    private readonly HistoryStore _history = SharedStores.History;
+    private readonly BookmarkStore _bookmarks = SharedStores.Bookmarks;
+    private readonly DownloadManager _downloads = SharedStores.Downloads;
+    private readonly PermissionStore _permissions = SharedStores.Permissions;
+    private readonly PanelStore _panelStore = SharedStores.Panels;
     private readonly ConverterController _converter;
-    private readonly WidgetStore _widgets = new();
+    private readonly WidgetStore _widgets = SharedStores.Widgets;
     private readonly ExtensionController _extensions;
     private bool _extensionsLoaded;
     private readonly Queue<PermissionRequestViewModel> _permissionQueue = new();
-    private readonly DispatcherTimer _saveTimer;
     private readonly DispatcherTimer _suspendTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _downloadsTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    private readonly TimeMachineStore _timeMachine = new();
+    private readonly TimeMachineStore _timeMachine = SharedStores.TimeMachine;
     private readonly TaskManagerController _taskManager;
     private TabViewModel? _activeTab;
     private PanelViewModel? _activePanel;
@@ -47,7 +47,7 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(AppSettings settings)
     {
         _settings = settings;
-        _settingsController = new SettingsController(settings, _permissions, _panelStore);
+        _settingsController = SharedStores.Settings(settings);
         _settingsController.Changed += OnSettingChanged;
         _settingsController.DownloadFolderInUse = () => _downloads.Folder;
         // A folder from a backup made on another computer may not exist here.
@@ -59,12 +59,6 @@ public sealed class MainViewModel : ObservableObject
             CustomImage = _settingsController.CustomMascotPath,
         };
 
-        _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _saveTimer.Tick += (_, _) =>
-        {
-            _saveTimer.Stop();
-            SaveSession();
-        };
         _autoTranslateTimer.Tick += async (_, _) => await AutoTranslateTickAsync();
         UpdateAutoTranslateTimer();
         _suspendTimer.Tick += (_, _) =>
@@ -88,27 +82,11 @@ public sealed class MainViewModel : ObservableObject
             _downloadsTimer.Stop();
             RaiseDownloadState();
         };
-        _downloads.Changed += (_, _) =>
-        {
-            if (!_downloadsTimer.IsEnabled)
-                _downloadsTimer.Start();
-        };
-        _downloads.Completed += (_, record) =>
-        {
-            SoundService.Play(UiSound.Toggle);
-            Mascot.Say(L.T("İndirme bitti: {0}", record.FileName), happy: true);
-        };
+        _downloads.Changed += OnDownloadsChanged;
+        _downloads.Completed += OnDownloadCompleted;
         _taskManager = new TaskManagerController(() => HostedTabs, () => HostedPanels);
-        _timeMachine.Changed += (_, _) =>
-        {
-            OnPropertyChanged(nameof(CanReopenClosedTab));
-            BroadcastToInternalPages(BuildTimeMachineState());
-        };
-        _bookmarks.Changed += (_, _) =>
-        {
-            OnPropertyChanged(nameof(IsActiveTabBookmarked));
-            BroadcastToInternalPages(new { type = "bookmarks", items = _bookmarks.Items });
-        };
+        _timeMachine.Changed += OnTimeMachineChanged;
+        _bookmarks.Changed += OnBookmarksChanged;
 
         foreach (var panel in _panelStore.Items)
             AddPanel(new PanelViewModel(panel));
@@ -133,14 +111,7 @@ public sealed class MainViewModel : ObservableObject
             },
             RefreshExtensionPanelsAsync);
 
-        UpdateService.StateChanged += (_, _) =>
-            System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
-            {
-                OnPropertyChanged(nameof(IsUpdateReady));
-                if (IsUpdateReady)
-                    Mascot.Say(L.T("Yeni sürüm hazır ✨ Güncelle'ye bas"), happy: true);
-                BroadcastToInternalPages(_settingsController.BuildState());
-            });
+        UpdateService.StateChanged += OnUpdateStateChanged;
         ApplyUpdateCommand = new RelayCommand(ApplyUpdate);
 
         Tabs.CollectionChanged += (_, _) => RefreshGroups();
@@ -172,6 +143,187 @@ public sealed class MainViewModel : ObservableObject
         UnloadPanelCommand = new RelayCommand(p => UnloadPanel(p as PanelViewModel));
         RemovePanelCommand = new RelayCommand(p => RemovePanel((p as PanelViewModel)?.Id));
         ManagePanelsCommand = new RelayCommand(() => OpenSettings("kenar"));
+    }
+
+    // ---------------------------------------------------------------- windows
+
+    /// <summary>The window that speaks for the app: sounds and mascot messages about app-wide things.</summary>
+    private bool IsLead => BrowserWindows.All.Count == 0 || ReferenceEquals(BrowserWindows.Lead, this);
+
+    /// <summary>
+    /// The oldest window. It heard every shared event first (it subscribed first), so app-wide
+    /// effects of a setting (theme, sounds) are applied there, once, before the other windows redraw.
+    /// </summary>
+    private bool IsFirst => BrowserWindows.All.Count == 0 || ReferenceEquals(BrowserWindows.All[0], this);
+
+    private void OnDownloadsChanged(object? sender, EventArgs e)
+    {
+        if (!_downloadsTimer.IsEnabled)
+            _downloadsTimer.Start();
+    }
+
+    private void OnDownloadCompleted(object? sender, DownloadRecord record)
+    {
+        if (!IsLead)
+            return;
+        SoundService.Play(UiSound.Toggle);
+        Mascot.Say(L.T("İndirme bitti: {0}", record.FileName), happy: true);
+    }
+
+    private void OnTimeMachineChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(CanReopenClosedTab));
+        BroadcastToInternalPages(BuildTimeMachineState());
+    }
+
+    private void OnBookmarksChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(IsActiveTabBookmarked));
+        BroadcastToInternalPages(new { type = "bookmarks", items = _bookmarks.Items });
+    }
+
+    private void OnUpdateStateChanged(object? sender, EventArgs e)
+        => System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            if (_isShuttingDown)
+                return;
+            OnPropertyChanged(nameof(IsUpdateReady));
+            if (IsUpdateReady && IsLead)
+                Mascot.Say(L.T("Yeni sürüm hazır ✨ Güncelle'ye bas"), happy: true);
+            BroadcastToInternalPages(_settingsController.BuildState());
+        });
+
+    /// <summary>A closing window stops listening to what it shares with the others.</summary>
+    private void Unsubscribe()
+    {
+        _settingsController.Changed -= OnSettingChanged;
+        _downloads.Changed -= OnDownloadsChanged;
+        _downloads.Completed -= OnDownloadCompleted;
+        _timeMachine.Changed -= OnTimeMachineChanged;
+        _bookmarks.Changed -= OnBookmarksChanged;
+        UpdateService.StateChanged -= OnUpdateStateChanged;
+    }
+
+    /// <summary>Where the view's window is (screen DIPs: left, top, width, height), for the session.</summary>
+    public Func<double[]?>? WindowBounds { get; set; }
+
+    public Func<bool>? WindowMaximized { get; set; }
+
+    /// <summary>A window opened after the first: a saved window's tabs, a tab moved in, or a new tab.</summary>
+    public void StartWindow(SessionState? state, TabViewModel? tab)
+    {
+        if (state is not null)
+            RestoreSession(state);
+        if (tab is not null)
+            AdoptTab(tab, Tabs.Count);
+        if (Tabs.Count == 0)
+            NewTab();
+    }
+
+    private static void RestoreOtherWindows(SessionState session)
+    {
+        foreach (var window in session.Windows.Where(w => w.Tabs.Count > 0))
+        {
+            System.Windows.Rect? bounds = window.Bounds is [var left, var top, var width, var height]
+                ? new System.Windows.Rect(left, top, width, height)
+                : null;
+            BrowserWindows.Open?.Invoke(window, null, bounds);
+        }
+    }
+
+    /// <summary>Takes a tab out of this window, alive (it moves to another window).</summary>
+    public void ReleaseTab(TabViewModel tab)
+    {
+        var index = Tabs.IndexOf(tab);
+        if (index < 0)
+            return;
+
+        if (tab.IsInSplit)
+            CloseSplit();
+        if (ReferenceEquals(tab, ActiveTab) && Tabs.Count > 1)
+            ActiveTab = Tabs[index + 1 < Tabs.Count ? index + 1 : index - 1];
+
+        DenyPermissionsOf(tab);
+        _readerArticles.Remove(tab);
+        foreach (var child in Tabs.Where(t => ReferenceEquals(t.Opener, tab)))
+            child.Opener = null;
+        tab.Opener = null;
+        tab.Group = null;
+        Tabs.Remove(tab);
+        HostedTabs.Remove(tab);
+        Detach(tab);
+        tab.IsActive = false;
+        tab.IsShown = false;
+        RefreshGroups();
+
+        if (Tabs.Count == 0)
+        {
+            _activeTab = null;
+            CloseWindowRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        ScheduleSave();
+    }
+
+    /// <summary>Takes in a live tab from another window at <paramref name="index"/> in the strip.</summary>
+    public void AdoptTab(TabViewModel tab, int index)
+    {
+        tab.PageContextMenuRequested += OnPageContextMenuRequested;
+        tab.PropertyChanged += OnTabPropertyChanged;
+        tab.CloseRequested += OnTabCloseRequested;
+        tab.PermissionRequested += OnPermissionRequested;
+        tab.CoreCreated += OnCoreCreated;
+        tab.ContentFocused += OnContentFocused;
+        tab.NewWindowRequested += OnNewWindowRequested;
+        tab.InternalPageMessage += OnInternalPageMessage;
+        tab.NavigationFinished += OnNavigationFinished;
+
+        // Pinned tabs stay among the pinned ones, the others come after them.
+        var pinned = Tabs.Count(t => t.IsPinned);
+        index = tab.IsPinned ? Math.Clamp(index, 0, pinned) : Math.Clamp(index, pinned, Tabs.Count);
+        Tabs.Insert(index, tab);
+        HostedTabs.Add(tab);
+
+        // Dropped between two tabs of a group: it joins the group.
+        var left = index > 0 ? Tabs[index - 1] : null;
+        var right = index < Tabs.Count - 1 ? Tabs[index + 1] : null;
+        tab.Group = !tab.IsPinned && left?.Group is { } around && around == right?.Group ? around : null;
+        RefreshGroups();
+        ActiveTab = tab;
+        tab.UpdateBackgroundColor();
+        // A window that started with a moved-in tab still gets the extensions' sidebar buttons.
+        if (!_extensionsLoaded && !tab.IsPrivate && tab.Core is { } core)
+        {
+            _extensionsLoaded = true;
+            _ = RefreshExtensionPanelsAsync(core.Profile);
+        }
+        ScheduleSave();
+    }
+
+    public ICommand NewWindowCommand => new RelayCommand(OpenNewWindow);
+
+    /// <summary>Ctrl+N: a new window with a new tab.</summary>
+    public void OpenNewWindow()
+    {
+        BrowserWindows.Open?.Invoke(null, null, null);
+        SoundService.Play(UiSound.TabOpen);
+    }
+
+    /// <summary>The tab menu's "move to a new window" (a window's only tab has nowhere to move from).</summary>
+    public ICommand MoveTabToNewWindowCommand => new RelayCommand(
+        p =>
+        {
+            if (p is TabViewModel tab && Tabs.Count > 1)
+                BrowserWindows.MoveTab(this, tab, null, 0, null);
+        },
+        p => p is TabViewModel && Tabs.Count > 1);
+
+    /// <summary>A link from a page's menu opened in a window of its own.</summary>
+    public void OpenLinkInNewWindow(string url)
+    {
+        BrowserWindows.Open?.Invoke(new SessionState { Tabs = [new SessionTab { Url = url }] }, null, null);
+        SoundService.Play(UiSound.TabOpen);
     }
 
     /// <summary>Tabs in strip order (reorderable).</summary>
@@ -303,7 +455,7 @@ public sealed class MainViewModel : ObservableObject
         if (UpdateService.PrepareApplyOnExit())
         {
             Log.Info("Güncelleme için kapanıyor.");
-            CloseWindowRequested?.Invoke(this, EventArgs.Empty);
+            BrowserWindows.CloseAll?.Invoke();
         }
     }
 
@@ -504,9 +656,12 @@ public sealed class MainViewModel : ObservableObject
         if (session is { Tabs.Count: > 0 })
         {
             // The previous run goes into the time machine before anything else happens.
-            _timeMachine.ArchiveSession(session, SessionStore.LastSavedAt ?? DateTime.Now);
+            _timeMachine.ArchiveSession(session.Merged(), SessionStore.LastSavedAt ?? DateTime.Now);
             if (_settings.RestoreSession)
+            {
                 RestoreSession(session);
+                RestoreOtherWindows(session);
+            }
             else if (SessionStore.PreviousRunCrashed)
                 RecoveryOffer = session;
         }
@@ -604,7 +759,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public int RecoveryTabCount => _recoveryOffer?.Tabs.Count ?? 0;
+    public int RecoveryTabCount => _recoveryOffer?.Merged().Tabs.Count ?? 0;
 
     public ICommand AcceptRecoveryCommand => new RelayCommand(() =>
     {
@@ -615,6 +770,7 @@ public sealed class MainViewModel : ObservableObject
         // The empty new tab opened at start is replaced by the recovered tabs.
         var blank = Tabs.Count == 1 && Tabs[0].IsNewTabPage ? Tabs[0] : null;
         RestoreSession(session);
+        RestoreOtherWindows(session);
         if (blank is not null && Tabs.Count > 1)
             CloseTab(blank);
         SoundService.Play(UiSound.TabOpen);
@@ -1337,8 +1493,9 @@ public sealed class MainViewModel : ObservableObject
     public event EventHandler<CoreWebView2ContextMenuRequestedEventArgs>? PageContextMenuRequested;
 
     /// <summary>
-    /// Flushes everything and releases every WebView2. Async because the session cookies
-    /// have to be read from the browser before it goes away.
+    /// Releases every WebView2 of this window. The last window (or a restart / update, see
+    /// <see cref="BrowserWindows.AppClosing"/>) also saves what the whole app keeps; any other
+    /// window just closes, its tabs can come back with Ctrl+Shift+T.
     /// </summary>
     public async Task ShutdownAsync()
     {
@@ -1346,23 +1503,59 @@ public sealed class MainViewModel : ObservableObject
             return;
 
         _isShuttingDown = true;
-        _saveTimer.Stop();
         _suspendTimer.Stop();
         _pipTimer.Stop();
-        // This run's tabs go into the time machine even when they won't be restored next time.
-        _timeMachine.ArchiveSession(BuildSessionState(), DateTime.Now);
-        if (_settings.RestoreSession)
-            SaveSession();
-        else
-            SessionStore.Delete(); // normal exit: nothing to recover
-        _history.Flush();
+        _autoTranslateTimer.Stop();
+        Unsubscribe();
+
+        if (!BrowserWindows.AppClosing)
+        {
+            if (BrowserWindows.All.Count <= 1)
+            {
+                await FlushForExitAsync();
+            }
+            else
+            {
+                for (var i = 0; i < Tabs.Count; i++)
+                    RememberClosed(Tabs[i], i);
+            }
+        }
 
         PendingPermission?.Decide(false, remember: false);
         while (_permissionQueue.TryDequeue(out var queued))
             queued.Decide(false, remember: false);
 
-        var core = HostedTabs.Where(t => !t.IsPrivate).Select(t => t.Core)
-            .Concat(Panels.Select(p => p.Tab?.Core)).FirstOrDefault(c => c is not null);
+        BrowserWindows.Unregister(this);
+        foreach (var tab in HostedTabs.ToList())
+        {
+            Detach(tab);
+            tab.Dispose();
+        }
+        foreach (var panel in HostedPanels)
+            panel.Dispose();
+
+        HostedTabs.Clear();
+        Tabs.Clear();
+    }
+
+    /// <summary>
+    /// The app is going away: this run's tabs (every window) go into the time machine, the session
+    /// is kept or deleted, history and session cookies are written. Async because the cookies have
+    /// to be read from the browser before it goes away.
+    /// </summary>
+    public async Task FlushForExitAsync()
+    {
+        var session = BrowserWindows.BuildSession();
+        // This run's tabs go into the time machine even when they won't be restored next time.
+        _timeMachine.ArchiveSession(session.Merged(), DateTime.Now);
+        if (_settings.RestoreSession)
+            SessionStore.Save(session);
+        else
+            SessionStore.Delete(); // normal exit: nothing to recover
+        _history.Flush();
+
+        var core = BrowserWindows.All.SelectMany(w => w.HostedTabs.Where(t => !t.IsPrivate).Select(t => t.Core)
+            .Concat(w.Panels.Select(p => p.Tab?.Core))).FirstOrDefault(c => c is not null);
         if (_settings.RestoreSession && core is not null)
         {
             try
@@ -1376,17 +1569,6 @@ public sealed class MainViewModel : ObservableObject
                 Log.Error("Oturum çerezleri okunamadı.", ex);
             }
         }
-
-        foreach (var tab in HostedTabs.ToList())
-        {
-            Detach(tab);
-            tab.Dispose();
-        }
-        foreach (var panel in HostedPanels)
-            panel.Dispose();
-
-        HostedTabs.Clear();
-        Tabs.Clear();
     }
 
     // ---------------------------------------------------------------- tabs
@@ -1417,20 +1599,7 @@ public sealed class MainViewModel : ObservableObject
         if (index < 0)
             return;
 
-        // Remembered for Ctrl+Shift+T and the time machine (never InPrivate tabs or empty new tabs).
-        if (tab.Url is { } url && !tab.IsPrivate && !InternalPages.IsNewTab(url) && !InternalPages.IsPage(url, InternalPages.ReaderUrl))
-        {
-            _timeMachine.AddClosed(new ClosedTab
-            {
-                Url = url,
-                Title = tab.Title,
-                Index = index,
-                IsPinned = tab.IsPinned,
-                GroupId = tab.Group?.Id,
-                GroupName = tab.Group?.Name,
-                GroupColor = tab.Group?.ColorKey,
-            });
-        }
+        RememberClosed(tab, index);
 
         // A closing half of the split screen ends the split (the other tab stays).
         TabViewModel? partner = null;
@@ -1463,6 +1632,24 @@ public sealed class MainViewModel : ObservableObject
         }
 
         ScheduleSave();
+    }
+
+    /// <summary>Remembered for Ctrl+Shift+T and the time machine (never InPrivate tabs or empty new tabs).</summary>
+    private void RememberClosed(TabViewModel tab, int index)
+    {
+        if (tab.Url is not { } url || tab.IsPrivate || InternalPages.IsNewTab(url) || InternalPages.IsPage(url, InternalPages.ReaderUrl))
+            return;
+
+        _timeMachine.AddClosed(new ClosedTab
+        {
+            Url = url,
+            Title = tab.Title,
+            Index = index,
+            IsPinned = tab.IsPinned,
+            GroupId = tab.Group?.Id,
+            GroupName = tab.Group?.Name,
+            GroupColor = tab.Group?.ColorKey,
+        });
     }
 
     /// <summary>Ctrl+Shift+T: the last closed tab comes back where it was (pinned, in its group).</summary>
@@ -2587,8 +2774,11 @@ public sealed class MainViewModel : ObservableObject
     {
         if (AppearanceKeys.Contains(key))
         {
-            Motion.Enabled = _settings.AnimationsEnabled && !_settings.PerformanceMode;
-            ThemeService.Apply(_settings);
+            if (IsFirst)
+            {
+                Motion.Enabled = _settings.AnimationsEnabled && !_settings.PerformanceMode;
+                ThemeService.Apply(_settings);
+            }
             OnPropertyChanged(nameof(Backdrop));
             foreach (var tab in HostedTabs)
                 tab.UpdateBackgroundColor();
@@ -2650,7 +2840,7 @@ public sealed class MainViewModel : ObservableObject
                 break;
             case "mascotTalks":
                 Mascot.TalksEnabled = _settings.MascotTalks;
-                if (_settings.MascotTalks)
+                if (_settings.MascotTalks && IsLead)
                     Mascot.Say(L.T("Merhaba! Artık konuşabiliyorum 👋"));
                 break;
             case "mascotPeek":
@@ -2658,16 +2848,19 @@ public sealed class MainViewModel : ObservableObject
                 break;
             case "mascotCustom":
                 Mascot.CustomImage = _settingsController.CustomMascotPath;
-                Mascot.Say(L.T("Yeni görünümüm nasıl?"), happy: true);
+                if (IsLead)
+                    Mascot.Say(L.T("Yeni görünümüm nasıl?"), happy: true);
                 break;
             case "soundPack":
                 SoundService.Pack = _settings.SoundPack;
-                SoundService.Play(UiSound.TabOpen);
+                if (IsFirst)
+                    SoundService.Play(UiSound.TabOpen);
                 break;
             case "userTheme":
                 // A saved look also brings its sounds and new tab settings (the look itself is applied above).
                 SoundService.Pack = _settings.SoundPack;
-                SoundService.Play(UiSound.Toggle);
+                if (IsFirst)
+                    SoundService.Play(UiSound.Toggle);
                 break;
             case { } newTabKey when newTabKey.StartsWith("newTab", StringComparison.Ordinal):
                 BroadcastToInternalPages(BuildNewTabConfig());
@@ -2681,11 +2874,11 @@ public sealed class MainViewModel : ObservableObject
                 break;
         }
 
-        // Feedback: a toggle sound for switches, a sample click at the new volume for the slider.
-        if (key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession" or "sidebarEnabled" or "performanceMode"
+        // Feedback: a toggle sound for switches, a sample click at the new volume for the slider (once, not per window).
+        if (IsFirst && key is "animationsEnabled" or "mascotEnabled" or "soundsEnabled" or "restoreSession" or "sidebarEnabled" or "performanceMode"
             or "siteTintEnabled" or "pageFrameEnabled" or "sleepPinnedTabs" or "newTabShowSearch" or "newTabShowShortcuts" or "newTabShowWidgets")
             SoundService.Play(UiSound.Toggle);
-        else if (key == "soundVolume")
+        else if (IsFirst && key == "soundVolume")
             SoundService.Play(UiSound.Click);
 
         BroadcastToInternalPages(_settingsController.BuildState());
@@ -2733,21 +2926,14 @@ public sealed class MainViewModel : ObservableObject
 
     // ---------------------------------------------------------------- session
 
-    /// <summary>Changes are written at most once a second (debounced), not on every event.</summary>
+    /// <summary>Changes are written at most once a second (debounced), for all windows together.</summary>
     private void ScheduleSave()
     {
-        if (_isShuttingDown)
-            return;
-
-        _saveTimer.Stop();
-        _saveTimer.Start();
+        if (!_isShuttingDown)
+            BrowserWindows.ScheduleSave();
     }
 
-    /// <summary>
-    /// Always written, also with "continue previous session" off, so a crash can be recovered;
-    /// a normal exit then deletes it again (see <see cref="ShutdownAsync"/>).
-    /// </summary>
-    private void SaveSession() => SessionStore.Save(BuildSessionState());
+    private static void SaveSession() => BrowserWindows.SaveNow();
 
     // ---------------------------------------------------------------- page translation
 
@@ -2969,7 +3155,8 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private SessionState BuildSessionState()
+    /// <summary>This window's part of the session (its tabs, groups, split and where it is).</summary>
+    public SessionState BuildSessionState()
     {
         // InPrivate tabs are never written to disk.
         var saved = Tabs.Where(t => !t.IsPrivate).ToList();
@@ -2988,6 +3175,8 @@ public sealed class MainViewModel : ObservableObject
             SplitLeft = SplitLeft is { } left ? saved.IndexOf(left) : -1,
             SplitRight = SplitRight is { } right ? saved.IndexOf(right) : -1,
             SplitRatio = SplitRatio,
+            Bounds = WindowBounds?.Invoke(),
+            IsMaximized = WindowMaximized?.Invoke() == true,
         };
     }
 }

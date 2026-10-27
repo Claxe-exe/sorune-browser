@@ -54,6 +54,12 @@ public partial class MainWindow : Window
                 UpdateMascotVisibility();
         };
         viewModel.Tabs.CollectionChanged += (_, _) => EnsureActiveTabVisible();
+        // Where this window is, for the session (other windows reopen in place).
+        viewModel.WindowBounds = () => WindowState == WindowState.Normal
+            ? [Left, Top, ActualWidth, ActualHeight]
+            : RestoreBounds.IsEmpty ? null : [RestoreBounds.Left, RestoreBounds.Top, RestoreBounds.Width, RestoreBounds.Height];
+        viewModel.WindowMaximized = () => WindowState == WindowState.Maximized;
+        Activated += (_, _) => BrowserWindows.Lead = _viewModel;
         viewModel.AppearanceChanged += (_, _) => ApplyAppearance();
         viewModel.WallpaperPickRequested += (_, _) => PickWallpaper();
         viewModel.ConfirmOpenRiskyFile = ConfirmOpenRiskyFile;
@@ -196,6 +202,7 @@ public partial class MainWindow : Window
             case Key.K when ctrlShift: OpenPalette(); break;
             case Key.Escape when mods == ModifierKeys.Shift: _viewModel.OpenTaskManager(); break;
             case Key.N when ctrlShift: _viewModel.NewPrivateTab(); break;
+            case Key.N when ctrl: _viewModel.OpenNewWindow(); break;
             case Key.E when ctrlShift: _ = _viewModel.TranslateScreenAsync(_viewModel.ActiveTab); break;
             case Key.H when ctrl: _viewModel.OpenHistory(); break;
             case Key.J when ctrl: _viewModel.OpenDownloads(); break;
@@ -324,15 +331,215 @@ public partial class MainWindow : Window
             return;
 
         var position = e.GetPosition(TabStrip);
-        if (!_isDragging && Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance)
+        if (!_isDragging && Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+                         && Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
             return;
 
         _isDragging = true;
+        // Pulled well above or below the strip, the tab comes out of the window.
+        if (TrackTearOff(position.Y < -TearOffDistance || position.Y > TabStrip.ActualHeight + TearOffDistance))
+            return;
         if (TabStripPanelOrNull() is { } panel)
             _viewModel.MoveTab(_dragTab, panel.IndexAt(position.X));
     }
 
-    private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => TabStrip.ReleaseMouseCapture();
+    private void TabStrip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        FinishTearOff();
+        TabStrip.ReleaseMouseCapture();
+    }
+
+    // ------------------------------------------------------- tabs between windows
+
+    /// <summary>How far (DIPs) a tab is pulled off the strip before it leaves the window.</summary>
+    private const double TearOffDistance = 40;
+
+    /// <summary>The tab's title following the pointer while it is outside the window.</summary>
+    private Window? _dragGhost;
+
+    /// <summary>
+    /// A dragged tab is out of the strip (<paramref name="outside"/>): its title follows the pointer.
+    /// A window's only tab instead takes the whole window along, as in Chrome. Returns true while out.
+    /// </summary>
+    private bool TrackTearOff(bool outside)
+    {
+        if (_dragTab is not { } tab)
+            return false;
+
+        if (!outside)
+        {
+            CloseDragGhost();
+            return false;
+        }
+
+        if (_viewModel.Tabs.Count == 1)
+        {
+            TabStrip.ReleaseMouseCapture();
+            VerticalTabList.ReleaseMouseCapture();
+            DragWindowWithTab(tab);
+            return true;
+        }
+
+        ShowDragGhost(tab);
+        return true;
+    }
+
+    /// <summary>The pointer was let go: over another window's tabs the tab joins it, anywhere else it gets a new window.</summary>
+    private void FinishTearOff()
+    {
+        if (_dragGhost is null || _dragTab is not { } tab)
+        {
+            CloseDragGhost();
+            return;
+        }
+
+        CloseDragGhost();
+        var screen = CursorOnScreen();
+        if (FindDropTarget(screen) is { } target)
+        {
+            BrowserWindows.MoveTab(_viewModel, tab, target.ViewModel, target.Index, null);
+            return;
+        }
+
+        // The new window opens the size of this one, with its tab strip under the pointer.
+        var cursor = ToDips(screen);
+        var size = WindowState == WindowState.Normal || RestoreBounds.IsEmpty
+            ? new Size(ActualWidth, ActualHeight)
+            : RestoreBounds.Size;
+        BrowserWindows.MoveTab(_viewModel, tab, null, 0, new Rect(cursor.X - 140, cursor.Y - 18, size.Width, size.Height));
+    }
+
+    /// <summary>Dragging a window's only tab moves the window; let go over another window's tabs, it joins them.</summary>
+    private void DragWindowWithTab(TabViewModel tab)
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            // Like a maximized title bar: the window comes down to its normal size, still under the pointer.
+            var cursor = ToDips(CursorOnScreen());
+            var share = Mouse.GetPosition(this).X / Math.Max(1, ActualWidth);
+            WindowState = WindowState.Normal;
+            Left = cursor.X - ActualWidth * share;
+            Top = cursor.Y - 18;
+        }
+
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            return; // the button was already up
+        }
+
+        if (FindDropTarget(CursorOnScreen()) is { } target)
+            BrowserWindows.MoveTab(_viewModel, tab, target.ViewModel, target.Index, null);
+    }
+
+    private void ShowDragGhost(TabViewModel tab)
+    {
+        if (_dragGhost is null)
+        {
+            var title = new TextBlock
+            {
+                Text = tab.Title,
+                MaxWidth = 260,
+                FontSize = 13,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            if (tab.Favicon is { } icon)
+                row.Children.Add(new Image { Source = icon, Width = 16, Height = 16, Margin = new Thickness(0, 0, 8, 0) });
+            row.Children.Add(title);
+            _dragGhost = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = Brushes.Transparent,
+                ResizeMode = ResizeMode.NoResize,
+                Topmost = true,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Focusable = false,
+                IsHitTestVisible = false,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                Content = new Border
+                {
+                    Padding = new Thickness(14, 9, 14, 9),
+                    CornerRadius = new CornerRadius(12),
+                    Background = (Brush)FindResource("SurfaceBrush"),
+                    BorderBrush = (Brush)FindResource("AccentBrush"),
+                    BorderThickness = new Thickness(1),
+                    Opacity = 0.95,
+                    Child = row,
+                },
+            };
+            _dragGhost.Show();
+        }
+
+        var cursor = ToDips(CursorOnScreen());
+        _dragGhost.Left = cursor.X + 14;
+        _dragGhost.Top = cursor.Y + 10;
+    }
+
+    private void CloseDragGhost()
+    {
+        _dragGhost?.Close();
+        _dragGhost = null;
+    }
+
+    /// <summary>Another Sorune window whose tabs are under this screen point, and where the tab would go there.</summary>
+    private (MainViewModel ViewModel, int Index)? FindDropTarget(Point screen)
+    {
+        foreach (var other in Application.Current.Windows.OfType<MainWindow>())
+        {
+            if (ReferenceEquals(other, this) || !other.IsVisible || other.WindowState == WindowState.Minimized)
+                continue;
+            if (other.TabDropIndex(screen) is { } index)
+                return (other._viewModel, index);
+        }
+        return null;
+    }
+
+    /// <summary>Where a tab let go at this screen point lands among this window's tabs; null when not over them.</summary>
+    private int? TabDropIndex(Point screen)
+    {
+        try
+        {
+            if (_viewModel.IsVerticalTabs)
+            {
+                var point = VerticalTabList.PointFromScreen(screen);
+                if (point.X < 0 || point.X > VerticalTabList.ActualWidth || point.Y < -20 || point.Y > Math.Max(VerticalTabList.ActualHeight, 60) + 20)
+                    return null;
+                var index = 0;
+                foreach (var tab in _viewModel.Tabs)
+                {
+                    if (VerticalTabList.ItemContainerGenerator.ContainerFromItem(tab) is FrameworkElement row && row.IsVisible
+                        && point.Y < row.TranslatePoint(new Point(0, row.ActualHeight / 2), VerticalTabList).Y)
+                        break;
+                    index++;
+                }
+                return index;
+            }
+
+            var strip = TabStrip.PointFromScreen(screen);
+            // The whole tab row counts, also the empty space after the last tab.
+            if (strip.Y < -12 || strip.Y > TabStrip.ActualHeight + 12 || strip.X < 0 || strip.X > TabStrip.ActualWidth + 80)
+                return null;
+            return TabStripPanelOrNull()?.InsertIndexAt(strip.X) ?? _viewModel.Tabs.Count;
+        }
+        catch (InvalidOperationException)
+        {
+            return null; // not on screen
+        }
+    }
+
+    private Point CursorOnScreen() => PointToScreen(Mouse.GetPosition(this));
+
+    /// <summary>Screen pixels to DIPs (what Window.Left/Top use).</summary>
+    private Point ToDips(Point screen)
+        => PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice.Transform(screen) ?? screen;
 
     private void VerticalTab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -356,10 +563,14 @@ public partial class MainWindow : Window
             return;
 
         var position = e.GetPosition(VerticalTabList);
-        if (!_isDragging && Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+        if (!_isDragging && Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance
+                         && Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance)
             return;
 
         _isDragging = true;
+        // Pulled sideways out of the list, the tab comes out of the window.
+        if (TrackTearOff(position.X < -TearOffDistance || position.X > VerticalTabList.ActualWidth + TearOffDistance))
+            return;
         // New index = how many other tabs come before the first visible row below the pointer.
         var index = 0;
         foreach (var tab in _viewModel.Tabs.Where(t => t != _dragTab))
@@ -373,7 +584,11 @@ public partial class MainWindow : Window
             _viewModel.MoveTab(_dragTab, index);
     }
 
-    private void VerticalTabList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => VerticalTabList.ReleaseMouseCapture();
+    private void VerticalTabList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        FinishTearOff();
+        VerticalTabList.ReleaseMouseCapture();
+    }
 
     // ------------------------------------------------------------- screenshots
 
@@ -978,6 +1193,7 @@ public partial class MainWindow : Window
 
     private void TabStrip_LostMouseCapture(object sender, MouseEventArgs e)
     {
+        CloseDragGhost();
         _dragTab = null;
         _isDragging = false;
     }
@@ -1249,6 +1465,8 @@ public partial class MainWindow : Window
         Hide(); // feels instant while cookies and history are flushed
         try
         {
+            // Never finish inside this Closing event (the window can't be closed again from within it).
+            await Task.Yield();
             await _viewModel.ShutdownAsync();
         }
         catch (Exception ex)
@@ -1410,6 +1628,16 @@ public partial class MainWindow : Window
                 OpenLinkPreview(link, _viewModel.ActiveTab?.IsPrivate == true);
             };
             menu.Items.Add(preview);
+            if (_viewModel.ActiveTab?.IsPrivate != true)
+            {
+                var inWindow = new MenuItem { Header = L.T("Bağlantıyı yeni pencerede aç") };
+                inWindow.Click += (_, _) =>
+                {
+                    Complete(null);
+                    _viewModel.OpenLinkInNewWindow(link);
+                };
+                menu.Items.Add(inWindow);
+            }
             menu.Items.Add(new Separator());
         }
 

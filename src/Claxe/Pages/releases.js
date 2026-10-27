@@ -5,6 +5,17 @@
 
 window.RELEASES = [
     {
+        version: "1.0.0",
+        date: "2026-10-27",
+        name: ["Çoklu pencere", "Multiple windows"],
+        items: [
+            ["**Sekmeyi dışarı sürükle:** bir sekmeyi şeritten aşağı çekip bırakınca kendi penceresinde açılır; sayfa yeniden yüklenmez, girişler ve yazdıkların yerinde kalır.", "**Drag a tab out:** pull a tab down off the strip and let go, and it opens in a window of its own; the page doesn't reload, sign-ins and what you typed stay."],
+            ["**Pencereler arası:** sekmeyi başka bir Sorune penceresinin sekmelerine bırak, oraya geçsin. Pencerenin tek sekmesini sürüklemek pencereyi taşır; başka pencerenin sekmelerine bırakınca ikisi birleşir.", "**Between windows:** drop a tab on another Sorune window's tabs to move it there. Dragging a window's only tab moves the window; drop it on another window's tabs and they merge."],
+            ["**Yeni pencere:** Ctrl+N, sekmenin menüsünde \"Yeni pencereye taşı\", bağlantının menüsünde \"Bağlantıyı yeni pencerede aç\".", "**New window:** Ctrl+N, \"Move to new window\" in the tab menu, \"Open link in new window\" in the link menu."],
+            ["**Hepsi birlikte:** geçmiş, yer imleri, indirmeler, ayarlar ve tema bütün pencerelerde ortak; Sorune yeniden açılınca her pencere sekmeleri ve yeriyle geri gelir.", "**All together:** history, bookmarks, downloads, settings and the theme are shared by every window; when Sorune starts again, each window comes back with its tabs and position."],
+        ],
+    },
+    {
         version: "0.9.9",
         date: "2026-10-24",
         name: ["Yeni sekmede yazı tipleri", "New tab fonts"],

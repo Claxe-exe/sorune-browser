@@ -462,8 +462,26 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// <summary>Null until the tab is first shown.</summary>
     public WebView2? WebView
     {
-        get => _webView;
+        get => _moving ? null : _webView;
         private set => SetProperty(ref _webView, value);
+    }
+
+    private bool _moving;
+
+    /// <summary>
+    /// Moving to another window: the old window lets go of the page first (WebView2 keeps it alive
+    /// and re-parents it), then <see cref="EndMove"/> shows it in the new one.
+    /// </summary>
+    public void BeginMove()
+    {
+        _moving = true;
+        OnPropertyChanged(nameof(WebView));
+    }
+
+    public void EndMove()
+    {
+        _moving = false;
+        OnPropertyChanged(nameof(WebView));
     }
 
     /// <summary>Null before creation and after the browser process died.</summary>

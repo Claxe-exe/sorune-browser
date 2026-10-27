@@ -73,6 +73,18 @@ public sealed class TabStripPanel : Panel
         return _offsets.Length - 1;
     }
 
+    /// <summary>Where a tab dropped at <paramref name="x"/> goes: before the tab whose middle is right of it, else last.</summary>
+    public int InsertIndexAt(double x)
+    {
+        x += HorizontalOffset;
+        for (var i = 0; i < _offsets.Length; i++)
+        {
+            if (x < _offsets[i] + _widths[i] / 2)
+                return i;
+        }
+        return _offsets.Length;
+    }
+
     public void EnsureVisible(int index)
     {
         if (index < 0 || index >= _offsets.Length)
