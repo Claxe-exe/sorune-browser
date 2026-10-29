@@ -5,6 +5,14 @@
 
 window.RELEASES = [
     {
+        version: "1.0.1",
+        date: "2026-10-29",
+        name: ["Uyuyan sekme düzeltmesi", "Sleeping tab fix"],
+        items: [
+            ["**Düzeltme:** bir süre açılmayıp uyutulan sekme artık hiç donuk kalmıyor. Uyanırken önce belleği geri veriliyor; yine de beş saniyede yanıt vermezse sayfa kendiliğinden yeniden yükleniyor.", "**Fix:** a tab put to sleep after a while unused no longer stays frozen. It gets its memory back before waking; if it still doesn't answer within five seconds, the page reloads by itself."],
+        ],
+    },
+    {
         version: "1.0.0",
         date: "2026-10-27",
         name: ["Çoklu pencere", "Multiple windows"],

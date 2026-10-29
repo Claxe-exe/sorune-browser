@@ -146,13 +146,14 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         {
             if (!SetProperty(ref _isShown, value))
                 return;
+            // Full memory first: a page waking up while still told to stay small may not come back.
+            if (Core is { } core)
+                core.MemoryUsageTargetLevel = value || IsActive ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
             if (value)
             {
                 Wake();
                 EnsureStarted();
             }
-            if (Core is { } core)
-                core.MemoryUsageTargetLevel = value || IsActive ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
         }
     }
 
@@ -563,14 +564,14 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             if (!SetProperty(ref _isActive, value))
                 return;
 
+            // Background tabs ask the browser to trim memory where it can (set before waking, see IsShown).
+            if (Core is { } core)
+                core.MemoryUsageTargetLevel = value || IsShown ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+
             if (value)
                 Wake();
             else
                 LastActiveAt = DateTime.UtcNow;
-
-            // Background tabs ask the browser to trim memory where it can.
-            if (Core is { } core)
-                core.MemoryUsageTargetLevel = value || IsShown ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
         }
     }
 
@@ -603,7 +604,10 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             }
             IsSuspended = suspended;
             if (IsSuspended)
+            {
+                _slept = true;
                 Log.Info($"Sekme uyutuldu: {Url}");
+            }
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException)
         {
@@ -621,11 +625,50 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         try
         {
             if (Core is { IsSuspended: true } core)
+            {
                 core.Resume();
+                Log.Info($"Sekme uyandırıldı: {Url}");
+            }
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException)
         {
             Log.Info($"Sekme uyandırılamadı ({Url}): {ex.Message}");
+        }
+
+        if (_slept)
+        {
+            _slept = false;
+            _ = CheckAwakeAsync();
+        }
+    }
+
+    /// <summary>Set when Sorune put this page to sleep; the next wake-up then makes sure it really came back.</summary>
+    private bool _slept;
+
+    /// <summary>
+    /// A slept page sometimes stays frozen although WebView2 says it resumed (the old "the tab can
+    /// never be opened again"). It gets five seconds to answer a trivial script; if it doesn't,
+    /// it is reloaded, so a tab can never stay stuck (at worst the page starts over).
+    /// </summary>
+    private async Task CheckAwakeAsync()
+    {
+        if (Core is not { } core)
+            return;
+
+        try
+        {
+            var answer = core.ExecuteScriptAsync("1");
+            if (await Task.WhenAny(answer, Task.Delay(TimeSpan.FromSeconds(5))) == answer)
+                return;
+
+            Log.Error($"Uyandırılan sekme yanıt vermiyor, yeniden yükleniyor: {Url} (askıda: {core.IsSuspended})");
+            if (core.IsSuspended)
+                core.Resume();
+            core.Reload();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Uyandırılan sekme denetlenemedi ({Url}): {ex.Message}");
         }
     }
 
