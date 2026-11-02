@@ -777,3 +777,141 @@ body.no-motion * { transition: none !important; }
 .font-pixel { font-family: "Press Start 2P", monospace; font-size: 9px; }
 .font-righteous { font-family: "Righteous", sans-serif; }
 .font-script { font-family: "Dancing Script", cursive; font-size: 15px; }
+
+/* ==================================================================
+   Branched settings menu: folding groups on a rail, with a line that
+   draws itself to the section being read. The script adds the lines.
+   ================================================================== */
+
+.nav a[href="#temalarim"], #temalarim { --icon: var(--i-star); }
+.nav a[href="#sekmeler"], #sekmeler { --icon: var(--i-layout); }
+.nav a[href="#yedek"], #yedek { --icon: var(--i-import); }
+
+.layout:has(.nav.branched) { grid-template-columns: 276px minmax(0, 780px); }
+
+.bm {
+    /* Lines are a solid mix, not a transparent one, so their joints never darken. */
+    --bm-line: color-mix(in srgb, var(--text) 26%, rgb(var(--overlay)));
+    --bm-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-left: 14px;
+    margin-left: 8px;
+}
+
+/* The rail fades out towards the bottom of the menu. */
+.bm::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: linear-gradient(to bottom, var(--bm-line) 0%, var(--bm-line) 55%, transparent 100%);
+}
+
+.bm-marker {
+    position: absolute;
+    top: -1px;
+    left: 0;
+    z-index: 1;
+    width: 2px;
+    height: 16px;
+    border-radius: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0;
+    transition: top 0.22s var(--bm-ease), opacity 0.15s ease;
+}
+.bm-marker[data-on] { opacity: 1; }
+
+.bm-section { display: flex; flex-direction: column; }
+
+.nav.branched a.bm-head,
+.bm-head {
+    display: block;
+    margin: 0;
+    padding: 9px 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.nav.branched a.bm-head::before,
+.nav.branched a.bm-head::after { display: none; }
+.nav.branched a.bm-head:hover,
+.bm-head:hover,
+.bm-section[data-open] > .bm-head,
+.nav.branched a.bm-head.active { background: none; color: var(--text); }
+
+.bm-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s var(--bm-ease);
+}
+.bm-section[data-open] > .bm-body { grid-template-rows: 1fr; }
+.bm-fold { min-height: 0; overflow: hidden; }
+.bm-tree { position: relative; padding: 6px 0; }
+
+.bm-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+.bm-section[data-open] .bm-lines { opacity: 1; transition: opacity 0.25s ease 0.1s; }
+
+.bm-base, .bm-reach {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.bm-base { stroke: var(--bm-line); }
+.bm-reach {
+    stroke: var(--accent);
+    transition: stroke-dashoffset 0.4s var(--bm-ease);
+}
+
+.nav.branched .bm-tree a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 4px 0 40px;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
+    font-size: 13.5px;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+.nav.branched .bm-tree a::before { width: 16px; height: 16px; }
+.nav.branched .bm-tree a:hover { background: none; color: var(--text); }
+.nav.branched .bm-tree a.active { background: none; color: var(--accent); font-weight: 500; }
+.nav.branched .bm-tree a.active::after { display: none; }
+
+.bm-head:focus-visible,
+.nav.branched a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+@media (max-width: 820px) {
+    .layout:has(.nav.branched) { grid-template-columns: minmax(0, 1fr); }
+    .nav.branched { flex-direction: column; flex-wrap: nowrap; max-height: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bm-marker { transition: opacity 0.15s ease; }
+    .bm-body, .bm-reach { transition: none; }
+}

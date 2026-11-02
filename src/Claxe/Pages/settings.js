@@ -687,22 +687,129 @@ $("clear-button").addEventListener("click", () => {
 
 $("permissions-clear").addEventListener("click", () => send({ type: "clearPermissions" }));
 
-// Highlight the section being read: the last one whose top has passed near the top of the
-// window (or the last section once the page is scrolled to the bottom).
+// The branched menu: folding groups whose lines lead to the section being read. The lines are drawn
+// by script because their length depends on the row; the section itself is found as before: the last
+// one whose top has passed near the top of the window (or the last once at the bottom of the page).
+const BM_ROW = 34;
+const BM_PAD = 6;
+const BM_TRUNK = 14;
+const BM_END = 32;
+const BM_RADIUS = 10;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 const links = [...document.querySelectorAll(".nav a")];
 const cards = [...document.querySelectorAll(".card")];
+const groups = [...document.querySelectorAll(".bm-section")].map((section) => {
+    const head = section.querySelector(".bm-head");
+    const tree = section.querySelector(".bm-tree");
+    const group = { section, head, body: section.querySelector(".bm-body"), reach: new Map() };
+    if (!tree) return group;
+
+    const kids = [...tree.querySelectorAll("a")];
+    const height = BM_PAD * 2 + kids.length * BM_ROW;
+    const rowY = (k) => BM_PAD + k * BM_ROW + BM_ROW / 2;
+    const curve = (k) => `A ${BM_RADIUS} ${BM_RADIUS} 0 0 0 ${BM_TRUNK + BM_RADIUS} ${rowY(k)} H ${BM_END}`;
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "bm-lines");
+    svg.setAttribute("width", String(BM_END));
+    svg.setAttribute("height", String(height));
+    svg.setAttribute("aria-hidden", "true");
+    const path = (cls, d) => {
+        const el = document.createElementNS(SVG_NS, "path");
+        el.setAttribute("class", cls);
+        el.setAttribute("d", d);
+        svg.append(el);
+        return el;
+    };
+    path("bm-base", `M ${BM_TRUNK} 0 V ${rowY(kids.length - 1) - BM_RADIUS}`);
+    kids.forEach((_, k) => path("bm-base", `M ${BM_TRUNK} ${rowY(k) - BM_RADIUS} ${curve(k)}`));
+    kids.forEach((kid, k) => {
+        const el = path("bm-reach", `M ${BM_TRUNK} 0 V ${rowY(k) - BM_RADIUS} ${curve(k)}`);
+        const length = rowY(k) - BM_RADIUS + (Math.PI * BM_RADIUS) / 2 + (BM_END - BM_TRUNK - BM_RADIUS);
+        el.style.strokeDasharray = String(length);
+        el.style.strokeDashoffset = String(length);
+        group.reach.set(kid, { el, length });
+    });
+    tree.prepend(svg);
+
+    head.addEventListener("click", () => {
+        setGroupOpen(group, !section.hasAttribute("data-open"));
+        placeMarker();
+    });
+    setGroupOpen(group, false);
+    return group;
+});
+
+function setGroupOpen(group, open) {
+    group.section.toggleAttribute("data-open", open);
+    group.head.setAttribute("aria-expanded", String(open));
+    group.body.inert = !open; // keyboard focus skips what is folded away
+}
+
+const groupOf = (link) => groups.find((group) => group.section.contains(link));
+
+function placeMarker() {
+    const marker = $("bm-marker");
+    const group = activeLink && groupOf(activeLink);
+    const shown = group && (group.section.hasAttribute("data-open") || activeLink === group.head);
+    if (shown) marker.style.top = `${group.head.offsetTop + (group.head.offsetHeight - 16) / 2}px`;
+    marker.toggleAttribute("data-on", Boolean(shown));
+}
+
+let activeLink = null;
+function setActiveLink(link) {
+    if (link === activeLink) return;
+    const before = activeLink && groupOf(activeLink);
+    const after = groupOf(link);
+    activeLink = link;
+    for (const other of links) {
+        const on = other === link;
+        other.classList.toggle("active", on);
+        if (on) other.setAttribute("aria-current", "true");
+        else other.removeAttribute("aria-current");
+    }
+    for (const group of groups) {
+        for (const [kid, { el, length }] of group.reach) el.style.strokeDashoffset = String(kid === link ? 0 : length);
+    }
+    // Moving on to another group folds the last one. In the narrow layout the menu sits above the
+    // content, where folding would move the page under the reader: there only the first one opens.
+    if (before !== after && (!before || !narrowLayout.matches)) {
+        if (before && before.body) setGroupOpen(before, false);
+        if (after.body) setGroupOpen(after, true);
+    }
+    placeMarker();
+}
+
+const narrowLayout = window.matchMedia("(max-width: 820px)");
 let navFrame = 0;
+let navPinned = false; // a clicked section stays lit until the page moves on from where it landed
+let navPinY = null;
 function updateNav() {
     navFrame = 0;
+    if (navPinned) {
+        if (navPinY === null) navPinY = window.scrollY;
+        if (Math.abs(window.scrollY - navPinY) < 2) return;
+        navPinned = false;
+    }
     const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     let current = cards[0];
     for (const card of cards) {
         if (card.getBoundingClientRect().top <= 140) current = card;
     }
     if (atBottom) current = cards[cards.length - 1];
-    for (const link of links) link.classList.toggle("active", link.getAttribute("href") === `#${current.id}`);
+    const link = links.find((other) => other.getAttribute("href") === `#${current.id}`);
+    if (link) setActiveLink(link);
+}
+for (const link of links) {
+    link.addEventListener("click", () => {
+        navPinned = true;
+        navPinY = null;
+        setActiveLink(link);
+    });
 }
 window.addEventListener("scroll", () => { if (!navFrame) navFrame = requestAnimationFrame(updateNav); }, { passive: true });
+// The heads move while a group folds, and the marker follows them.
+new ResizeObserver(placeMarker).observe($("bm"));
 updateNav();
 
 // ---------------------------------------------------------------- messages from the app

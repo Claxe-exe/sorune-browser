@@ -5,6 +5,15 @@
 
 window.RELEASES = [
     {
+        version: "1.0.2",
+        date: "2026-11-02",
+        name: ["Dallı ayarlar menüsü", "Branched settings menu"],
+        items: [
+            ["**Yeni ayarlar menüsü:** bölümler katlanan dört gruba ayrıldı; okuduğun bölüme giden çizgi kendini çiziyor, sayfayı kaydırdıkça menü de seni takip ediyor.", "**New settings menu:** sections now sit in four folding groups; a line draws itself to the section you are reading, and the menu follows as you scroll."],
+            ["**Düzeltme:** \"Kendi temaların\", \"Sekmeler\" ve \"Yedekle ve taşı\" kartlarının simgesi dolu bir kare görünüyordu; artık kendi simgeleri var.", "**Fix:** the \"Your themes\", \"Tabs\" and \"Back up and move\" cards showed a filled square as their icon; they now have their own icons."],
+        ],
+    },
+    {
         version: "1.0.1",
         date: "2026-10-29",
         name: ["Uyuyan sekme düzeltmesi", "Sleeping tab fix"],
