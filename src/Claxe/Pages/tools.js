@@ -15,9 +15,33 @@ function toast(text) {
     const node = $("toast");
     node.textContent = text;
     node.hidden = false;
+    node.style.removeProperty("--swipe");
+    node.classList.remove("burning");
+    void node.offsetWidth; // restarts the fuse
+    node.classList.add("burning");
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => { node.hidden = true; }, 1600);
 }
+
+$("toast").addEventListener("pointerdown", (start) => {
+    const node = $("toast");
+    node.setPointerCapture(start.pointerId);
+    let pulled = 0;
+    const onMove = (event) => {
+        pulled = Math.max(0, event.clientY - start.clientY);
+        node.style.setProperty("--swipe", `${pulled}px`);
+    };
+    const onUp = () => {
+        node.removeEventListener("pointermove", onMove);
+        node.removeEventListener("pointerup", onUp);
+        node.removeEventListener("pointercancel", onUp);
+        node.style.removeProperty("--swipe");
+        if (pulled > 18) node.hidden = true;
+    };
+    node.addEventListener("pointermove", onMove);
+    node.addEventListener("pointerup", onUp);
+    node.addEventListener("pointercancel", onUp);
+});
 
 async function copy(text) {
     try {

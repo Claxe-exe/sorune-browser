@@ -686,3 +686,64 @@ body.align-center:not(.custom-dim) .shade { background: radial-gradient(ellipse 
 .tile-name { font-family: var(--label-font, inherit); }
 body.custom-cards .tile-icon { background: rgba(var(--overlay), var(--card-alpha)); }
 body.hide-greeting .greeting { visibility: hidden; }
+
+/* ---------- Live background ---------- */
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+}
+.backdrop.ready { opacity: 1; }
+/* The scene is dark already: the wallpaper's heavy shade would hide most of it. */
+body.has-backdrop .shade { opacity: 0.5; }
+
+/* ---------- Card light: glows as the pointer nears, lights up under it ---------- */
+
+body.card-glow .widget, body.card-glow .tile {
+    background-image: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%),
+        color-mix(in srgb, var(--accent) calc(var(--glow, 0) * 22%), transparent), transparent 72%);
+}
+body.card-glow .widget::after, body.card-glow .tile::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    padding: 1px;
+    border-radius: inherit;
+    background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), var(--accent), transparent 72%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: var(--glow, 0);
+    pointer-events: none;
+}
+
+/* ---------- Greeting ---------- */
+
+/* Hidden until the settings arrive, so the animation does not start with a flash of the finished text. */
+body:not(.configured) .hero { visibility: hidden; }
+.greeting { min-height: 1.4em; }
+.greeting.typing::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-left: 3px;
+    vertical-align: -0.12em;
+    background: currentColor;
+    animation: caret 0.7s steps(2) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+body.greet-blur .greeting, body.greet-blur .clock, body.greet-blur .date { animation: blur-in 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+body.greet-blur .clock { animation-delay: 0.08s; }
+body.greet-blur .date { animation-delay: 0.16s; }
+@keyframes blur-in {
+    from { opacity: 0; filter: blur(14px); transform: translateY(6px); }
+    to { opacity: 1; filter: blur(0); transform: none; }
+}

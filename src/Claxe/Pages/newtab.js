@@ -52,6 +52,32 @@ function setClockOptions(options) {
     tick();
 }
 
+// The greeting is animated once, when the page opens.
+let greetingText = "";
+let greetingTimer = 0;
+let greetingPlayed = false;
+
+function playGreeting(mode) {
+    if (greetingPlayed) return;
+    greetingPlayed = true;
+    if (mode === "blur") document.body.classList.add("greet-blur");
+    if (mode !== "type") return;
+
+    const node = $("greeting");
+    let shown = 0;
+    node.textContent = "";
+    node.classList.add("typing");
+    greetingTimer = setInterval(() => {
+        shown += 1;
+        node.textContent = greetingText.slice(0, shown);
+        if (shown >= greetingText.length) {
+            clearInterval(greetingTimer);
+            greetingTimer = 0;
+            node.classList.remove("typing");
+        }
+    }, 45);
+}
+
 function tick() {
     const now = new Date();
     if (!timeFormat) setClockOptions(clockOptions);
@@ -59,7 +85,8 @@ function tick() {
     $("date").textContent = dateFormat.format(now);
     const greeting = greetingFor(now.getHours());
     const name = clockOptions.name.trim();
-    $("greeting").textContent = name ? `${greeting}, ${name}` : greeting;
+    greetingText = name ? `${greeting}, ${name}` : greeting;
+    if (!greetingTimer) $("greeting").textContent = greetingText;
     // Wake up exactly at the next second/minute instead of polling.
     const delay = clockOptions.seconds
         ? 1000 - now.getMilliseconds() + 10
@@ -317,6 +344,55 @@ function startParticles(kind, colors) {
 }
 
 let stopParticles = null;
+let stopBackdrop = null;
+let backdropKey = "";
+
+function applyBackdrop(kind, theme) {
+    const key = [kind, theme.accent, theme.accentSecondary, theme.overlay, state.animations].join("|");
+    if (key === backdropKey) return; // the config is re-sent often; only a real change restarts the scene
+    backdropKey = key;
+    if (stopBackdrop) stopBackdrop();
+    stopBackdrop = kind && kind !== "none"
+        ? window.Backdrops.start(kind, document.querySelector(".shade"), {
+            accent: theme.accent,
+            accent2: theme.accentSecondary,
+            overlay: theme.overlay,
+            animate: state.animations,
+        })
+        : null;
+    document.body.classList.toggle("has-backdrop", Boolean(stopBackdrop));
+}
+
+// ---------------------------------------------------------------- card light
+
+const GLOW_REACH = 170;
+let glowFrame = 0;
+let glowX = 0;
+let glowY = 0;
+
+function updateGlow() {
+    glowFrame = 0;
+    for (const card of document.querySelectorAll(".widget, .tile")) {
+        const box = card.getBoundingClientRect();
+        const dx = Math.max(box.left - glowX, 0, glowX - box.right);
+        const dy = Math.max(box.top - glowY, 0, glowY - box.bottom);
+        const glow = Math.max(0, 1 - Math.hypot(dx, dy) / GLOW_REACH);
+        card.style.setProperty("--glow", glow.toFixed(3));
+        if (glow > 0) {
+            card.style.setProperty("--mx", `${Math.round(glowX - box.left)}px`);
+            card.style.setProperty("--my", `${Math.round(glowY - box.top)}px`);
+        }
+    }
+}
+window.addEventListener("pointermove", (event) => {
+    if (!document.body.classList.contains("card-glow")) return;
+    glowX = event.clientX;
+    glowY = event.clientY;
+    if (!glowFrame) glowFrame = requestAnimationFrame(updateGlow);
+}, { passive: true });
+document.documentElement.addEventListener("pointerleave", () => {
+    for (const card of document.querySelectorAll(".widget, .tile")) card.style.setProperty("--glow", "0");
+});
 
 // ---------------------------------------------------------------- config from the app
 
@@ -365,6 +441,11 @@ function applyConfig(config) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     state.animations = config.animations !== false && !reducedMotion;
     document.body.classList.toggle("motion", state.animations);
+    document.body.classList.toggle("card-glow", state.animations && look.cardGlow !== false);
+    window.ClickSparks.set(state.animations && look.clickSparks === true);
+    applyBackdrop(look.backdrop, theme);
+    if (state.animations) playGreeting(look.greetingAnim || "type");
+    document.body.classList.add("configured");
 
     if (theme.wallpaper && theme.wallpaper !== state.wallpaper) {
         state.wallpaper = theme.wallpaper;
@@ -422,3 +503,4 @@ if (host) {
 tick();
 renderShortcuts();
 send({ type: "ready" });
+setTimeout(() => document.body.classList.add("configured"), 1000); // never leave the clock hidden

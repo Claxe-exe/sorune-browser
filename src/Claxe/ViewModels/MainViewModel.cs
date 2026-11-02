@@ -2920,6 +2920,10 @@ public sealed class MainViewModel : ObservableObject
                 labelFont = _settings.NewTabLabelFont,
                 cards = _settings.NewTabCards,
                 showGreeting = _settings.NewTabShowGreeting,
+                backdrop = _settings.NewTabBackdrop,
+                greetingAnim = _settings.NewTabGreetingAnim,
+                cardGlow = _settings.NewTabCardGlow,
+                clickSparks = _settings.ClickSparks,
             },
         };
     }

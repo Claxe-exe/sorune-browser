@@ -124,7 +124,7 @@ a.btn[hidden] { display: none; }
     position: fixed;
     left: 50%;
     bottom: 18px;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(var(--swipe, 0));
     padding: 8px 14px;
     border-radius: 10px;
     background: var(--accent);
@@ -132,7 +132,24 @@ a.btn[hidden] { display: none; }
     font-size: 12.5px;
     font-weight: 600;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
 }
+.toast.burning::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: #120e18;
+    opacity: 0.55;
+    transform-origin: left;
+    animation: toast-fuse 1.6s linear both;
+}
+@keyframes toast-fuse { to { transform: scaleX(0); } }
 
 /* Patch notes link under the header */
 .changelog-link {

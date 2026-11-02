@@ -111,6 +111,18 @@ public sealed class AppSettings
 
     public bool NewTabShowGreeting { get; set; } = true;
 
+    /// <summary>New tab: a live WebGL scene instead of the wallpaper ("none" or a scene of Pages/backdrops.js).</summary>
+    public string NewTabBackdrop { get; set; } = "none";
+
+    /// <summary>New tab: how the greeting appears: "type", "blur" or "none".</summary>
+    public string NewTabGreetingAnim { get; set; } = "type";
+
+    /// <summary>New tab: shortcuts and widgets glow as the pointer nears.</summary>
+    public bool NewTabCardGlow { get; set; } = true;
+
+    /// <summary>A small burst of sparks on every click on the new tab and settings pages.</summary>
+    public bool ClickSparks { get; set; }
+
     /// <summary>Tabs as a list on the left instead of the strip at the top (off unless chosen).</summary>
     public bool VerticalTabs { get; set; }
 

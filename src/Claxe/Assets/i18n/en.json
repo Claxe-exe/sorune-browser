@@ -946,5 +946,21 @@
   "Bağlantıyı yeni pencerede aç": "Open link in new window",
   "Deneyim": "Experience",
   "Tarama": "Browsing",
-  "Profil ve veriler": "Profiles and data"
+  "Profil ve veriler": "Profiles and data",
+  "Canlı arka plan": "Live background",
+  "Duvar kâğıdının yerine hareketli bir sahne. Ekran kartını kullanır; sekme görünmezken durur, animasyonlar kapalıyken sabit kalır.": "A moving scene instead of the wallpaper. Uses the graphics card; pauses while the tab is hidden and stays still with animations off.",
+  "Kutup ışığı": "Aurora",
+  "Tül": "Veil",
+  "Galaksi": "Galaxy",
+  "Piksel kar": "Pixel snow",
+  "İpek": "Silk",
+  "Sıvı ışık": "Liquid light",
+  "Selamlama animasyonu": "Greeting animation",
+  "Yeni sekme açılırken bir kez oynar.": "Plays once when a new tab opens.",
+  "Yazılarak": "Typed",
+  "Bulanıktan": "From blur",
+  "Kart ışığı": "Card light",
+  "Kısayollar ve widget'lar fare yaklaşınca parlar.": "Shortcuts and widgets glow as the pointer nears.",
+  "Tıklama kıvılcımı": "Click sparks",
+  "Yeni sekme ve ayarlar sayfasında tıklayınca küçük bir kıvılcım çıkar.": "A small spark on every click on the new tab and settings pages."
 }

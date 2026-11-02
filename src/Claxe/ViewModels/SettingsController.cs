@@ -14,6 +14,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
 {
     /// <summary>Fonts bundled for the new tab (Pages/fonts, SIL Open Font License).</summary>
     private static readonly string[] NewTabFonts = ["system", "orbitron", "bebas", "pacifico", "pixel", "righteous", "script"];
+    private static readonly string[] NewTabBackdrops = ["none", "aurora", "veil", "galaxy", "snow", "silk", "ether"];
 
     private const long MaxWallpaperBytes = 30 * 1024 * 1024;
     private static readonly string[] WallpaperExtensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp"];
@@ -78,6 +79,10 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
             "newTabLabelFont" => Set(StringOrNull(value), v => NewTabFonts.Contains(v), v => settings.NewTabLabelFont = v!),
             "newTabCards" => Set(NumberOrNull(value), v => v is null or (>= 0 and <= 0.9), v => settings.NewTabCards = v),
             "newTabShowGreeting" => SetBool(value, v => settings.NewTabShowGreeting = v),
+            "newTabBackdrop" => Set(StringOrNull(value), v => NewTabBackdrops.Contains(v), v => settings.NewTabBackdrop = v!),
+            "newTabGreetingAnim" => Set(StringOrNull(value), v => v is "type" or "blur" or "none", v => settings.NewTabGreetingAnim = v!),
+            "newTabCardGlow" => SetBool(value, v => settings.NewTabCardGlow = v),
+            "clickSparks" => SetBool(value, v => settings.ClickSparks = v),
             "pageFrameEnabled" => SetBool(value, v => settings.PageFrameEnabled = v),
             _ => false,
         };
@@ -165,6 +170,7 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
         settings.CornerStyle = CornerStyles.Contains(theme.CornerStyle) ? theme.CornerStyle : settings.CornerStyle;
         settings.Density = Densities.Contains(theme.Density) ? theme.Density : settings.Density;
         settings.NewTabEffect = theme.NewTabEffect is "theme" or "petals" or "sparks" or "bubbles" or "snow" or "none" ? theme.NewTabEffect : "theme";
+        settings.NewTabBackdrop = NewTabBackdrops.Contains(theme.NewTabBackdrop) ? theme.NewTabBackdrop : "none";
         settings.NewTabDim = theme.NewTabDim is null or (>= 0 and <= 0.9) ? theme.NewTabDim : null;
         settings.NewTabBlur = Math.Clamp(theme.NewTabBlur, 0, 30);
         settings.NewTabAlign = theme.NewTabAlign is "center" ? "center" : "left";
@@ -320,7 +326,8 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
                 accent = t.AccentColor ?? ThemeService.AccentOf(t.Theme),
                 picture = ThemeService.WallpaperUrlFor(t.Wallpaper, t.Theme),
                 active = t.Theme == settings.Theme && t.Wallpaper == settings.Wallpaper && t.AccentColor == settings.AccentColor
-                         && t.ChromeOpacity == settings.ChromeOpacity && t.NewTabEffect == settings.NewTabEffect,
+                         && t.ChromeOpacity == settings.ChromeOpacity && t.NewTabEffect == settings.NewTabEffect
+                         && t.NewTabBackdrop == settings.NewTabBackdrop,
             }),
             maxUserThemes = UserThemeStore.MaxThemes,
             pendingRestore = BackupService.HasPendingRestore,

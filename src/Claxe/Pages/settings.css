@@ -915,3 +915,117 @@ body.no-motion * { transition: none !important; }
     .bm-marker { transition: opacity 0.15s ease; }
     .bm-body, .bm-reach { transition: none; }
 }
+
+/* ==================================================================
+   Springy controls: switches that squash, segments with a rubber
+   thumb, sliders that stretch when pulled past their ends.
+   The classes are added by settings.js, so other pages keep the
+   plain controls.
+   ================================================================== */
+
+.switch::after { transition: transform 0.28s cubic-bezier(0.3, 1.6, 0.5, 1), width 0.16s ease, background 0.18s ease; }
+.switch:active::after { width: 22px; }
+.switch[aria-checked="true"]:active::after { transform: translateX(14px); }
+.switch.flick[aria-checked="true"]::after { animation: squish-on 0.42s ease-out; }
+.switch.flick[aria-checked="false"]::after { animation: squish-off 0.42s ease-out; }
+@keyframes squish-on {
+    0% { transform: translateX(0); }
+    45% { transform: translateX(11px) scale(1.5, 0.8); }
+    72% { transform: translateX(22px) scale(0.76, 1.18); }
+    100% { transform: translateX(20px); }
+}
+@keyframes squish-off {
+    0% { transform: translateX(20px); }
+    45% { transform: translateX(9px) scale(1.5, 0.8); }
+    72% { transform: translateX(-2px) scale(0.76, 1.18); }
+    100% { transform: translateX(0); }
+}
+
+.segmented.rubber { position: relative; }
+.segmented.rubber button { position: relative; z-index: 1; transition: color 0.2s ease; }
+.segmented.rubber button[aria-checked="true"] { background: transparent; box-shadow: none; }
+.seg-thumb {
+    position: absolute;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+    pointer-events: none;
+}
+/* The leading edge shoots ahead and overshoots; the trailing edge catches up, so the thumb stretches. */
+.seg-thumb.moving-right { transition: right 0.24s cubic-bezier(0.3, 1.45, 0.5, 1), left 0.42s cubic-bezier(0.5, 0, 0.2, 1) 0.04s, top 0.24s ease, bottom 0.24s ease; }
+.seg-thumb.moving-left { transition: left 0.24s cubic-bezier(0.3, 1.45, 0.5, 1), right 0.42s cubic-bezier(0.5, 0, 0.2, 1) 0.04s, top 0.24s ease, bottom 0.24s ease; }
+
+@property --track { syntax: "<length>"; inherits: true; initial-value: 6px; }
+input[type="range"].elastic {
+    --track: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 22px;
+    background: none;
+    transition: --track 0.18s ease, transform 0.5s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+input[type="range"].elastic:hover:not(:disabled), input[type="range"].elastic:active { --track: 9px; }
+input[type="range"].elastic.pulling { transition: --track 0.18s ease; }
+input[type="range"].elastic:disabled { opacity: 0.45; cursor: default; }
+input[type="range"].elastic::-webkit-slider-runnable-track {
+    height: var(--track);
+    border-radius: 99px;
+    background:
+        linear-gradient(90deg, var(--accent), var(--accent2)) 0 0 / var(--fill, 0%) 100% no-repeat,
+        rgba(255, 255, 255, 0.14);
+}
+input[type="range"].elastic::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: calc((var(--track) - 16px) / 2);
+    border-radius: 50%;
+    background: var(--text);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+input[type="range"].elastic:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+/* Theme tiles lean towards the pointer, and a holographic foil shines where it rests. */
+.theme.tilting, .wp.user-theme.tilting {
+    transform: perspective(700px) rotateX(var(--rx, 0)) rotateY(var(--ry, 0)) scale(1.04);
+    transition: transform 0.08s linear, border-color 0.15s ease, box-shadow 0.15s ease;
+    z-index: 2;
+}
+.wp.user-theme { position: relative; overflow: hidden; }
+.theme::after, .wp.user-theme::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: color-dodge;
+    background:
+        radial-gradient(170px circle at var(--hx, 50%) var(--hy, 50%), rgba(255, 255, 255, 0.5), transparent 68%),
+        repeating-linear-gradient(115deg, #ff4d8d 0%, #ffd24d 7%, #5dffb1 14%, #4dc3ff 21%, #b56bff 28%, #ff4d8d 35%);
+    background-size: 100% 100%, 240% 240%;
+    background-position: 0 0, var(--hx, 50%) var(--hy, 50%);
+    transition: opacity 0.25s ease;
+}
+.theme.tilting::after, .wp.user-theme.tilting::after { opacity: 0.42; }
+
+/* A sheen that sweeps across the page's title. */
+.hero-title {
+    background: linear-gradient(110deg, var(--text) 42%, #fff 50%, var(--text) 58%) 100% 0 / 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+    animation: shiny-text 6s linear infinite;
+}
+@keyframes shiny-text {
+    0% { background-position: 100% 0; }
+    45%, 100% { background-position: 0 0; }
+}
+
+body.no-motion * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+    .switch.flick::after, .hero-title { animation: none !important; }
+}

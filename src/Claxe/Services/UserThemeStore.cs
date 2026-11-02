@@ -16,6 +16,7 @@ public sealed class UserTheme
     public string CornerStyle { get; set; } = "soft";
     public string Density { get; set; } = "normal";
     public string NewTabEffect { get; set; } = "theme";
+    public string NewTabBackdrop { get; set; } = "none";
     public double? NewTabDim { get; set; }
     public int NewTabBlur { get; set; }
     public string NewTabAlign { get; set; } = "left";
@@ -54,6 +55,7 @@ public sealed class UserThemeStore
             CornerStyle = settings.CornerStyle,
             Density = settings.Density,
             NewTabEffect = settings.NewTabEffect,
+            NewTabBackdrop = settings.NewTabBackdrop,
             NewTabDim = settings.NewTabDim,
             NewTabBlur = settings.NewTabBlur,
             NewTabAlign = settings.NewTabAlign,

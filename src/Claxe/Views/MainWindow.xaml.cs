@@ -680,21 +680,62 @@ public partial class MainWindow : Window
             row.Children.Add(Action(L.T("Klasörde göster"), () => OpenShell(file, select: true)));
         }
 
-        popup.Child = new Border
+        // A fuse burns down for the time left; a pull downwards dismisses the message.
+        var seconds = file is null ? 3 : 6;
+        var fuse = new ScaleTransform(1, 1);
+        var content = new StackPanel();
+        content.Children.Add(row);
+        content.Children.Add(new Border
         {
-            Margin = new Thickness(12),
+            Height = 2,
+            Margin = new Thickness(2, 6, 2, 0),
+            CornerRadius = new CornerRadius(1),
+            Background = (Brush)FindResource("AccentBrush"),
+            RenderTransform = fuse,
+        });
+        fuse.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromSeconds(seconds)));
+
+        var shift = new TranslateTransform();
+        var card = new Border
+        {
+            Margin = new Thickness(12, 12, 12, 56),
+            RenderTransform = shift,
             Padding = new Thickness(10, 8, 8, 8),
             CornerRadius = new CornerRadius(12),
             Background = (Brush)FindResource("SurfaceBrush"),
             BorderBrush = (Brush)FindResource("AccentBrush"),
             BorderThickness = new Thickness(1),
             Effect = new System.Windows.Media.Effects.DropShadowEffect { ShadowDepth = 4, BlurRadius = 20, Opacity = 0.45, Color = Colors.Black },
-            Child = row,
+            Child = content,
         };
+        double? pullStart = null;
+        card.MouseLeftButtonDown += (_, e) =>
+        {
+            pullStart = e.GetPosition(AddressPill).Y;
+            card.CaptureMouse();
+        };
+        card.MouseMove += (_, e) =>
+        {
+            if (pullStart is not { } start)
+                return;
+            shift.Y = Math.Max(0, e.GetPosition(AddressPill).Y - start);
+            card.Opacity = Math.Max(0.2, 1 - shift.Y / 60);
+        };
+        card.MouseLeftButtonUp += (_, _) =>
+        {
+            pullStart = null;
+            card.ReleaseMouseCapture();
+            if (shift.Y > 28)
+                popup.IsOpen = false;
+            shift.Y = 0;
+            card.Opacity = 1;
+        };
+        popup.Child = card;
         _toast = popup;
         popup.IsOpen = true;
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(file is null ? 3 : 6) };
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
         timer.Tick += (_, _) =>
         {
             timer.Stop();

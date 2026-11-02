@@ -215,6 +215,21 @@
                 </div>
                 <div class="row">
                     <div class="row-text">
+                        <span class="label">Canlı arka plan</span>
+                        <span class="hint">Duvar kâğıdının yerine hareketli bir sahne. Ekran kartını kullanır; sekme görünmezken durur, animasyonlar kapalıyken sabit kalır.</span>
+                    </div>
+                    <div class="segmented" id="nt-backdrop" role="radiogroup" aria-label="Canlı arka plan">
+                        <button type="button" data-value="none">Kapalı</button>
+                        <button type="button" data-value="aurora">Kutup ışığı</button>
+                        <button type="button" data-value="veil">Tül</button>
+                        <button type="button" data-value="galaxy">Galaksi</button>
+                        <button type="button" data-value="snow">Piksel kar</button>
+                        <button type="button" data-value="silk">İpek</button>
+                        <button type="button" data-value="ether">Sıvı ışık</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text">
                         <span class="label">Karartma</span>
                         <span class="hint" id="nt-dim-value"></span>
                     </div>
@@ -283,6 +298,18 @@
                 <div class="row">
                     <div class="row-text"><span class="label">Selamlama</span><span class="hint">Saatin üstündeki "Günaydın" yazısı.</span></div>
                     <button type="button" class="switch" role="switch" data-key="newTabShowGreeting" aria-label="Selamlama"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Selamlama animasyonu</span><span class="hint">Yeni sekme açılırken bir kez oynar.</span></div>
+                    <div class="segmented" id="nt-greeting-anim" role="radiogroup" aria-label="Selamlama animasyonu">
+                        <button type="button" data-value="type">Yazılarak</button>
+                        <button type="button" data-value="blur">Bulanıktan</button>
+                        <button type="button" data-value="none">Yok</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="row-text"><span class="label">Kart ışığı</span><span class="hint">Kısayollar ve widget'lar fare yaklaşınca parlar.</span></div>
+                    <button type="button" class="switch" role="switch" data-key="newTabCardGlow" aria-label="Kart ışığı"></button>
                 </div>
                 <div class="row">
                     <div class="row-text"><span class="label">Arama kutusu</span></div>
@@ -372,6 +399,13 @@
                         <span class="hint">Sekme geçişleri, yükleme ışığı ve yeni sekme efektleri. Kapatmak işlemciyi rahatlatır.</span>
                     </div>
                     <button type="button" class="switch" role="switch" data-key="animationsEnabled" aria-label="Animasyonlar"></button>
+                </div>
+                <div class="row">
+                    <div class="row-text">
+                        <span class="label">Tıklama kıvılcımı</span>
+                        <span class="hint">Yeni sekme ve ayarlar sayfasında tıklayınca küçük bir kıvılcım çıkar.</span>
+                    </div>
+                    <button type="button" class="switch" role="switch" data-key="clickSparks" aria-label="Tıklama kıvılcımı"></button>
                 </div>
 
             </section>
@@ -691,6 +725,7 @@
     </div>
 
     <script src="i18n.js"></script>
+    <script src="sparks.js"></script>
     <script src="settings.js"></script>
 </body>
 </html>

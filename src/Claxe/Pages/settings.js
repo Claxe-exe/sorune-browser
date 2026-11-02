@@ -75,12 +75,17 @@ function render() {
     $("download-folder").textContent = state.downloadFolder || t("Windows'un İndirilenler klasörü");
     $("download-folder-reset").hidden = !s.downloadFolder;
 
-    $("engine").replaceChildren(...state.searchEngines.map((e) =>
-        el("button", { type: "button", "data-value": e.id, text: e.name })));
+    // Kept when nothing changed, so that the thumb can travel between the same buttons.
+    if ($("engine").querySelectorAll("button").length !== state.searchEngines.length) {
+        $("engine").replaceChildren(...state.searchEngines.map((e) =>
+            el("button", { type: "button", "data-value": e.id, text: e.name })));
+    }
     setSegmented("engine", s.searchEngine);
 
     for (const sw of document.querySelectorAll(".switch")) {
-        sw.setAttribute("aria-checked", String(Boolean(s[sw.dataset.key])));
+        const checked = String(Boolean(s[sw.dataset.key]));
+        if (sw.hasAttribute("aria-checked") && sw.getAttribute("aria-checked") !== checked && motionOn()) flickSwitch(sw);
+        sw.setAttribute("aria-checked", checked);
     }
 
     if (dragging !== "volume") $("volume").value = Math.round(s.soundVolume * 100);
@@ -128,7 +133,9 @@ function render() {
     $("hero-update").hidden = update.state !== "ReadyToRestart";
 
     document.body.classList.toggle("no-motion", !s.animationsEnabled);
+    window.ClickSparks.set(s.animationsEnabled && s.clickSparks === true);
     applyLook(state.current.accent, state.current.wallpaperUrl);
+    syncRanges();
 }
 
 function renderThemes(s) {
@@ -368,6 +375,8 @@ function renderPersonal(s) {
         el("button", { type: "button", role: "radio", "aria-checked": String(p.id === s.dnsProvider), onclick: () => update("dnsProvider", p.id) },
             [el("strong", { text: p.name }), el("span", { text: p.note })])));
     setSegmented("nt-effect", s.newTabEffect);
+    setSegmented("nt-backdrop", s.newTabBackdrop);
+    setSegmented("nt-greeting-anim", s.newTabGreetingAnim);
     setSegmented("nt-align", s.newTabAlign);
     setSegmented("sound-pack", s.soundPack);
 
@@ -411,7 +420,7 @@ function renderPersonal(s) {
 
 $("force-dark-restart").addEventListener("click", () => send({ type: "restartApp" }));
 $("secure-dns-restart").addEventListener("click", () => send({ type: "restartApp" }));
-for (const [id, key] of [["nt-clock-font", "newTabClockFont"], ["nt-label-font", "newTabLabelFont"], ["nt-effect", "newTabEffect"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
+for (const [id, key] of [["nt-clock-font", "newTabClockFont"], ["nt-label-font", "newTabLabelFont"], ["nt-effect", "newTabEffect"], ["nt-backdrop", "newTabBackdrop"], ["nt-greeting-anim", "newTabGreetingAnim"], ["nt-align", "newTabAlign"], ["sound-pack", "soundPack"], ["site-scheme", "siteColorScheme"]]) {
     $(id).addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (button) update(key, button.dataset.value);
@@ -543,6 +552,7 @@ function setSegmented(id, value) {
         button.setAttribute("role", "radio");
         button.setAttribute("aria-checked", String(button.dataset.value === value));
     }
+    placeThumb($(id), true);
 }
 
 function applyLook(accent, wallpaper) {
@@ -811,6 +821,111 @@ window.addEventListener("scroll", () => { if (!navFrame) navFrame = requestAnima
 // The heads move while a group folds, and the marker follows them.
 new ResizeObserver(placeMarker).observe($("bm"));
 updateNav();
+
+// ---------------------------------------------------------------- springy controls
+
+function motionOn() {
+    return !document.body.classList.contains("no-motion");
+}
+
+function flickSwitch(sw) {
+    sw.classList.remove("flick");
+    void sw.offsetWidth; // restarts the animation when flicked again quickly
+    sw.classList.add("flick");
+}
+for (const sw of document.querySelectorAll(".switch")) {
+    sw.addEventListener("animationend", () => sw.classList.remove("flick"));
+}
+
+// Segments: one thumb per group, placed by its four edges so that each edge can move at its own speed.
+const segmentResize = new ResizeObserver((entries) => {
+    for (const entry of entries) placeThumb(entry.target, false);
+});
+function placeThumb(group, animate) {
+    let thumb = group.querySelector(":scope > .seg-thumb");
+    if (!thumb) {
+        thumb = document.createElement("span");
+        thumb.className = "seg-thumb";
+        thumb.setAttribute("aria-hidden", "true");
+        group.classList.add("rubber");
+        group.prepend(thumb);
+        segmentResize.observe(group);
+    }
+    const on = group.querySelector('button[aria-checked="true"]');
+    thumb.hidden = !on;
+    if (!on) return;
+    const left = on.offsetLeft;
+    const previous = parseFloat(thumb.style.left);
+    thumb.classList.remove("moving-left", "moving-right");
+    if (animate && motionOn() && !Number.isNaN(previous) && previous !== left) {
+        void thumb.offsetWidth;
+        thumb.classList.add(left > previous ? "moving-right" : "moving-left");
+    }
+    thumb.style.left = `${left}px`;
+    thumb.style.right = `${group.clientWidth - left - on.offsetWidth}px`;
+    thumb.style.top = `${on.offsetTop}px`;
+    thumb.style.bottom = `${group.clientHeight - on.offsetTop - on.offsetHeight}px`;
+}
+document.fonts.ready.then(() => {
+    for (const group of document.querySelectorAll(".segmented.rubber")) placeThumb(group, false);
+});
+
+// Sliders: the filled part follows the value, and pulling past either end stretches the slider.
+function syncRange(range) {
+    const min = Number(range.min || 0);
+    const max = Number(range.max || 100);
+    const part = max > min ? (Number(range.value) - min) / (max - min) : 0;
+    range.style.setProperty("--fill", `calc(8px + (100% - 16px) * ${part.toFixed(4)})`);
+}
+function syncRanges() {
+    for (const range of document.querySelectorAll("input.elastic")) syncRange(range);
+}
+for (const range of document.querySelectorAll('input[type="range"]')) {
+    range.classList.add("elastic");
+    range.addEventListener("input", () => syncRange(range));
+    range.addEventListener("pointerdown", () => {
+        if (range.disabled || !motionOn()) return;
+        const box = range.getBoundingClientRect();
+        range.classList.add("pulling");
+        const onMove = (event) => {
+            const past = event.clientX < box.left ? box.left - event.clientX : Math.max(0, event.clientX - box.right);
+            const stretch = Math.min(Math.sqrt(past) * 1.8, 34);
+            range.style.transformOrigin = event.clientX < box.left ? "right center" : "left center";
+            range.style.transform = stretch > 0 ? `scale(${1 + stretch / box.width}, ${1 - stretch / 120})` : "";
+        };
+        const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+            range.classList.remove("pulling");
+            range.style.transform = ""; // the spring in the stylesheet carries it back
+        };
+        window.addEventListener("pointermove", onMove, { passive: true });
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+    });
+}
+syncRanges();
+
+// Theme tiles lean towards the pointer.
+for (const id of ["themes", "user-themes"]) {
+    $(id).addEventListener("pointermove", (event) => {
+        const tile = event.target.closest(".theme, .user-theme");
+        if (!tile || !motionOn()) return;
+        const box = tile.getBoundingClientRect();
+        const x = (event.clientX - box.left) / box.width;
+        const y = (event.clientY - box.top) / box.height;
+        tile.classList.add("tilting");
+        tile.style.setProperty("--ry", `${((x - 0.5) * 14).toFixed(2)}deg`);
+        tile.style.setProperty("--rx", `${((0.5 - y) * 14).toFixed(2)}deg`);
+        tile.style.setProperty("--hx", `${(x * 100).toFixed(1)}%`);
+        tile.style.setProperty("--hy", `${(y * 100).toFixed(1)}%`);
+    }, { passive: true });
+    $(id).addEventListener("pointerout", (event) => {
+        const tile = event.target.closest(".theme, .user-theme");
+        if (tile && !tile.contains(event.relatedTarget)) tile.classList.remove("tilting");
+    });
+}
 
 // ---------------------------------------------------------------- messages from the app
 

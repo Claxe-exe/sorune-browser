@@ -5,6 +5,20 @@
 
 window.RELEASES = [
     {
+        version: "1.0.3",
+        date: "2026-11-02",
+        name: ["Canlı arka planlar", "Live backgrounds"],
+        items: [
+            ["**Canlı arka planlar:** yeni sekmede duvar kâğıdının yerine kutup ışığı, tül, galaksi, piksel kar, ipek ya da sıvı ışık seçebilirsin. Temanın renklerini kullanırlar; sekme görünmezken dururlar. Ayarlar → Yeni sekme.", "**Live backgrounds:** on the new tab, pick aurora, veil, galaxy, pixel snow, silk or liquid light instead of the wallpaper. They use your theme's colours and pause while the tab is hidden. Settings → New tab."],
+            ["**Kart ışığı:** kısayollar ve widget'lar fare yaklaşınca parlar.", "**Card light:** shortcuts and widgets glow as the pointer nears."],
+            ["**Selamlama animasyonu:** yeni sekme açılırken selamlama yazılarak ya da bulanıktan belirerek gelir.", "**Greeting animation:** when a new tab opens, the greeting is typed out or sharpens from a blur."],
+            ["**Canlı ayarlar:** düğmeler esneyip yerine oturuyor, seçim kutularında seçili alan lastik gibi kayıyor, sürgüler kenardan öteye çekilince esniyor.", "**Lively settings:** switches squash into place, the selected segment slides like rubber, and sliders stretch when pulled past their ends."],
+            ["**Tema kartları:** fareye doğru eğiliyor ve hologram gibi parlıyor. Ayarların başlığında da bir ışık geçiyor.", "**Theme cards:** they lean towards the pointer with a holographic shine, and a sheen sweeps across the settings title."],
+            ["**Bildirimler:** kalan süreyi gösteren bir çizgileri var, aşağı çekince kapanıyorlar.", "**Notifications:** a thin line shows the time left, and a pull downwards dismisses them."],
+            ["**Tıklama kıvılcımı:** isteğe bağlı; yeni sekme ve ayarlar sayfasında tıklayınca kıvılcım çıkar. Ayarlar → Hareket ve performans.", "**Click sparks:** optional; a spark on every click on the new tab and settings pages. Settings → Motion and performance."],
+        ],
+    },
+    {
         version: "1.0.2",
         date: "2026-11-02",
         name: ["Dallı ayarlar menüsü", "Branched settings menu"],
