@@ -311,6 +311,9 @@ public sealed class SettingsController(AppSettings settings, PermissionStore per
                 .OrderBy(p => p.Origin)
                 .Select(p => new { p.Origin, kind = p.Kind.ToString(), what = PermissionStore.Describe(p.Kind), p.Allowed }),
             panels = panels.Items.Select(p => new { p.Id, p.Name, p.Url }),
+            siteStyles = SharedStores.SiteStyles.Items
+                .OrderBy(s => s.Host, StringComparer.Ordinal)
+                .Select(s => new { s.Host, s.Enabled, hidden = s.Hidden.Count, hasCss = s.Css.Length > 0 }),
             maxPanels = PanelStore.MaxPanels,
             activeLanguage = L.Language,
             forceDarkActive = BrowserEnvironment.ForceDark,

@@ -87,6 +87,7 @@ public sealed class MainViewModel : ObservableObject
         _taskManager = new TaskManagerController(() => HostedTabs, () => HostedPanels);
         _timeMachine.Changed += OnTimeMachineChanged;
         _bookmarks.Changed += OnBookmarksChanged;
+        SharedStores.SiteStyles.Saved += OnSiteStylesSaved;
 
         foreach (var panel in _panelStore.Items)
             AddPanel(new PanelViewModel(panel));
@@ -194,6 +195,8 @@ public sealed class MainViewModel : ObservableObject
         });
 
     /// <summary>A closing window stops listening to what it shares with the others.</summary>
+    private void OnSiteStylesSaved() => BroadcastToInternalPages(_settingsController.BuildState());
+
     private void Unsubscribe()
     {
         _settingsController.Changed -= OnSettingChanged;
@@ -201,6 +204,7 @@ public sealed class MainViewModel : ObservableObject
         _downloads.Completed -= OnDownloadCompleted;
         _timeMachine.Changed -= OnTimeMachineChanged;
         _bookmarks.Changed -= OnBookmarksChanged;
+        SharedStores.SiteStyles.Saved -= OnSiteStylesSaved;
         UpdateService.StateChanged -= OnUpdateStateChanged;
     }
 
@@ -1288,6 +1292,7 @@ public sealed class MainViewModel : ObservableObject
         yield return Cmd("", "Geçmiş", "Ctrl+H", OpenHistory, "history");
         yield return Cmd("", "Zaman makinesi", "", () => OpenInternal(InternalPages.TimeMachineUrl), "time machine closed tabs sessions kapatılan oturum");
         yield return Cmd("", "Görev yöneticisi", "Shift+Esc", OpenTaskManager, "task manager cpu ram bellek işlemci");
+        yield return Cmd("", "Site görünümü", "", () => OpenSettings("site-gorunum"), "site görünüm css renk gizle");
         yield return Cmd("", "Profiller", "", () => OpenSettings("profiller"), "profiles profil");
         yield return Cmd("", "İndirmeler", "Ctrl+J", OpenDownloads, "downloads");
         yield return Cmd("", "Yer imleri", "Ctrl+Shift+O", OpenBookmarks, "bookmarks");
@@ -2509,6 +2514,15 @@ public sealed class MainViewModel : ObservableObject
                 _settingsController.RemoveCustomWallpaper();
                 break;
 
+            case "siteStyle:toggle":
+                if (Text("host") is { } toggled && SharedStores.SiteStyles.Find(toggled) is not null)
+                    SharedStores.SiteStyles.Update(toggled, s => s.Enabled = !s.Enabled);
+                break;
+
+            case "siteStyle:remove":
+                SharedStores.SiteStyles.Remove(Text("host"));
+                break;
+
             case "forgetPermission":
                 _permissions.Forget(Text("origin"),
                     Enum.TryParse<CoreWebView2PermissionKind>(Text("kind"), out var kind) ? kind : null);
@@ -2772,6 +2786,9 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnSettingChanged(object? sender, string key)
     {
+        if (key is "theme" or "accentColor")
+            SharedStores.SiteStyles.RefreshThemedLinks();
+
         if (AppearanceKeys.Contains(key))
         {
             if (IsFirst)

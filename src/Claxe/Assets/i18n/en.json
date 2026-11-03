@@ -962,5 +962,22 @@
   "Kart ışığı": "Card light",
   "Kısayollar ve widget'lar fare yaklaşınca parlar.": "Shortcuts and widgets glow as the pointer nears.",
   "Tıklama kıvılcımı": "Click sparks",
-  "Yeni sekme ve ayarlar sayfasında tıklayınca küçük bir kıvılcım çıkar.": "A small spark on every click on the new tab and settings pages."
+  "Yeni sekme ve ayarlar sayfasında tıklayınca küçük bir kıvılcım çıkar.": "A small spark on every click on the new tab and settings pages.",
+  "Site görünümü": "Site look",
+  "Bu sitede açık": "On for this site",
+  "Temama uydur": "Match my theme",
+  "Öğe gizle": "Hide elements",
+  "Renk tonu": "Hue",
+  "Doygunluk": "Saturation",
+  "Parlaklık": "Brightness",
+  "Bağlantılar tema renginde": "Links in the theme colour",
+  "Sitenin kendi": "The site's own",
+  "Geri getir": "Bring back",
+  "{0} öğe gizli": "{0} hidden",
+  "Özel CSS": "Custom CSS",
+  "Bütün siteler": "All sites",
+  "Gizlemek için tıkla  ·  Tekerlek: daha büyük alan  ·  Bitirmek için Esc": "Click to hide  ·  Wheel: larger area  ·  Esc to finish",
+  "Bir sitedeyken adres çubuğunun yanındaki palet düğmesine bas: renklerini, yazı tipini değiştir, istemediğin öğeleri gizle ya da kendi CSS'ini yaz. Kendi yaptığın değişiklikler buradadır.": "On a site, press the palette button next to the address bar: change its colours and font, hide what you don't want, or write your own CSS. Your changes are listed here.",
+  "Henüz görünümünü değiştirdiğin bir site yok.": "You haven't changed the look of any site yet.",
+  "Renk ve yazı tipi": "Colours and font"
 }

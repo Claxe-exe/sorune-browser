@@ -117,6 +117,7 @@ public static class SharedStores
     public static readonly PanelStore Panels = new();
     public static readonly WidgetStore Widgets = new();
     public static readonly TimeMachineStore TimeMachine = new();
+    public static readonly SiteStyleStore SiteStyles = new();
 
     private static SettingsController? _settings;
 

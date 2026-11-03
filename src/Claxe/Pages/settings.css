@@ -784,6 +784,7 @@ body.no-motion * { transition: none !important; }
    ================================================================== */
 
 .nav a[href="#temalarim"], #temalarim { --icon: var(--i-star); }
+.nav a[href="#site-gorunum"], #site-gorunum { --icon: var(--i-palette); }
 .nav a[href="#sekmeler"], #sekmeler { --icon: var(--i-layout); }
 .nav a[href="#yedek"], #yedek { --icon: var(--i-import); }
 

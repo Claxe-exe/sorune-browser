@@ -619,6 +619,127 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     /// Resumes a suspended page. WebView2 is supposed to do this when the page becomes visible,
     /// but that doesn't always happen, which left slept tabs frozen for good; so it is done here.
     /// </summary>
+    // ---------------------------------------------------------------- site look
+
+    private string? _siteStyleScriptId;
+    private bool _siteStyleHooked;
+    private string? _pickToken;
+    private string? _pickHost;
+
+    /// <summary>While the user points at elements to hide: the selector of the one clicked.</summary>
+    public event Action<string>? SiteElementPicked;
+
+    public event Action? SitePickEnded;
+
+    private async Task InstallSiteStylesAsync(CoreWebView2 core)
+    {
+        var script = await core.AddScriptToExecuteOnDocumentCreatedAsync(
+            SiteStyles.DocumentScript(SharedStores.SiteStyles.Items, ThemeService.Accent));
+        if (_siteStyleScriptId is not null)
+            core.RemoveScriptToExecuteOnDocumentCreated(_siteStyleScriptId);
+        _siteStyleScriptId = script;
+
+        if (_siteStyleHooked)
+            return;
+        _siteStyleHooked = true;
+        SharedStores.SiteStyles.Changed += OnSiteStyleChanged;
+        SharedStores.SiteStyles.Saved += OnSiteStylesSaved;
+    }
+
+    private void OnSiteStyleChanged(string host)
+    {
+        if (!IsSuspended && SiteStyleStore.HostOf(Url) == host)
+            _ = ApplySiteStyleAsync();
+    }
+
+    private async void OnSiteStylesSaved()
+    {
+        if (Core is not { } core)
+            return;
+
+        try
+        {
+            await InstallSiteStylesAsync(core);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Site görünümü sekmeye eklenemedi: {ex.Message}");
+        }
+    }
+
+    private async Task ApplySiteStyleAsync()
+    {
+        if (Core is not { } core || SiteStyleStore.HostOf(Url) is not { } host)
+            return;
+
+        try
+        {
+            var css = SiteStyles.BuildCss(SharedStores.SiteStyles.Find(host), ThemeService.Accent);
+            await core.ExecuteScriptAsync(SiteStyles.ApplyCall(css));
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Site görünümü uygulanamadı: {ex.Message}");
+        }
+    }
+
+    /// <summary>Lets the user point at elements on this page; see <see cref="SiteElementPicked"/>.</summary>
+    public async Task StartSitePickAsync(string hint)
+    {
+        if (Core is not { } core || SiteStyleStore.HostOf(Url) is not { } host)
+        {
+            EndSitePick();
+            return;
+        }
+
+        _pickToken = Guid.NewGuid().ToString("N");
+        _pickHost = host;
+        try
+        {
+            await core.ExecuteScriptAsync(SiteStyles.PickerScript(_pickToken, hint));
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            Log.Info($"Öğe seçici başlatılamadı: {ex.Message}");
+            EndSitePick();
+        }
+    }
+
+    private void EndSitePick()
+    {
+        _pickToken = null;
+        _pickHost = null;
+        SitePickEnded?.Invoke();
+    }
+
+    /// <summary>Accepted only with this pick's token and from the site being styled, which is all such a message can touch.</summary>
+    private bool HandleSitePickMessage(CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (_pickToken is not { } token || !e.WebMessageAsJson.Contains(token, StringComparison.Ordinal))
+            return false;
+
+        if (SiteStyleStore.HostOf(e.Source) != _pickHost)
+            return true;
+
+        try
+        {
+            using var message = JsonDocument.Parse(e.WebMessageAsJson);
+            var root = message.RootElement;
+            if (!root.TryGetProperty("__soruneSitePick", out var sent) || sent.GetString() != token)
+                return true;
+
+            if (root.TryGetProperty("hide", out var hide) && hide.ValueKind == JsonValueKind.String)
+                SiteElementPicked?.Invoke(hide.GetString()!);
+            else if (root.TryGetProperty("done", out _))
+                EndSitePick();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            Log.Info($"Öğe seçiciden geçersiz mesaj: {ex.Message}");
+        }
+        return true;
+    }
+
     private void Wake()
     {
         IsSuspended = false;
@@ -640,6 +761,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             _slept = false;
             _ = CheckAwakeAsync();
         }
+        _ = ApplySiteStyleAsync(); // its look may have changed while it slept
     }
 
     /// <summary>Set when Sorune put this page to sleep; the next wake-up then makes sure it really came back.</summary>
@@ -870,6 +992,8 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
         _disposed = true;
         _translateTimer?.Stop();
+        SharedStores.SiteStyles.Changed -= OnSiteStyleChanged;
+        SharedStores.SiteStyles.Saved -= OnSiteStylesSaved;
         var webView = _webView;
         WebView = null;
         webView?.Dispose();
@@ -909,6 +1033,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         await InternalPages.InjectLanguageAsync(core);
         _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
         await core.AddScriptToExecuteOnDocumentCreatedAsync(LinkIntent.Script);
+        await InstallSiteStylesAsync(core);
         if (_disposed)
             return;
 
@@ -922,6 +1047,8 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         core.SourceChanged += (_, _) => OnSourceChanged(core);
         core.NavigationStarting += (_, _) =>
         {
+            if (_pickToken is not null)
+                EndSitePick(); // the picker goes with the page
             IsLoading = true;
             _certificateError = false;
             UpdateSecurity();
@@ -1102,6 +1229,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             _backgroundOpenUntil = DateTime.UtcNow.AddSeconds(2);
             return;
         }
+
+        if (HandleSitePickMessage(e))
+            return;
 
         // e.Source is the top-level document URL that posted the message.
         if (!InternalPages.IsInternal(e.Source))

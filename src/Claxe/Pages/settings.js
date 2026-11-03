@@ -94,6 +94,7 @@ function render() {
 
     renderPanels();
     renderPermissions();
+    renderSiteStyles();
     renderRestore();
 
     setSegmented("language", s.language);
@@ -345,6 +346,32 @@ function renderPanels() {
         ]);
     }));
     $("panel-form").hidden = state.panels.length >= state.maxPanels;
+}
+
+function renderSiteStyles() {
+    const rows = (state.siteStyles || []).map((site) => {
+        const parts = [];
+        if (site.hidden > 0) parts.push(t("{0} öğe gizli", site.hidden));
+        if (site.hasCss) parts.push(t("Özel CSS"));
+        if (!site.enabled) parts.push(t("Kapalı"));
+        // A web address is shown as it is, never looked up in the dictionary.
+        return el("div", { class: "list-row" }, [
+            el("span", { class: "grow" }, [
+                el("span", { text: site.host }),
+                el("span", { class: "sub", text: parts.join(" · ") || t("Renk ve yazı tipi") }),
+            ]),
+            el("button", {
+                type: "button", class: "chip", text: site.enabled ? "Kapat" : "Aç",
+                onclick: () => send({ type: "siteStyle:toggle", host: site.host }),
+            }),
+            el("button", {
+                type: "button", class: "chip", text: "Sıfırla",
+                onclick: () => send({ type: "siteStyle:remove", host: site.host }),
+            }),
+        ]);
+    });
+    if (rows.length === 0) rows.push(el("p", { class: "hint", text: "Henüz görünümünü değiştirdiğin bir site yok." }));
+    $("site-styles").replaceChildren(...rows);
 }
 
 function renderPermissions() {

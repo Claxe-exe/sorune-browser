@@ -1786,6 +1786,8 @@ public partial class MainWindow : Window
         Item(L.T("Ekran görüntüsü: tam sayfa"), "\uE722", () => _ = TakeScreenshotAsync("full"), enabled: tab?.Core is not null);
         Item(L.T("Ekran görüntüsü: bölge seç"), "\uE722", () => _ = TakeScreenshotAsync("region"), enabled: tab?.Core is not null);
         menu.Items.Add(new Separator());
+        Item(L.T("Site görünümü"), "\uE790", OpenSiteStylePanel);
+        menu.Items.Add(new Separator());
         if (_viewModel.IsSplit)
             Item(L.T("Bölünmüş ekranı kapat"), "\uE8A0", _viewModel.CloseSplit);
         else

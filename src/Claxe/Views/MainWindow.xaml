@@ -601,6 +601,12 @@
                             </Grid>
                         </Button>
 
+                        <!-- This site's own look -->
+                        <Button x:Name="SiteStyleButton" Margin="0,0,2,0" Content="&#xE790;"
+                                ToolTip="{controls:T 'Site görünümü'}"
+                                Click="SiteStyleButton_Click"
+                                Style="{StaticResource IconButtonStyle}" />
+
                         <!-- Reader mode: only on pages that look like an article -->
                         <Button Margin="0,0,2,0" Content="&#xE736;"
                                 ToolTip="{controls:T 'Okuma modu'}"

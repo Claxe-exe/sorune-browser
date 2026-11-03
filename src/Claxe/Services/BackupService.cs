@@ -22,7 +22,7 @@ public static class BackupService
     private const long MaxTotalBytes = 512L * 1024 * 1024;
 
     private static readonly string[] PlainFiles =
-        ["settings.json", "bookmarks.json", "shortcuts.json", "panels.json", "permissions.json", "user-themes.json"];
+        ["settings.json", "bookmarks.json", "shortcuts.json", "panels.json", "permissions.json", "user-themes.json", "site-styles.json"];
 
     private static readonly string[] ProtectedFiles = ["widgets.dat"];
 

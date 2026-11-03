@@ -5,6 +5,17 @@
 
 window.RELEASES = [
     {
+        version: "1.0.4",
+        date: "2026-11-03",
+        name: ["Site görünümü", "Site look"],
+        items: [
+            ["**Site görünümü:** adres çubuğunun yanındaki palet düğmesiyle her sitenin görünümünü ayrı ayrı değiştir. Her değişiklik sayfada anında görünür ve o siteye her girişinde uygulanır.", "**Site look:** with the palette button next to the address bar, change the look of each site on its own. Every change shows on the page right away and applies whenever you return."],
+            ["**Temama uydur:** sitenin ana rengini temanın vurgu rengine çevirir; resim ve videolar kendi renginde kalır. Renk tonu, doygunluk ve parlaklığı elle de ayarlayabilirsin.", "**Match my theme:** turns the site's main colour into your theme's accent, while pictures and videos keep theirs. Hue, saturation and brightness can also be set by hand."],
+            ["**Öğe gizle:** istemediğin öğenin üstüne gelip tıkla, bir daha görünmesin. Tekerlekle daha büyük bir alan seçebilirsin; Esc bitirir.", "**Hide elements:** point at what you don't want and click, and it stays gone. The wheel selects a larger area; Esc finishes."],
+            ["**Yazı tipi ve özel CSS:** siteye yazı tipi seç ya da kendi CSS'ini yaz. Değiştirdiğin bütün siteler Ayarlar → Site görünümü'nde; yedeklemeye de dahil.", "**Font and custom CSS:** pick a font for the site or write your own CSS. Every site you changed is under Settings → Site look, and backups include them."],
+        ],
+    },
+    {
         version: "1.0.3",
         date: "2026-11-02",
         name: ["Canlı arka planlar", "Live backgrounds"],
