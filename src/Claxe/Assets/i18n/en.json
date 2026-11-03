@@ -979,5 +979,8 @@
   "Gizlemek için tıkla  ·  Tekerlek: daha büyük alan  ·  Bitirmek için Esc": "Click to hide  ·  Wheel: larger area  ·  Esc to finish",
   "Bir sitedeyken adres çubuğunun yanındaki palet düğmesine bas: renklerini, yazı tipini değiştir, istemediğin öğeleri gizle ya da kendi CSS'ini yaz. Kendi yaptığın değişiklikler buradadır.": "On a site, press the palette button next to the address bar: change its colours and font, hide what you don't want, or write your own CSS. Your changes are listed here.",
   "Henüz görünümünü değiştirdiğin bir site yok.": "You haven't changed the look of any site yet.",
-  "Renk ve yazı tipi": "Colours and font"
+  "Renk ve yazı tipi": "Colours and font",
+  "Ses yükseltme": "Volume boost",
+  "Ses yükseltme: %{0}": "Volume boost: {0}%",
+  "%100 üstü sesi yükseltir; çok açınca ses bozulabilir.": "Above 100% boosts the sound; too much can distort it."
 }

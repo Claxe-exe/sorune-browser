@@ -129,7 +129,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         get => _volume;
         set
         {
-            if (!SetProperty(ref _volume, Math.Clamp(value, 0, 100)))
+            if (!SetProperty(ref _volume, Math.Clamp(value, 0, TabAudio.MaxVolume)))
                 return;
             OnPropertyChanged(nameof(HasCustomVolume));
             _ = ApplyVolumeAsync();
@@ -332,7 +332,6 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             if (_volumeScriptId is not null)
                 core.RemoveScriptToExecuteOnDocumentCreated(_volumeScriptId);
             _volumeScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(TabAudio.Script(_volume));
-        await core.AddScriptToExecuteOnDocumentCreatedAsync(LinkIntent.Script);
 
             var call = TabAudio.SetCall(_volume);
             await core.ExecuteScriptAsync(call);

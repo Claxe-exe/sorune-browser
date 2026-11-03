@@ -723,7 +723,7 @@ public sealed class MainViewModel : ObservableObject
             }
 
             var tab = CreateTab(saved.Url, Tabs.Count, saved.Title, isPinned: saved.IsPinned);
-            tab.Volume = Math.Clamp(saved.Volume, 0, 100);
+            tab.Volume = Math.Clamp(saved.Volume, 0, TabAudio.MaxVolume);
             if (!saved.IsPinned && saved.GroupId is { } id && groups.TryGetValue(id, out var group))
             {
                 if (!Groups.Contains(group))

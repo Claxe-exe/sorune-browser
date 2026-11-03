@@ -5,6 +5,15 @@
 
 window.RELEASES = [
     {
+        version: "1.0.5",
+        date: "2026-11-03",
+        name: ["Ses yükseltme", "Volume boost"],
+        items: [
+            ["**Ses yükseltme:** sekmenin sesi artık %300'e kadar açılıyor. Üç nokta menüsünden ya da sekmenin ses düzeyinden ayarlanır, sekme başına ayrı kalır. Başka adresten korumasız gelen bazı ses ve videolar %100'de kalır.", "**Volume boost:** a tab's sound now goes up to 300%. Set it from the three-dot menu or the tab's volume, separately for each tab. Some media served from other addresses without CORS stays at 100%."],
+            ["**Düzeltme:** üç nokta menüsü açıkken düğmeye yeniden basınca kapanıp tekrar açılıyordu; artık kapanıyor.", "**Fix:** pressing the three-dot button with its menu open closed and reopened it; now it closes."],
+        ],
+    },
+    {
         version: "1.0.4",
         date: "2026-11-03",
         name: ["Site görünümü", "Site look"],

@@ -865,11 +865,11 @@ public partial class MainWindow : Window
         var slider = new Slider
         {
             Minimum = 0,
-            Maximum = 100,
+            Maximum = TabAudio.MaxVolume,
             Value = tab.Volume,
             SmallChange = 5,
             LargeChange = 10,
-            Width = 170,
+            Width = 210,
             VerticalAlignment = VerticalAlignment.Center,
             Style = (Style)FindResource("ClaxeSliderStyle"),
         };
@@ -924,6 +924,13 @@ public partial class MainWindow : Window
             Foreground = (Brush)FindResource("TextSecondaryBrush"),
         });
         panel.Children.Add(row);
+        panel.Children.Add(new TextBlock
+        {
+            Text = L.T("%100 üstü sesi yükseltir; çok açınca ses bozulabilir."),
+            FontSize = 11.5,
+            Margin = new Thickness(2, 8, 0, 0),
+            Foreground = (Brush)FindResource("TextSecondaryBrush"),
+        });
 
         popup.Child = new Border
         {
@@ -1762,9 +1769,24 @@ public partial class MainWindow : Window
     /// The three-dot menu: screenshot, split screen, profiles, page and screen translation, and
     /// automatic screen translation with its interval (3–20 seconds).
     /// </summary>
+    private long _moreMenuClosedOnButtonAt;
+
     private void MoreButton_Click(object sender, RoutedEventArgs e)
     {
+        // The press on the button is what closed the open menu: its click must not open it again.
+        if (Environment.TickCount64 - _moreMenuClosedOnButtonAt < 800)
+        {
+            _moreMenuClosedOnButtonAt = 0;
+            return;
+        }
+
         var menu = new ContextMenu { PlacementTarget = MoreButton, Placement = PlacementMode.Bottom };
+        menu.Closed += (_, _) =>
+        {
+            var mouse = Mouse.GetPosition(MoreButton);
+            if (mouse.X >= 0 && mouse.Y >= 0 && mouse.X < MoreButton.ActualWidth && mouse.Y < MoreButton.ActualHeight)
+                _moreMenuClosedOnButtonAt = Environment.TickCount64;
+        };
         MenuItem Item(string header, string glyph, Action click, string? gesture = null, bool enabled = true)
         {
             var item = new MenuItem
@@ -1787,6 +1809,10 @@ public partial class MainWindow : Window
         Item(L.T("Ekran görüntüsü: bölge seç"), "\uE722", () => _ = TakeScreenshotAsync("region"), enabled: tab?.Core is not null);
         menu.Items.Add(new Separator());
         Item(L.T("Site görünümü"), "\uE790", OpenSiteStylePanel);
+        // After the menu has let go of the mouse: an open menu would close the new popup at once.
+        Item(tab is null ? L.T("Ses yükseltme") : L.T("Ses yükseltme: %{0}", tab.Volume), "\uE767",
+            () => Dispatcher.BeginInvoke(() => OpenVolumeEditor(tab!, MoreButton), DispatcherPriority.Background),
+            enabled: tab is not null);
         menu.Items.Add(new Separator());
         if (_viewModel.IsSplit)
             Item(L.T("Bölünmüş ekranı kapat"), "\uE8A0", _viewModel.CloseSplit);
