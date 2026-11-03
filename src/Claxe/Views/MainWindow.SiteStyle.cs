@@ -41,6 +41,7 @@ public partial class MainWindow
             StaysOpen = true,
             PopupAnimation = PopupAnimation.Fade,
         };
+        UseWindowFont(popup);
 
         var text = (Brush)FindResource("TextPrimaryBrush");
         var dim = (Brush)FindResource("TextSecondaryBrush");

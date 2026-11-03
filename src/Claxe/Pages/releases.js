@@ -5,6 +5,15 @@
 
 window.RELEASES = [
     {
+        version: "1.0.6",
+        date: "2026-11-03",
+        name: ["Ses paneli düzeltmesi", "Volume panel fix"],
+        items: [
+            ["**Düzeltme:** ses paneli ile yeni site görünümü panelindeki yazılar boş kutu olarak görünüyordu; artık okunuyor.", "**Fix:** text in the volume panel and the new site look panel showed as empty boxes; it now reads properly."],
+            ["**Ses paneli yenilendi:** sesi büyük yazıyla gösteriyor, %50–%300 arası hızlı seçim düğmeleri var.", "**Refreshed volume panel:** it shows the level in large type and has quick buttons from 50% to 300%."],
+        ],
+    },
+    {
         version: "1.0.5",
         date: "2026-11-03",
         name: ["Ses yükseltme", "Volume boost"],

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -836,7 +837,17 @@ public partial class MainWindow : Window
     private FrameworkElement? TabElement(TabViewModel tab)
         => TabStrip.ItemContainerGenerator.ContainerFromItem(tab) as FrameworkElement;
 
-    /// <summary>A slider for this tab only (0–100 %) plus mute, under the tab.</summary>
+    /// <summary>
+    /// A popup's content inherits from its placement target, and an icon button would hand down
+    /// the icon font, which shows text as empty boxes.
+    /// </summary>
+    private void UseWindowFont(Popup popup)
+    {
+        TextElement.SetFontFamily(popup, FontFamily);
+        TextElement.SetFontSize(popup, FontSize);
+    }
+
+    /// <summary>This tab's volume up to the boost limit, plus mute, under the given element.</summary>
     private void OpenVolumeEditor(TabViewModel tab, FrameworkElement anchor)
     {
         if (_volumeEditor is not null)
@@ -851,17 +862,26 @@ public partial class MainWindow : Window
             StaysOpen = false,
             PopupAnimation = PopupAnimation.Fade,
         };
+        UseWindowFont(popup);
 
+        var title = new TextBlock
+        {
+            Text = L.T("Bu sekmenin ses düzeyi"),
+            FontSize = 12.5,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("TextSecondaryBrush"),
+        };
         var value = new TextBlock
         {
-            Width = 44,
-            TextAlignment = TextAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 13,
+            FontSize = 20,
             FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            Text = $"%{tab.Volume}",
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
         };
+        var head = new Grid { Margin = new Thickness(2, 0, 2, 6) };
+        head.Children.Add(title);
+        head.Children.Add(value);
+
         var slider = new Slider
         {
             Minimum = 0,
@@ -869,14 +889,10 @@ public partial class MainWindow : Window
             Value = tab.Volume,
             SmallChange = 5,
             LargeChange = 10,
-            Width = 210,
+            TickFrequency = 5,
+            IsSnapToTickEnabled = true,
             VerticalAlignment = VerticalAlignment.Center,
             Style = (Style)FindResource("ClaxeSliderStyle"),
-        };
-        slider.ValueChanged += (_, e) =>
-        {
-            tab.Volume = (int)Math.Round(e.NewValue);
-            value.Text = $"%{tab.Volume}";
         };
 
         var mute = new Button
@@ -885,57 +901,77 @@ public partial class MainWindow : Window
             Width = 30,
             Height = 30,
             FontSize = 13,
-            Content = tab.IsMuted ? "" : "",
-            ToolTip = tab.IsMuted ? L.T("Sesi aç") : L.T("Sesi kapat"),
+            Margin = new Thickness(0, 0, 8, 0),
         };
+        void ShowMute(bool muted)
+        {
+            mute.Content = muted ? "\uE74F" : "\uE767";
+            mute.ToolTip = muted ? L.T("Sesi aç") : L.T("Sesi kapat");
+        }
+        ShowMute(tab.IsMuted);
         mute.Click += (_, _) =>
         {
             tab.ToggleMute();
             // IsMuted changes asynchronously; show the new state right away.
-            var muted = !tab.IsMuted;
-            mute.Content = muted ? "" : "";
-            mute.ToolTip = muted ? L.T("Sesi aç") : L.T("Sesi kapat");
+            ShowMute(!tab.IsMuted);
         };
-
-        var reset = new Button
-        {
-            Content = L.T("%100"),
-            Style = (Style)FindResource("GhostButtonStyle"),
-            Height = 26,
-            Padding = new Thickness(8, 0, 8, 0),
-            FontSize = 11.5,
-            Margin = new Thickness(6, 0, 0, 0),
-        };
-        reset.Click += (_, _) => slider.Value = 100;
-
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        var row = new DockPanel();
+        DockPanel.SetDock(mute, Dock.Left);
         row.Children.Add(mute);
-        row.Children.Add(new Border { Width = 8 });
         row.Children.Add(slider);
-        row.Children.Add(value);
-        row.Children.Add(reset);
 
-        var panel = new StackPanel();
-        panel.Children.Add(new TextBlock
+        var presets = new UniformGrid { Rows = 1, Margin = new Thickness(0, 10, 0, 0) };
+        var presetButtons = new List<(int Percent, Button Button)>();
+        foreach (var percent in new[] { 50, 100, 150, 200, 300 })
         {
-            Text = L.T("Bu sekmenin ses düzeyi"),
-            FontSize = 12,
-            Margin = new Thickness(2, 0, 0, 8),
-            Foreground = (Brush)FindResource("TextSecondaryBrush"),
-        });
-        panel.Children.Add(row);
-        panel.Children.Add(new TextBlock
+            var button = new Button
+            {
+                Content = $"%{percent}",
+                Height = 26,
+                Padding = new Thickness(0),
+                FontSize = 12,
+                Margin = new Thickness(2, 0, 2, 0),
+            };
+            button.Click += (_, _) => slider.Value = percent;
+            presetButtons.Add((percent, button));
+            presets.Children.Add(button);
+        }
+
+        var hint = new TextBlock
         {
-            Text = L.T("%100 üstü sesi yükseltir; çok açınca ses bozulabilir."),
+            Text = L.T("Çok yükseltince ses bozulabilir."),
             FontSize = 11.5,
             Margin = new Thickness(2, 8, 0, 0),
             Foreground = (Brush)FindResource("TextSecondaryBrush"),
-        });
+        };
+
+        void Show(int volume)
+        {
+            var boosted = volume > 100;
+            value.Text = $"%{volume}";
+            value.Foreground = (Brush)FindResource(boosted ? "AccentBrush" : "TextPrimaryBrush");
+            hint.Visibility = boosted ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var (percent, button) in presetButtons)
+                button.Style = (Style)FindResource(percent == volume ? "AccentButtonStyle" : "GhostButtonStyle");
+        }
+        Show(tab.Volume);
+        slider.ValueChanged += (_, e) =>
+        {
+            tab.Volume = (int)Math.Round(e.NewValue);
+            Show(tab.Volume);
+        };
+
+        var panel = new StackPanel();
+        panel.Children.Add(head);
+        panel.Children.Add(row);
+        panel.Children.Add(presets);
+        panel.Children.Add(hint);
 
         popup.Child = new Border
         {
             Margin = new Thickness(12),
-            Padding = new Thickness(12, 10, 12, 12),
+            Width = 300,
+            Padding = new Thickness(14, 10, 14, 12),
             CornerRadius = new CornerRadius(14),
             Background = (Brush)FindResource("SurfaceBrush"),
             BorderBrush = (Brush)FindResource("GlassBorderBrush"),
@@ -1115,6 +1151,7 @@ public partial class MainWindow : Window
             StaysOpen = false,
             PopupAnimation = PopupAnimation.Fade,
         };
+        UseWindowFont(popup);
 
         var name = new TextBox
         {

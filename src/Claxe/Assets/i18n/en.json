@@ -982,5 +982,5 @@
   "Renk ve yazı tipi": "Colours and font",
   "Ses yükseltme": "Volume boost",
   "Ses yükseltme: %{0}": "Volume boost: {0}%",
-  "%100 üstü sesi yükseltir; çok açınca ses bozulabilir.": "Above 100% boosts the sound; too much can distort it."
+  "Çok yükseltince ses bozulabilir.": "Too much boost can distort the sound."
 }
